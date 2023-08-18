@@ -9,12 +9,15 @@ import (
 	"sync"
 	"time"
 
+	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	MAX_PLAYER                  = 4 // 房間容納玩家上限為X人
-	ROUTINE_CHECK_OCCUPIED_ROOM = 5 // 每X分鐘檢查佔用房間
+	RETRY_CREATE_GAMESERVER_TIMES = 2 // 開房失敗時重試X次
+	RETRY_INTERVAL_SECONDS        = 3 // 開房失敗重試間隔X秒
+	MAX_PLAYER                    = 4 // 房間容納玩家上限為X人
+	ROUTINE_CHECK_OCCUPIED_ROOM   = 5 // 每X分鐘檢查佔用房間
 )
 
 type RoomReceptionist struct {
@@ -26,6 +29,7 @@ type Usher struct {
 	lastJoinRoomIdx int     // 上一次加房索引，記錄此值避免每次找房間都是從第一間開始找
 }
 type room struct {
+	gameServer *agonesv1.GameServer
 	roomID     string        // 房間ID
 	roomType   string        // 房間類型
 	maxPlayer  int           //最大玩家數
@@ -177,19 +181,18 @@ func (r *room) joinRoomWithPlayer(player *roomPlayer) bool {
 	return true
 }
 
-func (r *room) TryStartGame() (bool, error) {
-	var startOK bool
+func (r *room) tryCreateGame() (bool, error) {
+	var createGameOK bool
 	var err error
-	roomName, ok := r.generateRoomName()
-	if !ok {
-
+	roomName, getRoomNameOK := r.generateRoomName()
+	if !getRoomNameOK {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"room": r,
 		}).Errorf("%s Generate Room Name Failed!", LOG_ROOM)
-		startOK = false
-		err = errors.New(fmt.Sprintf("%d Generate Room Name Failed!", LOG_ROOM))
-		return startOK, err
+		createGameOK = false
+		err = errors.New(fmt.Sprintf("%s Generate Room Name Failed!", LOG_ROOM))
+		return createGameOK, err
 	}
 
 	// 寫LOG
@@ -198,55 +201,95 @@ func (r *room) TryStartGame() (bool, error) {
 		"roomName": roomName,
 	}).Infof("%s Generate Room Name \n", LOG_ROOM)
 
-	playerUIDs := r.getAllPlayerUID(true)
-	r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.gamedataRoomUID, SelfPodName)
-	if err != nil {
-		retryNum := 0
-		retryOK := false
-		timer := time.NewTicker(RETRY_GAMESERVER_DURATION * time.Second)
-		for retryNum < RETRY_GAMESERVER_TIMES {
-			r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.gamedataRoomUID, SelfPodName)
-			if err == nil {
-				retryOK = true
-				break
-			}
-			<-timer.C
-			retryNum++
-		}
-		log.Printf("CreateGameServer error: %s, RetryTime: %d, Result: %t.\n", err.Error(), retryNum+1, retryOK)
-		if !retryOK {
-			startOK = false
-			err = errors.New("GAMESERVER_ALLOCATED_FAILED")
-			return startOK, err
-		}
-	}
-	startOK = true
+	// 建立GameServer
+	playerUIDs := r.getAllPlayerUID()
 
-	return startOK, err
+	timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
+	retryTimes := 0
+	for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
+		retryTimes = i
+		r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.roomID, SelfPodName)
+		if err == nil {
+			createGameOK = true
+			break
+		}
+		<-timer.C
+	}
+	timer.Stop()
+
+	if createGameOK {
+		if retryTimes > 0 {
+			// 寫LOG
+			log.WithFields(log.Fields{
+				"retryTimes": retryTimes,
+				"error:":     err.Error(),
+			}).Infof("%s Create gameServer with retry: \n", LOG_ROOM)
+		}
+	} else {
+		// 寫LOG
+		log.WithFields(log.Fields{
+			"retryTimes": RETRY_CREATE_GAMESERVER_TIMES,
+			"error:":     err.Error(),
+		}).Errorf("%s Create gameServer error: \n", LOG_ROOM)
+		err = errors.New(fmt.Sprintf("%s Gameserver allocated failed", LOG_ROOM))
+	}
+
+	return createGameOK, err
 }
 
+// 以第一位玩家的id來產生房名
 func (r *room) generateRoomName() (string, bool) {
-	gotID := false
+	ok := false
 	var roomName string
 	for _, v := range r.players {
 		md5Data := []byte(v.id + time.Now().String())
 		roomName = fmt.Sprintf("%x", md5.Sum(md5Data))
-		gotID = true
+		ok = true
 		break
 	}
 
-	if gotID {
+	if ok {
 		taipeiLoc, err := time.LoadLocation("Asia/Taipei")
 		if err == nil {
 			roomName = roomName + time.Now().In(taipeiLoc).Format("20060102")
 		}
 	}
-	return roomName, gotID
+	return roomName, ok
 }
-func (r *room) getAllPlayerUID(showAI bool) []string {
+func (r *room) getAllPlayerUID() []string {
 	ids := []string{}
 	for _, v := range r.players {
 		ids = append(ids, v.id)
 	}
 	return ids
+}
+func (p roomPlayer) playerLeaveRoom() {
+	if p.room == nil {
+		return
+	}
+	// 將玩家從房間中移除
+	p.room.removePlayer(p)
+}
+
+// 將玩家從房間中移除
+func (r *room) removePlayer(p roomPlayer) {
+	tarIdx := -1
+	for i, player := range r.players {
+		if player.conn == p.conn {
+			tarIdx = i
+		}
+	}
+	if tarIdx >= 0 {
+		newPlayers := []*roomPlayer{}
+		for i, v := range r.players {
+			if i != tarIdx {
+				newPlayers = append(newPlayers, v)
+			}
+		}
+		r.players = newPlayers
+	}
+	// 如果房間沒人就清除房間
+	if len(r.players) <= 0 {
+		p.room.clearRoom()
+	}
 }
