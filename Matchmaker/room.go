@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"net"
 	"sync"
 	"time"
+
+	logger "matchmaker/Logger"
 
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +28,7 @@ type RoomReceptionist struct {
 }
 type Usher struct {
 	roomLock        sync.RWMutex
-	Rooms           []*room // 已建立的房間
+	rooms           []*room // 已建立的房間
 	lastJoinRoomIdx int     // 上一次加房索引，記錄此值避免每次找房間都是從第一間開始找
 }
 type room struct {
@@ -52,35 +55,26 @@ type dbRoomData struct {
 
 func (rr *RoomReceptionist) Init() {
 	rr.quickRoomUshers = make(map[string]*Usher)
-	go rr.RoutineCheckOccupiedRoom()
+	//go rr.RoutineCheckOccupiedRoom()
 }
-func (rr *RoomReceptionist) RoutineCheckOccupiedRoom() {
-	timer := time.NewTicker(ROUTINE_CHECK_OCCUPIED_ROOM * time.Minute)
-	for {
-		for _, usher := range rr.quickRoomUshers {
-			usher.CheckOccupiedRoom()
-		}
-		<-timer.C
-	}
-}
-func (u *Usher) CheckOccupiedRoom() {
-	// for _, room := range u.Rooms {
-	// 	if room.isStart {
-	// 		// 寫LOG
-	// 		log.WithFields(log.Fields{
-	// 			"room": room,
-	// 		}).Infof("%s ClearOccupiedRoom", LOG_ROOM)
 
-	// 		// 清除房間
-	// 		room.clearRoom()
-	// 	}
-	// }
-}
+// func (rr *RoomReceptionist) RoutineCheckOccupiedRoom() {
+// 	timer := time.NewTicker(ROUTINE_CHECK_OCCUPIED_ROOM * time.Minute)
+// 	for {
+// 		for _, usher := range rr.quickRoomUshers {
+// 			usher.CheckOccupiedRoom()
+// 		}
+// 		<-timer.C
+// 	}
+// }
+// func (u *Usher) CheckOccupiedRoom() {
+
+// }
 func (r *room) clearRoom() {
 	// 寫LOG
 	log.WithFields(log.Fields{
 		"players": r.players,
-	}).Infof("%s ClearRoom", LOG_ROOM)
+	}).Infof("%s ClearRoom", logger.LOG_ROOM)
 	// 清除房間
 	for i := 0; i < len(r.players); i++ {
 		r.players[i].LeaveRoom()
@@ -109,9 +103,9 @@ func (r *RoomReceptionist) PlayerJoinQuickRoom(mapID string, roomDataDB dbRoomDa
 func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomPlayer) *room {
 	// 找等候中的房間
 
-	for i, _ := range u.Rooms {
-		roomIdx := (u.lastJoinRoomIdx + i) % len(u.Rooms)
-		room := u.Rooms[roomIdx]
+	for i, _ := range u.rooms {
+		roomIdx := (u.lastJoinRoomIdx + i) % len(u.rooms)
+		room := u.rooms[roomIdx]
 		joined := room.joinRoomWithPlayer(player)
 		// 房間不可加入就換下一間檢查
 		if !joined {
@@ -126,7 +120,7 @@ func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomP
 			"roomIdx":    roomIdx,
 			"room":       room,
 			"dbRoomData": roomDataDB,
-		}).Infof("%s Player join an exist room", LOG_ROOM)
+		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
 		return room
 	}
 
@@ -142,8 +136,8 @@ func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomP
 	// 開房者加入此新房
 	newRoom.joinRoomWithPlayer(player)
 	// 將新房加到房間清單中
-	u.Rooms = append(u.Rooms, &newRoom)
-	roomIdx := len(u.Rooms) - 1
+	u.rooms = append(u.rooms, &newRoom)
+	roomIdx := len(u.rooms) - 1
 	u.lastJoinRoomIdx = roomIdx
 
 	// 寫LOG
@@ -153,7 +147,7 @@ func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomP
 		"roomIdx":    roomIdx,
 		"room":       newRoom,
 		"dbRoomData": roomDataDB,
-	}).Infof("%s Player create a new room", LOG_ROOM)
+	}).Infof("%s Player create a new room", logger.LOG_ROOM)
 
 	return &newRoom
 }
@@ -189,9 +183,9 @@ func (r *room) tryCreateGame() (bool, error) {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"room": r,
-		}).Errorf("%s Generate Room Name Failed!", LOG_ROOM)
+		}).Errorf("%s Generate Room Name Failed!", logger.LOG_ROOM)
 		createGameOK = false
-		err = errors.New(fmt.Sprintf("%s Generate Room Name Failed!", LOG_ROOM))
+		err = errors.New(fmt.Sprintf("%s Generate Room Name Failed!", logger.LOG_ROOM))
 		return createGameOK, err
 	}
 
@@ -199,7 +193,7 @@ func (r *room) tryCreateGame() (bool, error) {
 	log.WithFields(log.Fields{
 		"room":     r,
 		"roomName": roomName,
-	}).Infof("%s Generate Room Name \n", LOG_ROOM)
+	}).Infof("%s Generate Room Name \n", logger.LOG_ROOM)
 
 	// 建立GameServer
 	playerUIDs := r.getAllPlayerUID()
@@ -223,15 +217,15 @@ func (r *room) tryCreateGame() (bool, error) {
 			log.WithFields(log.Fields{
 				"retryTimes": retryTimes,
 				"error:":     err.Error(),
-			}).Infof("%s Create gameServer with retry: \n", LOG_ROOM)
+			}).Infof("%s Create gameServer with retry: \n", logger.LOG_ROOM)
 		}
 	} else {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"retryTimes": RETRY_CREATE_GAMESERVER_TIMES,
 			"error:":     err.Error(),
-		}).Errorf("%s Create gameServer error: \n", LOG_ROOM)
-		err = errors.New(fmt.Sprintf("%s Gameserver allocated failed", LOG_ROOM))
+		}).Errorf("%s Create gameServer error: \n", logger.LOG_ROOM)
+		err = errors.New(fmt.Sprintf("%s Gameserver allocated failed", logger.LOG_ROOM))
 	}
 
 	return createGameOK, err
