@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	logger "matchmaker/Logger"
 	"matchmaker/packet"
 	"net"
@@ -124,7 +123,7 @@ func handleConnectionTCP(conn net.Conn) {
 			// 還沒實作Auth驗證先直接設定為true
 			auth := true
 
-			// 不管驗證成功或失敗都回給cleient
+			// 不管驗證成功或失敗都回給client
 			if auth {
 				player.isAuth = true
 				err = packet.SendPacket(player.encoder, &packet.Packet{
@@ -170,29 +169,36 @@ func handleConnectionTCP(conn net.Conn) {
 				continue
 			}
 
-			switch roomGameData.RoomType {
+			var dbMap dbMapData
+
+			switch dbMap.matchType {
 			case "Quick":
-				player.WaitStr = roomGameData.RoomUID
-				player.Room = RoomReceptionist.PlayerJoinQuickRoom(player.WaitStr, roomGameData, &player)
-				if player.Room == nil {
-					fmt.Println("Player join quick room failed !? Para: ", player.WaitStr, roomGameData, player)
-					if err = sendReCreateRoomWithErrStr(player, pkt, "QUICK_ROOM_JOIN_FAILED"); err != nil {
-						fmt.Println("sendReCreateRoomWithErrStr Failed when QUICK_ROOM_JOIN_FAILED: ", remoteAddr)
+				player.room = Receptionist.JoinQuickRoom(dbMap, &player)
+				if player.room == nil {
+					// 寫LOG
+					log.WithFields(log.Fields{
+						"dbMap":  dbMap,
+						"player": player,
+					}).Errorf("%s Join quick match room failed", logger.LOG_Main)
+					// 回送房間建立失敗封包
+					if err = sendCreateRoomCMD_Reply(player, pkt, "Join quick match room failed"); err != nil {
 						return
 					}
 					continue
 				}
 			default:
-				fmt.Println("GAMEDATA_ROOMTYPE_WRONG: ", remoteAddr)
-				if err = sendReCreateRoomWithErrStr(player, pkt, "GAMEDATA_ROOMTYPE_WRONG"); err != nil {
-					fmt.Println("sendReCreateRoomWithErrStr Failed when GAMEDATA_ROOMTYPE_WRONG: ", remoteAddr)
+				// 寫LOG
+				log.WithFields(log.Fields{
+					"dbMap.matchType": dbMap.matchType,
+					"remoteAddr":      remoteAddr,
+				}).Errorf("%s Undefined match type", logger.LOG_Main)
+
+				// 回送房間建立失敗封包
+				if err = sendCreateRoomCMD_Reply(player, pkt, "Undefined match type"); err != nil {
 					return
 				}
 				continue
 			}
-
-			player.Room.checkStartAfterEnter(player.UID)
-
 		default:
 			return
 		}
@@ -210,4 +216,13 @@ func checkForceDisconnect(p *roomPlayer) {
 			return
 		}
 	}
+}
+func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Packet, log string) error {
+	err := packet.SendPacket(player.encoder, &packet.Packet{
+		CMD:      CREATEROOM_REPLY,
+		PacketID: p.PacketID,
+		Content:  &packet.CreateRoomCMD_Reply{},
+		ErrMsg:   log,
+	})
+	return err
 }

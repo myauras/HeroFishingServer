@@ -34,7 +34,7 @@ type Usher struct {
 type room struct {
 	gameServer *agonesv1.GameServer
 	roomID     string        // 房間ID
-	roomType   string        // 房間類型
+	matchType  string        // 配對類型
 	maxPlayer  int           //最大玩家數
 	players    []*roomPlayer //房間內的玩家
 	createTime *time.Time    //開房時間
@@ -48,9 +48,9 @@ type roomPlayer struct {
 	mapID   string        // 地圖ID
 	room    *room         // 房間資料
 }
-type dbRoomData struct {
-	roomID   string `db:"id"`
-	roomType string `db:"roomType"`
+type dbMapData struct {
+	mapID     string `db:"id"`
+	matchType string `db:"matchType"`
 }
 
 func (rr *RoomReceptionist) Init() {
@@ -88,38 +88,40 @@ func (p *roomPlayer) LeaveRoom() {
 	p.room = nil
 }
 
-// 玩家加入房間
-func (r *RoomReceptionist) PlayerJoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomPlayer) *room {
+func (r *RoomReceptionist) getUsher(mapID string) *Usher {
 	usher, ok := r.quickRoomUshers[mapID]
 	if !ok {
 		newUsher := Usher{}
 		r.quickRoomUshers[mapID] = &newUsher
 		usher = r.quickRoomUshers[mapID]
 	}
-	return usher.JoinQuickRoom(mapID, roomDataDB, player)
+	return usher
 }
 
-// 配房-快速房
-func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomPlayer) *room {
-	// 找等候中的房間
+// 加入房間-快速房
+func (r *RoomReceptionist) JoinQuickRoom(dbMap dbMapData, player *roomPlayer) *room {
 
-	for i, _ := range u.rooms {
-		roomIdx := (u.lastJoinRoomIdx + i) % len(u.rooms)
-		room := u.rooms[roomIdx]
+	// 取得房間接待員
+	usher := r.getUsher(dbMap.mapID)
+
+	// 找等候中的房間
+	for i, _ := range usher.rooms {
+		roomIdx := (usher.lastJoinRoomIdx + i) % len(usher.rooms)
+		room := usher.rooms[roomIdx]
 		joined := room.joinRoomWithPlayer(player)
 		// 房間不可加入就換下一間檢查
 		if !joined {
-			u.lastJoinRoomIdx = roomIdx
+			usher.lastJoinRoomIdx = roomIdx
 			continue
 		}
 
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"playerID":   player.id,
-			"mapID":      mapID,
+			"mapID":      dbMap.mapID,
 			"roomIdx":    roomIdx,
 			"room":       room,
-			"dbRoomData": roomDataDB,
+			"dbRoomData": dbMap,
 		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
 		return room
 	}
@@ -127,29 +129,32 @@ func (u *Usher) JoinQuickRoom(mapID string, roomDataDB dbRoomData, player *roomP
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
-		roomID:     roomDataDB.roomID,
-		roomType:   roomDataDB.roomType,
+		roomID:     dbMap.mapID,
+		matchType:  dbMap.matchType,
 		maxPlayer:  MAX_PLAYER,
 		players:    nil,
 		createTime: &newCreateTime,
 	}
+	// 設定玩家所在地圖
+	player.mapID = dbMap.mapID
 	// 開房者加入此新房
 	newRoom.joinRoomWithPlayer(player)
 	// 將新房加到房間清單中
-	u.rooms = append(u.rooms, &newRoom)
-	roomIdx := len(u.rooms) - 1
-	u.lastJoinRoomIdx = roomIdx
+	usher.rooms = append(usher.rooms, &newRoom)
+	roomIdx := len(usher.rooms) - 1
+	usher.lastJoinRoomIdx = roomIdx
 
 	// 寫LOG
 	log.WithFields(log.Fields{
 		"playerID":   player.id,
-		"waitStr":    mapID,
+		"waitStr":    dbMap.mapID,
 		"roomIdx":    roomIdx,
 		"room":       newRoom,
-		"dbRoomData": roomDataDB,
+		"dbRoomData": dbMap,
 	}).Infof("%s Player create a new room", logger.LOG_ROOM)
 
 	return &newRoom
+
 }
 
 // 檢查此房間是否已經存在該玩家ID
