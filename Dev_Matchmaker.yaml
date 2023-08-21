@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: herofishing-matchmaker
+  namespace: herofishing-game-server
+  labels:
+    app: herofishing-matchmaker
+spec:
+  type: LoadBalancer
+  selector:
+    app: herofishing-matchmaker
+  ports:
+    - protocol: TCP
+      port: 32680
+      targetPort: 30390
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-server-deployment-30390
+  namespace: herofishing-game-server
+spec:
+  selector:
+    matchLabels:
+      app: herofishing-matchmaker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: herofishing-matchmaker
+    spec:
+      containers:
+      - name: herofishing-matchmaker
+        image: gcr.io/aurafortest/herofishing-matchmaker:latest
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "100m"
+          limits:
+            memory: "2048Mi"
+            cpu: "200m"
+        env:
+        - name: "PORT"
+          value: "30390"
+        - name: "Version"
+          value: "Dev"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler # 水平擴展
+metadata:
+  name: herofishing-matchmaker-autoscaler
+  namespace: herofishing-game-server
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: game-server-deployment-30390
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50

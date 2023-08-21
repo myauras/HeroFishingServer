@@ -49,8 +49,8 @@ type roomPlayer struct {
 	room    *room         // 房間資料
 }
 type dbMapData struct {
-	mapID     string `db:"id"`
-	matchType string `db:"matchType"`
+	mapID     string `bson:"id"`
+	matchType string `bson:"matchType"`
 }
 
 func (rr *RoomReceptionist) Init() {
@@ -200,21 +200,22 @@ func (r *room) tryCreateGame() (bool, error) {
 		"roomName": roomName,
 	}).Infof("%s Generate Room Name \n", logger.LOG_ROOM)
 
-	// 建立GameServer
-	playerUIDs := r.getAllPlayerUID()
-
-	timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
+	createGameOK = true
 	retryTimes := 0
-	for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
-		retryTimes = i
-		r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.roomID, SelfPodName)
-		if err == nil {
-			createGameOK = true
-			break
-		}
-		<-timer.C
-	}
-	timer.Stop()
+
+	// playerUIDs := r.getAllPlayerID()
+	// timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
+	// retryTimes := 0
+	// for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
+	// 	retryTimes = i
+	// 	r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.roomID, SelfPodName)
+	// 	if err == nil {
+	// 		createGameOK = true
+	// 		break
+	// 	}
+	// 	<-timer.C
+	// }
+	// timer.Stop()
 
 	if createGameOK {
 		if retryTimes > 0 {
@@ -255,7 +256,7 @@ func (r *room) generateRoomName() (string, bool) {
 	}
 	return roomName, ok
 }
-func (r *room) getAllPlayerUID() []string {
+func (r *room) getAllPlayerID() []string {
 	ids := []string{}
 	for _, v := range r.players {
 		ids = append(ids, v.id)

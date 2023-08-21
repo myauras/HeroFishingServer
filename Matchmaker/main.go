@@ -18,8 +18,13 @@ const (
 
 // 環境版本
 const (
-	DEV     = "Dev"
-	RELEASE = "Release"
+	ENV_DEV     = "Dev"
+	ENV_RELEASE = "Release"
+)
+
+// 配對類型
+const (
+	MATCH_QUICK = "Quick"
 )
 
 // 命令列表
@@ -172,7 +177,7 @@ func handleConnectionTCP(conn net.Conn) {
 			var dbMap dbMapData
 
 			switch dbMap.matchType {
-			case "Quick":
+			case MATCH_QUICK: // 快速配對
 				player.room = Receptionist.JoinQuickRoom(dbMap, &player)
 				if player.room == nil {
 					// 寫LOG
@@ -217,6 +222,7 @@ func checkForceDisconnect(p *roomPlayer) {
 		}
 	}
 }
+
 func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Packet, log string) error {
 	err := packet.SendPacket(player.encoder, &packet.Packet{
 		CMD:      CREATEROOM_REPLY,
