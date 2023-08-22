@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	agones.dev/agones v1.34.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.3
 	k8s.io/apimachinery v0.26.6
 	k8s.io/client-go v0.26.6
 )

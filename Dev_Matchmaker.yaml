@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: herofishing-matchmaker
-        image: gcr.io/aurafortest/herofishing-matchmaker:latest
+        image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:latest
         resources:
           requests:
             memory: "1024Mi"
@@ -50,7 +50,7 @@ spec:
               fieldPath: metadata.name
 ---
 apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler # 水平擴展
+kind: HorizontalPodAutoscaler
 metadata:
   name: herofishing-matchmaker-autoscaler
   namespace: herofishing-game-server

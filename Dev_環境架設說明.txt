@@ -1,0 +1,38 @@
+# 使用此批次檔執行Agones服務 在powershell中執行.\Dev_RunAgonesSystem.bat
+# 詳細的Agones服務建立可以參考官方文件 https://agones.dev/site/docs/installation/install-agones/helm/
+
+# 初始化gcloud, 安裝k8s元件, 設定專案, 登入
+gcloud init 
+gcloud components install kubectl
+gcloud config set project YOUR_PROJECT_ID
+gcloud auth login
+
+# 建立cluster
+# Dev版使用zone就可以, 區域可以參考: https://cloud.google.com/compute/docs/regions-zones/#available
+# Channel選擇官方推薦的regular
+# tag使用game-server (之後建立防火牆規則的目標是這個tag)
+# node用2台就好
+# 機器類型使用e2-standard-4, 這是相對便宜的機器, 機器類型可以參考 https://cloud.google.com/compute/docs/general-purpose-machines
+gcloud container clusters create cluster-gameserver --zone=asia-east1-c --release-channel=regular --tags=game-server --scopes=gke-default --num-nodes=2 --enable-image-streaming --machine-type=e2-standard-4
+
+# 建立防火牆規則 
+gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 --target-tags game-server --description "Firewall to allow game server udp traffic"
+
+# 官方建議新建一個Agones專用的node pool, 避免跟遊戲server的機器共用, 但是Dev環境可以不用這麼做，所以註解掉，如果有需要可以使用註解的內容
+# gcloud container node-pools create agones-system --cluster=cluster-gameserver --zone=asia-east1-c --node-taints agones.dev/agones-system=true:NoExecute --node-labels agones.dev/agones-system=true --num-nodes=1 --machine-type=e2-standard-4
+
+# 使用helm安裝agones, 參考官方文件: https://agones.dev/site/docs/installation/install-agones/helm/
+helm repo add agones https://agones.dev/chart/stable
+helm repo update
+helm install agones-release --namespace agones-system --create-namespace agones/agones
+#如果要移除agones使用以下語法
+helm uninstall my-release --namespace=agones-system
+    
+# 要能push docker image要先啟用artifact registry服務
+gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.com
+# 要能push docker image要先建立儲存庫, 參考文件: https://cloud.google.com/artifact-registry/docs/repositories/create-repos#docker
+# 區域選擇可以參考文件: https://cloud.google.com/artifact-registry/docs/repositories/repo-locations
+# --async是讓建立過成不用等待並可透過cli查看建立進度, 例如: gcloud artifacts operations describe projects/aurafortest/locations/asia-east1/operations/d47ff63d-db40-430b-8f59-f02e0bc19f27
+gcloud artifacts repositories create herofishing --repository-format=docker --location=asia-east1 --description="herofishing的image儲存庫" --async
+# 配置Docker客戶端使用Google Cloud身份進行認證，這樣就可以推送和拉取image，而不會遇到權限問題
+gcloud auth configure-docker asia-east1-docker.pkg.dev
