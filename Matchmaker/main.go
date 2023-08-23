@@ -29,10 +29,10 @@ const (
 
 // 命令列表
 const (
-	AUTH_RECEIVE       = "Auth_Receive"       // 身分驗證
-	AUTH_REPLY         = "Auth_Reply"         // 身分驗證回傳
-	CREATEROOM_RECEIVE = "CreateRoom_Receive" // 建立房間
-	CREATEROOM_REPLY   = "CreateRoom_Reply"   // 建立房間回傳
+	AUTH             = "Auth"             // 身分驗證
+	AUTH_REPLY       = "Auth_Reply"       // 身分驗證回傳
+	CREATEROOM       = "CreateRoom"       // 建立房間
+	CREATEROOM_REPLY = "CreateRoom_Reply" // 建立房間回傳
 )
 
 var EvnVersion string             // 環境版本
@@ -109,7 +109,7 @@ func handleConnectionTCP(conn net.Conn) {
 		log.Infof("%s Receive %s from %s", logger.LOG_Main, pkt.CMD, remoteAddr)
 
 		//收到Auth以外的命令如果未驗證就都擋掉
-		if !player.isAuth && pkt.CMD != AUTH_RECEIVE {
+		if !player.isAuth && pkt.CMD != AUTH {
 			// 寫LOG
 			log.WithFields(log.Fields{
 				"cmd":     pkt.CMD,
@@ -119,7 +119,7 @@ func handleConnectionTCP(conn net.Conn) {
 		}
 
 		switch pkt.CMD {
-		case AUTH_RECEIVE:
+		case AUTH:
 			authContent := packet.AuthCMD{}
 			if ok := authContent.Parse(pkt.Content); !ok {
 				return
@@ -152,7 +152,7 @@ func handleConnectionTCP(conn net.Conn) {
 					},
 				})
 			}
-		case CREATEROOM_RECEIVE:
+		case CREATEROOM:
 			createRoomCMD := packet.CreateRoomCMD{}
 			if ok := createRoomCMD.Parse(pkt.Content); !ok {
 				return
