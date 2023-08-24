@@ -1,0 +1,8 @@
+{
+    "app_id": "aurafortest-bikmm",
+    "config_version": 20210101,
+    "name": "aurafortest",
+    "location": "IN-MB",
+    "provider_region": "gcp-asia-south1",
+    "deployment_model": "LOCAL"
+}

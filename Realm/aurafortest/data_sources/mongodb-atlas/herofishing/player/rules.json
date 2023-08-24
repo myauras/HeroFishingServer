@@ -1,0 +1,19 @@
+{
+    "collection": "player",
+    "database": "herofishing",
+    "roles": [
+        {
+            "name": "denyAllAccess",
+            "apply_when": {},
+            "document_filters": {
+                "write": false,
+                "read": false
+            },
+            "read": false,
+            "write": false,
+            "insert": false,
+            "delete": false,
+            "search": false
+        }
+    ]
+}
