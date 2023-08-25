@@ -1,6 +1,6 @@
 [
     {
-        "name": "Signup",
+        "name": "InitPlayerData",
         "private": false,
         "can_evaluate": {},
         "disable_arg_logs": false,

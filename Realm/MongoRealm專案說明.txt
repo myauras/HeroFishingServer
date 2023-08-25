@@ -1,0 +1,12 @@
+# 安裝Realm CLI環境
+npm install -g mongodb-realm-cli
+# 登入Realm AIPKey放在 Keys資料夾內
+realm-cli login
+# 編輯好的設定用push更新上專案
+realm-cli push
+# 使用function run來測試function
+realm-cli function run --name=InitPlayerData
+
+
+# 要讓Atlas Function可以使用Dependencies自訂的module 要在Dependencies路徑下push moudle 在到MongoDB Realm後台Add Dependencies取外部module使用
+npm publish 
