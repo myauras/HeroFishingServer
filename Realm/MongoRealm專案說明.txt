@@ -1,3 +1,4 @@
+# ====================Realm專案說明===================
 # 安裝Realm CLI環境
 npm install -g mongodb-realm-cli
 # 登入Realm AIPKey放在 Keys資料夾內
@@ -7,6 +8,19 @@ realm-cli push
 # 使用function run來測試function
 realm-cli function run --name=InitPlayerData
 
+# ====================使用npm外部module建構說明===================
+# 要讓Atlas Function可以使用HerofishingModule自訂的module, 要在HerofishingModule路徑下npm publish到npm上(版號要記得更新)
+# 使用Makefile來建置版本, make all來自動加版號並推上npm
+# 最後要到MongoDB App後台更新Dependencies (這步驟有點麻煩，只能等mongodb提供cli更新外部dependencies地流程)
+make all
+# 在Atlas functions那邊(Realm/aurafortest/functions)要有HerofishingModule那邊使用的Module IntelliSense(方法自動完成提示)可以使用本地Module連結
+# 先切到HerofishingModule專案資料夾下npm link 再到Atlas functions(Realm/aurafortest/)資料夾下npm link [模組名稱]
+# 這只是本地開發方便用 最後別忘來還是要推上npm並在MongoDB App後台更新Dependencies才行
+npm link
+npm link [模組名稱]
 
-# 要讓Atlas Function可以使用Dependencies自訂的module 要在Dependencies路徑下push moudle 在到MongoDB Realm後台Add Dependencies取外部module使用
-npm publish 
+# ====================MongoDB Shell使用說明===================
+# 1. 要先安裝cli工具, 這是官方連結: https://www.mongodb.com/docs/mongodb-shell/install/#procedure
+# 2. 連上mongoDB, 語法類似以下, 要把pem檔路徑改成自己放pem的路徑
+mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\X509-cert-6644120643259731564.pem"
+# 3. 連上後就可以進行CRUD等操作, 可參考官方文件: https://www.mongodb.com/docs/mongodb-shell/crud

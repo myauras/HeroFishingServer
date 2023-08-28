@@ -1,5 +1,6 @@
-const newDataModule = require('./ReplyData');
-module.exports.NewData = newDataModule.NewData;
+module.exports.GameSetting = require('./GameSetting');
 
-const gameSettingModule = require('./GameSetting');
-module.exports.GameSetting = gameSettingModule.GameSetting;
+module.exports.DBManager = require('./DBManager');
+
+module.exports.ReplyData = require('./ReplyData');
+

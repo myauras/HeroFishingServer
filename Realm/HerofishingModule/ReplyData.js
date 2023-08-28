@@ -1,5 +1,5 @@
 module.exports = {
-    NewData: function (data,error) {
+    NewReplyData: function (data,error) {
         return JSON.stringify({
             Time:new Date(),
             User:context.user,

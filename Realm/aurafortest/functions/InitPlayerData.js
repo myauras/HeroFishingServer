@@ -11,17 +11,20 @@ exports = async function InitPlayerData(data) {
         Data: "格式錯誤",
     };
   }
+  const gm = require("aurafortest-herofishing")
 
-
-  const cluster = context.services.get("Cluster0");
-  const db = cluster.db("herofishing");
-  const playerCol = db.collection("player");
-  await playerCol.insertOne({
-    "_id": context.user.id,
-
-  });
+  // 建立玩家資料
+  writePlayerDocData={
+    "_id":context.user.id,
+    "authType": data.AuthType,
+    "point":Int64(0),
+    "onlineState":gm.GameSetting.OnlineState.Online,
+  };
+  // 寫入玩家資料
+  await gm.DBManager.DB_InsertOne(gm.GameSetting.ColName.Player,writePlayerDocData)
 
   
-  const manager = require("aurafortest-herofishing")
-  return JSON.stringify(manager.NewData("A","b"))
+
+
+  return JSON.stringify(gm.ReplyData.NewReplyData(null,null))
 }
