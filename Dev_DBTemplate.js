@@ -12,7 +12,7 @@ db.template.insertMany([
     _id: "player",
     createdAt: nowDate,
     authType: "Guest",
-    point: NumberLong("1"),
+    point: 1,//NumberLong("1")
     onlineState: "Offline",
     lastSignin_nowDate: null,
     lastSignout_nowDate: null,

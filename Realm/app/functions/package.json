@@ -9,7 +9,6 @@
   "author": "scoz",
   "license": "ISC",
   "dependencies": {
-    "aurafortest-herofishing": "^1.0.10",
-    "mongodb": "^6.0.0"
+    "aurafortest-herofishing": "^1.0.25"
   }
 }

@@ -4,6 +4,8 @@ exports = async function InitPlayerData(data) {
   //     console.log(JSON.stringify(context.user))
   //     return 
   // }
+
+ 
   if (!("AuthType" in data)) {
     console.log("格式錯誤");
     return {
@@ -11,23 +13,20 @@ exports = async function InitPlayerData(data) {
       Data: "格式錯誤",
     };
   }
-
-  const gm = require("aurafortest-herofishing")
-  const mongodb = require("mongodb");
-
+  const ah = require("aurafortest-herofishing");
   // 建立玩家資料
   writePlayerDocData = {
     "_id": context.user.id,
     "authType": data.AuthType,
-    "point": mongodb.NumberLong("100"),
-    "onlineState": gm.GameSetting.OnlineState.Online,
+    "point": 100,
+    "onlineState": ah.GameSetting.OnlineState.Online,
   };
   // 寫入玩家資料
-  result = await gm.DBManager.DB_InsertOne(gm.GameSetting.ColName.Player, writePlayerDocData);
+  result = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.player, writePlayerDocData);
   if (!result) {
     console.log("插入player表錯誤");
-    return JSON.stringify(gm.ReplyData.NewReplyData(null, "插入player表錯誤"));
+    return JSON.stringify(ah.ReplyData.NewReplyData(null, "插入player表錯誤"));
   }
 
-  return JSON.stringify(gm.ReplyData.NewReplyData(result, null));
+  return JSON.stringify(ah.ReplyData.NewReplyData(result, null));
 }

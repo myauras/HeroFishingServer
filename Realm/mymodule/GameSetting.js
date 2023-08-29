@@ -1,12 +1,12 @@
 module.exports = {
     // DB集合
     ColName: Object.freeze({
-        Player: "player",
-        PlayerState: "playerState",
-        PlayerHistory: "playerHistory",
-        GameSetting: "gameSetting",
-        GameLog: "gameLog",
-        Template: "template",
+        player: "player",
+        playerState: "playerState",
+        playerHistory: "playerHistory",
+        gameSetting: "gameSetting",
+        gameLog: "gameLog",
+        template: "template",
     }),
     // 註冊類型
     AuthType: Object.freeze({
@@ -20,5 +20,5 @@ module.exports = {
         Offline: "Offline",
     }),
     // 這邊要填入ColName的Key值
-    ColTemplate: new Set(['Player', 'PlayerState', 'PlayerHistory']),
+    ColTemplate: new Set(['player', 'playerState', 'playerHistory']),
 }
