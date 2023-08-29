@@ -3,6 +3,8 @@
 npm install -g mongodb-realm-cli
 # 登入Realm AIPKey放在 Keys資料夾內
 realm-cli login
+# 使用realm-cli pull 拉取Realm上資料
+realm-cli pull
 # 編輯好的程式用push更新上專案(要切到Realm/aurafortest這個資料夾)
 realm-cli push
 # 使用function run來測試function
