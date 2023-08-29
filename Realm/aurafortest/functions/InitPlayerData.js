@@ -11,13 +11,15 @@ exports = async function InitPlayerData(data) {
       Data: "格式錯誤",
     };
   }
+
   const gm = require("aurafortest-herofishing")
+  const mongodb = require("mongodb");
 
   // 建立玩家資料
   writePlayerDocData = {
     "_id": context.user.id,
     "authType": data.AuthType,
-    "point": NumberLong("100"),
+    "point": mongodb.NumberLong("100"),
     "onlineState": gm.GameSetting.OnlineState.Online,
   };
   // 寫入玩家資料

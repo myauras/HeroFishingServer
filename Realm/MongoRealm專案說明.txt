@@ -4,22 +4,28 @@ npm install -g mongodb-realm-cli
 # 登入Realm AIPKey放在 Keys資料夾內
 realm-cli login
 # 使用realm-cli pull 拉取Realm上資料
+# 更多指令可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/cli/realm-cli-pull/
 realm-cli pull
-# 編輯好的程式用push更新上專案(要切到Realm/aurafortest這個資料夾)
-realm-cli push
-# 使用function run來測試function
-realm-cli function run --name=InitPlayerData
 
-# ====================使用npm外部module建構說明===================
-# 要讓Atlas Function可以使用HerofishingModule自訂的module, 要在HerofishingModule路徑下npm publish到npm上(版號要記得更新)
-# 使用Makefile來建置版本, make all來自動加版號並推上npm
-# 最後要到MongoDB App後台更新Dependencies (這步驟有點麻煩，只能等mongodb提供cli更新外部dependencies地流程)
-make all
-# 在Atlas functions那邊(Realm/aurafortest/functions)要有HerofishingModule那邊使用的Module IntelliSense(方法自動完成提示)可以使用本地Module連結
+
+
+# ====================工作流程說明===================
+# Realm/HerofishingModule是給Atlas functions使用的外部模組
+# Realm/aurafortest/functions是client端連server端的入口(Serverless Functions)
+
+# 要讓Atlas Function可以使用HerofishingModule自訂的module, 需要在HerofishingModule路徑下npm publish到npm上(版號要記得更新), 以下為自動化的工作流程說明
+# 首先要在Atlas functions那邊(Realm/aurafortest/functions)要即時使用HerofishingModule IntelliSense(方法自動完成提示)要使用本地Module Link
 # 先切到HerofishingModule專案資料夾下npm link 再到Atlas functions(Realm/aurafortest/)資料夾下npm link [模組名稱]
-# 這只是本地開發方便用 最後別忘來還是要推上npm並在MongoDB App後台更新Dependencies才行
 npm link
 npm link [模組名稱]
+# 以上只是開發方便用, 最後程式都寫完後要上正式環境測試 要使用Makefile來建置版本
+# 切到Realm/HerofishingModule資料夾下makea all來建置版本, 此步驟是更新module版號並push到npm上
+make all
+# 再切到Realm/aurafortest下make all來建置版本, 此步驟是安裝最新版本module並push到app上
+make all
+# 部屬上App後, 可以使用function run來測試function
+realm-cli function run --name=InitPlayerData
+
 
 # ====================MongoDB Shell使用說明===================
 # 1. 要先安裝cli工具, 這是官方連結: https://www.mongodb.com/docs/mongodb-shell/install/#procedure

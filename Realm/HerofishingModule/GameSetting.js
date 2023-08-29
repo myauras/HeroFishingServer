@@ -4,6 +4,8 @@ module.exports = {
         Player: "player",
         PlayerState: "playerState",
         PlayerHistory: "playerHistory",
+        GameSetting: "gameSetting",
+        GameLog: "gameLog",
         Template: "template",
     }),
     // 註冊類型

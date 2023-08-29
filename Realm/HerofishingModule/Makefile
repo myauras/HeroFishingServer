@@ -16,5 +16,5 @@ publish:
 	@echo "==============Publishing to npm=============="
 	npm publish
 
-# 完成發布流程
+# 完整發布流程
 all: increment_version publish

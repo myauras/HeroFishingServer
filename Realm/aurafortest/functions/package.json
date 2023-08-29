@@ -1,0 +1,15 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "InitPlayerData.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "scoz",
+  "license": "ISC",
+  "dependencies": {
+    "aurafortest-herofishing": "^1.0.10",
+    "mongodb": "^6.0.0"
+  }
+}
