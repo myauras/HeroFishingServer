@@ -2,10 +2,6 @@
     {
         "name": "InitPlayerData",
         "private": false,
-        "can_evaluate": {},
-        "disable_arg_logs": false,
-        "run_as_system": false,
-        "run_as_user_id": "",
-        "run_as_user_id_script_source": ""
+        "can_evaluate": {}
     }
 ]
