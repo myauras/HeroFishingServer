@@ -4,6 +4,7 @@ module.exports = {
         Player: "player",
         PlayerState: "playerState",
         PlayerHistory: "playerHistory",
+        Template: "template",
     }),
     // 註冊類型
     AuthType: Object.freeze({

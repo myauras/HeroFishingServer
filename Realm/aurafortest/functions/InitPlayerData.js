@@ -7,24 +7,25 @@ exports = async function InitPlayerData(data) {
   if (!("AuthType" in data)) {
     console.log("格式錯誤");
     return {
-        Result: GameSetting.ResultTypes.Fail,
-        Data: "格式錯誤",
+      Result: GameSetting.ResultTypes.Fail,
+      Data: "格式錯誤",
     };
   }
   const gm = require("aurafortest-herofishing")
 
   // 建立玩家資料
-  writePlayerDocData={
-    "_id":context.user.id,
+  writePlayerDocData = {
+    "_id": context.user.id,
     "authType": data.AuthType,
-    "point":Int64(0),
-    "onlineState":gm.GameSetting.OnlineState.Online,
+    "point": NumberLong("100"),
+    "onlineState": gm.GameSetting.OnlineState.Online,
   };
   // 寫入玩家資料
-  await gm.DBManager.DB_InsertOne(gm.GameSetting.ColName.Player,writePlayerDocData)
+  result = await gm.DBManager.DB_InsertOne(gm.GameSetting.ColName.Player, writePlayerDocData);
+  if (!result) {
+    console.log("插入player表錯誤");
+    return JSON.stringify(gm.ReplyData.NewReplyData(null, "插入player表錯誤"));
+  }
 
-  
-
-
-  return JSON.stringify(gm.ReplyData.NewReplyData(null,null))
+  return JSON.stringify(gm.ReplyData.NewReplyData(result, null));
 }
