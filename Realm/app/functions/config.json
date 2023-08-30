@@ -3,5 +3,9 @@
         "name": "InitPlayerData",
         "private": false,
         "can_evaluate": {}
+    },
+    {
+        "name": "onUserCreation",
+        "private": false
     }
 ]

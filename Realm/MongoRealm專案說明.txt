@@ -32,3 +32,7 @@ realm-cli function run --name=InitPlayerData
 # 2. 連上mongoDB, 語法類似以下, 要把pem檔路徑改成自己放pem的路徑
 mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\X509-cert-6644120643259731564.pem"
 # 3. 連上後就可以進行CRUD等操作, 可參考官方文件: https://www.mongodb.com/docs/mongodb-shell/crud
+
+
+# ====================其他重要說明文件===================
+# 用戶送的要求都會包含自訂資料, 關於自訂資料可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/users/custom-metadata/

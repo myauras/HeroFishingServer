@@ -1,3 +1,8 @@
 {
-    "enabled": false
+    "enabled": false,
+    "mongo_service_name": "mongodb-atlas",
+    "database_name": "herofishing",
+    "collection_name": "playerCustom",
+    "user_id_field": "id",
+    "on_user_creation_function_name": "onUserCreation"
 }

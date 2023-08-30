@@ -10,15 +10,20 @@ module.exports = {
     }),
     // 註冊類型
     AuthType: Object.freeze({
-        Guest: "Guest",
-        Official: "Official",
-        Unknown: "Unknown",
+        Guest: "Guest",// 訪客
+        Official: "Official",// 官方註冊
+        Unknown: "Unknown",// 未知錯誤
     }),
     // 在線狀態
     OnlineState: Object.freeze({
-        Online: "Online",
-        Offline: "Offline",
+        Online: "Online",// 在線
+        Offline: "Offline",// 離線
     }),
-    // 這邊要填入ColName的Key值
+    // 帳戶腳色(playerCustom中的腳色)
+    PlayerCustomRole: Object.freeze({
+        Player: "Player",// 玩家
+        Developer: "Developer",// 開發者, 有更進階的DB訪問權限
+    }),
+    // 這邊要填入ColName的Key值, 如果template集合中有定義對應表的模板資料就要加在這裡
     ColTemplate: new Set(['player', 'playerState', 'playerHistory']),
 }

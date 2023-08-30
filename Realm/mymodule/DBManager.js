@@ -35,7 +35,7 @@ function GetDB() {
 }
 function GetCol(colName) {
     if (!(colName in gs.ColName)) {
-        console.log('GetCol傳入尚未定義的集合: ${colName}');
+        console.log(`GetCol傳入尚未定義的集合: ${colName}`);
         return null;
     }
     const db = GetDB();
@@ -45,7 +45,7 @@ function GetCol(colName) {
     }
     const col = db.collection(colName);
     if (!col) {
-        console.log('無此collection: ${colName}');
+        console.log(`無此collection: ${colName}`);
         return null;
     }
     return col;
@@ -68,9 +68,8 @@ function GetInsertResult(data, result) {
 // 依據模板初始化文件欄位, 在GameSetting中的ColTemplate若有定義傳入的集合就會使用DB上的模板資料
 // 模板資料可以透過 環境版本_DBTemplate.bat 那份檔案來部署到DB上
 async function GetTemplateData(colName) {
-    console.log("c="+colName);
     if (!(colName in gs.ColName)) {
-        console.log('GetTemplateData傳入尚未定義的集合: ${colName}');
+        console.log(`GetTemplateData傳入尚未定義的集合: ${colName}`);
         return null;
     }
 
@@ -85,7 +84,7 @@ async function GetTemplateData(colName) {
     if (!templateCol) return data;
     const templateDoc = await templateCol.findOne({ "_id": colName });
     if (!templateDoc) {// 找不到模板就直接返回目前的data
-        console.log('有定義模板, 但找不到模板資料: ${colName}');
+        console.log(`有定義模板, 但找不到模板資料: ${colName}`);
         return data;
     }
     // 刪除不需要使用的模板資料
