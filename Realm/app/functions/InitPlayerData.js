@@ -5,7 +5,7 @@ exports = async function InitPlayerData(data) {
   //     return 
   // }
 
- 
+
   if (!("AuthType" in data)) {
     console.log("格式錯誤");
     return {

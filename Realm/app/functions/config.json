@@ -6,6 +6,6 @@
     },
     {
         "name": "OnUserCreation",
-        "private": true
+        "private": false
     }
 ]

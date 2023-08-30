@@ -7,7 +7,7 @@
 */
 
 
-exports = async function onUserCreation(user) {
+exports = async function OnUserCreation(user) {
   const playerCustomCol = context.services
     .get("mongodb-atlas")
     .db("herofishing")
