@@ -5,8 +5,8 @@
         {
             "name": "Player",
             "apply_when": {
-                "role": "Player",
-                "_id": "%%user.id%%"
+                "_id": "%%user.id%%",
+                "role": "Player"
             },
             "document_filters": {
                 "write": false,
