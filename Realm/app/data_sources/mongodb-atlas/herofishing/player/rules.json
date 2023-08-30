@@ -18,7 +18,7 @@
             "search": true
         },
         {
-            "name": "Guest",
+            "name": "Unknown",
             "apply_when": {},
             "document_filters": {
                 "write": false,
