@@ -1,11 +1,12 @@
 {
-    "collection": "player",
+    "collection": "playerHistory",
     "database": "herofishing",
     "roles": [
         {
             "name": "Player",
             "apply_when": {
-                "role": "Player"
+                "role": "Player",
+                "_id": "%%user.id%%"
             },
             "document_filters": {
                 "write": false,
@@ -18,7 +19,7 @@
             "search": true
         },
         {
-            "name": "Guest",
+            "name": "Unknown",
             "apply_when": {},
             "document_filters": {
                 "write": false,

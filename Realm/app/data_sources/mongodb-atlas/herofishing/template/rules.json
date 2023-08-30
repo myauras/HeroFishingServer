@@ -1,0 +1,19 @@
+{
+    "collection": "template",
+    "database": "herofishing",
+    "roles": [
+        {
+            "name": "Unknown",
+            "apply_when": {},
+            "document_filters": {
+                "write": false,
+                "read": false
+            },
+            "read": false,
+            "write": false,
+            "insert": false,
+            "delete": false,
+            "search": false
+        }
+    ]
+}

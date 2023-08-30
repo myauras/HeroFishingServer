@@ -17,7 +17,7 @@ exports = async function onUserCreation(user) {
 
     await playerCustomCol.insertOne({
       // 帳戶判斷綁定的是哪一份文件是依據, 用欄位id來綁定, 帳號登入會自動找playerCustom裡id符合帳戶id的文件作為custom data
-      id: user.id,
+      _id: user.id,
       // 紀錄建立時間
       createAt: new Date(),
       // 腳色
