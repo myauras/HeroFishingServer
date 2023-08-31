@@ -24,7 +24,7 @@ exports = async function InitPlayerData(data) {
   // 寫入玩家資料
   result = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.player, writePlayerDocData);
   if (!result) {
-    console.log("插入player表錯誤");
+    console.log(`插入player文件錯誤 表格: ${ah.GameSetting.ColName.player}  文件: ${JSON.stringify(writePlayerDocData)}`);
     return JSON.stringify(ah.ReplyData.NewReplyData(null, "插入player表錯誤"));
   }
 

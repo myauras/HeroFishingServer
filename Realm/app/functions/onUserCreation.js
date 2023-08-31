@@ -20,7 +20,7 @@ exports = async function OnUserCreation(user) {
       _id: user.id,
       // 紀錄建立時間
       createAt: new Date(),
-      // 腳色
+      // 腳色(一般玩家註冊帳戶的腳色都是Player, 用於控制讀寫DB的權限)
       role: gs.PlayerCustomRole.Player,
     });
   } catch (e) {
