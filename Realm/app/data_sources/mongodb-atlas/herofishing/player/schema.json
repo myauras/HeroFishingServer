@@ -9,7 +9,7 @@
         "ban": {
             "bsonType": "bool"
         },
-        "createAt": {
+        "createdAt": {
             "bsonType": "date"
         },
         "deviceUID": {
@@ -29,10 +29,14 @@
         }
     },
     "required": [
+        "_id",
+        "authType",
         "ban",
-        "createAt",
+        "createdAt",
+        "deviceUID",
         "lastSignin",
         "lastSignout",
+        "onlineState",
         "point"
     ],
     "title": "player"
