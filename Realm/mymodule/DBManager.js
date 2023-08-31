@@ -75,15 +75,14 @@ async function GetTemplateData(colName) {
 
     // 取得doc基本資料
     let data = GetBaseTemplateData();
-    console.log("a=" + (colName in gs.ColTemplate));
     // 若沒有定義模板就直接回傳data
-    if (!(colName in gs.ColTemplate)) return data;
+    if (!gs.ColTemplate.has(colName)) return data;
 
     // 取得DB上的模板並使用模板資料
     const templateCol = GetCol(gs.ColName.template);
     if (!templateCol) return data;
     const templateDoc = await templateCol.findOne({ "_id": colName });
-    console.log("b=" + templateDoc);
+
     if (!templateDoc) {// 找不到模板就直接返回目前的data
         console.log(`有定義模板, 但找不到模板資料: ${colName}`);
         return data;
@@ -97,8 +96,12 @@ async function GetTemplateData(colName) {
     let nowDate = new Date();
     for (let key in templateDoc) {
         if (!(key in data)) {
-            if (templateDoc[key].endsWith("_nowDate")) templateDoc[key] = nowDate;
-            data[key] = templateDoc[key];
+            let suffix = "_nowDate";// 帶有_nowDate結尾的欄位要改成抓現在時間
+            if (key.endsWith(suffix)) {
+                let newKey = key.slice(0, -suffix.length);
+                data[newKey] = nowDate;
+            } else
+                data[key] = templateDoc[key];
         }
     }
     return data;
