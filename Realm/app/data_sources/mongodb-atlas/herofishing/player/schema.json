@@ -29,15 +29,11 @@
         }
     },
     "required": [
-        "_id",
+        "ban",
         "createAt",
-        "authType",
-        "point",
-        "onlineState",
         "lastSignin",
         "lastSignout",
-        "ban",
-        "deviceUID"
+        "point"
     ],
     "title": "player"
 }
