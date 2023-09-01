@@ -1,15 +1,15 @@
 [
     {
+        "name": "GetServerTime",
+        "private": false
+    },
+    {
         "name": "InitPlayerData",
         "private": false,
         "run_as_system": true
     },
     {
         "name": "OnUserCreation",
-        "private": false
-    },
-    {
-        "name": "GetServerTime",
         "private": false
     }
 ]

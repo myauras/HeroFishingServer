@@ -8,7 +8,7 @@
                 "_id": "%%user.id"
             },
             "document_filters": {
-                "write": true,
+                "write": false,
                 "read": true
             },
             "fields": {
@@ -21,16 +21,16 @@
                     "read": true
                 }
             },
-            "insert": false,
-            "delete": false,
-            "search": true,
             "additional_fields": {
                 "write": false,
                 "read": true
-            }
+            },
+            "insert": false,
+            "delete": false,
+            "search": true
         },
         {
-            "name": "Player",
+            "name": "OtherPlayer",
             "apply_when": {
                 "%%user.custom_data.role": "Player"
             },
