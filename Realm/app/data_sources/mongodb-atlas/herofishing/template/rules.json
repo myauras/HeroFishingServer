@@ -9,8 +9,6 @@
                 "write": false,
                 "read": true
             },
-            "read": true,
-            "write": false,
             "insert": false,
             "delete": false,
             "search": true
@@ -22,8 +20,6 @@
                 "write": false,
                 "read": false
             },
-            "read": false,
-            "write": false,
             "insert": false,
             "delete": false,
             "search": false
