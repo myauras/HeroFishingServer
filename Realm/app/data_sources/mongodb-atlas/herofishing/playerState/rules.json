@@ -9,24 +9,24 @@
                 "_id": "%%user.id"
             },
             "document_filters": {
-                "read": true,
-                "write": false
+                "write": false,
+                "read": true
             },
             "fields": {
                 "lastUpdateAt": {
-                    "read": true,
-                    "write": true
+                    "write": true,
+                    "read": true
                 }
-            },
-            "additional_fields": {
-                "read": true,
-                "write": false
             },
             "read": true,
             "write": false,
             "insert": false,
             "delete": false,
-            "search": true
+            "search": true,
+            "additional_fields": {
+                "write": false,
+                "read": true
+            }
         },
         {
             "name": "Player",
@@ -34,8 +34,8 @@
                 "%%user.custom_data.role": "Player"
             },
             "document_filters": {
-                "read": true,
-                "write": false
+                "write": false,
+                "read": true
             },
             "read": true,
             "write": false,
@@ -47,8 +47,8 @@
             "name": "Unknown",
             "apply_when": {},
             "document_filters": {
-                "read": false,
-                "write": false
+                "write": false,
+                "read": false
             },
             "read": false,
             "write": false,

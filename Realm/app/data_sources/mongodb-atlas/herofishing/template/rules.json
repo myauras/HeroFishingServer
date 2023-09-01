@@ -6,8 +6,8 @@
             "name": "Player",
             "apply_when": {},
             "document_filters": {
-                "read": true,
-                "write": false
+                "write": false,
+                "read": true
             },
             "read": true,
             "write": false,
@@ -19,8 +19,8 @@
             "name": "Unknown",
             "apply_when": {},
             "document_filters": {
-                "read": false,
-                "write": false
+                "write": false,
+                "read": false
             },
             "read": false,
             "write": false,

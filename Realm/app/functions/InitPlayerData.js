@@ -1,9 +1,9 @@
 exports = async function InitPlayerData(data) {
-  // if(context.user.id==""){
-  //     console.log("context.user.id is empty")
-  //     console.log(JSON.stringify(context.user))
-  //     return 
-  // }
+  if (!context.user.id) {
+    console.log("context.user.id is empty")
+    console.log(JSON.stringify(context.user))
+    return
+  }
 
 
   if (!("AuthType" in data)) {
