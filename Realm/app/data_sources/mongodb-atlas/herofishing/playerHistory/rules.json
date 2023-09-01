@@ -6,12 +6,14 @@
             "name": "MyPlayer",
             "apply_when": {
                 "%%user.custom_data.role": "Player",
-                "_id": "%%user.id%%"
+                "_id": "%%user.id"
             },
             "document_filters": {
-                "write": false,
-                "read": true
+                "read": true,
+                "write": false
             },
+            "read": true,
+            "write": false,
             "insert": false,
             "delete": false,
             "search": true
@@ -22,9 +24,11 @@
                 "%%user.custom_data.role": "Player"
             },
             "document_filters": {
-                "write": false,
-                "read": true
+                "read": true,
+                "write": false
             },
+            "read": true,
+            "write": false,
             "insert": false,
             "delete": false,
             "search": true
@@ -33,9 +37,11 @@
             "name": "Unknown",
             "apply_when": {},
             "document_filters": {
-                "write": false,
-                "read": false
+                "read": false,
+                "write": false
             },
+            "read": false,
+            "write": false,
             "insert": false,
             "delete": false,
             "search": false

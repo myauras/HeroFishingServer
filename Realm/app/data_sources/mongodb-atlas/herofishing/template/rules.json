@@ -6,9 +6,11 @@
             "name": "Player",
             "apply_when": {},
             "document_filters": {
-                "write": false,
-                "read": true
+                "read": true,
+                "write": false
             },
+            "read": true,
+            "write": false,
             "insert": false,
             "delete": false,
             "search": true
@@ -17,9 +19,11 @@
             "name": "Unknown",
             "apply_when": {},
             "document_filters": {
-                "write": false,
-                "read": false
+                "read": false,
+                "write": false
             },
+            "read": false,
+            "write": false,
             "insert": false,
             "delete": false,
             "search": false
