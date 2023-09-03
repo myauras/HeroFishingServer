@@ -3,32 +3,6 @@
     "database": "herofishing",
     "roles": [
         {
-            "name": "MyPlayer",
-            "apply_when": {
-                "%%user.custom_data.role": "Player",
-                "_id": "%%user.id"
-            },
-            "document_filters": {
-                "write": false,
-                "read": true
-            },
-            "fields": {
-                "lastUpdateAt": {
-                    "write": true,
-                    "read": true
-                }
-            },
-            "read": true,
-            "write": false,
-            "insert": false,
-            "delete": false,
-            "search": true,
-            "additional_fields": {
-                "write": false,
-                "read": true
-            }
-        },
-        {
             "name": "Player",
             "apply_when": {
                 "%%user.custom_data.role": "Player"
@@ -37,8 +11,12 @@
                 "write": false,
                 "read": true
             },
-            "read": true,
-            "write": false,
+            "fields": {
+            },
+            "additional_fields": {
+                "write": false,
+                "read": true
+            },
             "insert": false,
             "delete": false,
             "search": true

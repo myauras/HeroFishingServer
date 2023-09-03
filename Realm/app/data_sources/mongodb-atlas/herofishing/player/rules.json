@@ -3,9 +3,9 @@
     "database": "herofishing",
     "roles": [
         {
-            "name": "PlayerSelf",
+            "name": "Player",
             "apply_when": {
-                "_id": "%%user.id"
+                "%%user.custom_data.role": "Player"
             },
             "document_filters": {
                 "write": false,
@@ -25,21 +25,6 @@
                 "write": false,
                 "read": true
             },
-            "insert": false,
-            "delete": false,
-            "search": true
-        },
-        {
-            "name": "OtherPlayer",
-            "apply_when": {
-                "%%user.custom_data.role": "Player"
-            },
-            "document_filters": {
-                "write": false,
-                "read": true
-            },
-            "read": true,
-            "write": false,
             "insert": false,
             "delete": false,
             "search": true
