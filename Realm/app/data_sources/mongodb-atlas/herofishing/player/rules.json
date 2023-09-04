@@ -17,13 +17,13 @@
                     "read": true
                 }
             },
+            "insert": false,
+            "delete": false,
+            "search": true,
             "additional_fields": {
                 "write": false,
                 "read": true
-            },
-            "insert": false,
-            "delete": false,
-            "search": true
+            }
         },
         {
             "name": "Unknown",

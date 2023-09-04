@@ -1,0 +1,19 @@
+{
+    "properties": {
+        "_id": {
+            "bsonType": "string"
+        },
+        "createdAt": {
+            "bsonType": "date"
+        },
+        "lastUpdateAt": {
+            "bsonType": "date"
+        }
+    },
+    "required": [
+        "_id",
+        "createdAt",
+        "lastUpdateAt"
+    ],
+    "title": "playerState"
+}
