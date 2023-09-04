@@ -8,15 +8,11 @@
                 "%%user.custom_data.role": "Player"
             },
             "document_filters": {
-                "write": false,
+                "write": true,
                 "read": true
             },
             "fields": {
                 "deviceUID": {
-                    "write": true,
-                    "read": true
-                },
-                "onlineState": {
                     "write": true,
                     "read": true
                 }

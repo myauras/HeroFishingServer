@@ -14,8 +14,8 @@ db.template.insertMany([
     authType: "Guest",
     point: 1,//NumberLong("1")
     onlineState: "Offline",
-    lastSignin_nowDate: null,
-    lastSignout_nowDate: null,
+    lastSigninAt_nowDate: null,
+    lastSignoutAt_nowDate: null,
     ban: false,
     deviceUID: "",
   },
@@ -23,6 +23,7 @@ db.template.insertMany([
   {
     _id: "playerState",
     createdAt: nowDate,
+    lastUpdateAt_nowDate: null,
   },
   // 模板-玩家歷程
   {
