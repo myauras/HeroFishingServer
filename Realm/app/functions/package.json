@@ -9,6 +9,6 @@
   "author": "scoz",
   "license": "ISC",
   "dependencies": {
-    "aurafortest-herofishing": "^1.0.32"
+    "aurafortest-herofishing": "^1.0.35"
   }
 }

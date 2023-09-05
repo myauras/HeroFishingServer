@@ -24,6 +24,12 @@ module.exports = {
         Player: "Player",// 玩家
         Developer: "Developer",// 開發者, 有更進階的DB訪問權限
     }),
+    // 在線狀態
+    LogType: Object.freeze({
+        OnUserCreation: "OnUserCreation",// 玩家創Realm帳戶時會寫入此Log
+        InitPlayerData: "InitPlayerData",// 玩家初始化玩家資料時會寫入此Log
+        Signin: "Signin",// 玩家登入時寫入此Log
+    }),
     // 這邊要填入ColName的Key值, 如果template集合中有定義對應表的模板資料就要加在這裡
     ColTemplate: new Set(['player', 'playerState', 'playerHistory']),
 }

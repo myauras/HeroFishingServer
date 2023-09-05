@@ -11,28 +11,22 @@ realm-cli pull
 
 # ====================工作流程說明===================
 # Realm/mymodule是給Atlas functions使用的外部模組
-# Realm/aurafortest/functions是client端連server端的入口(Serverless Functions)
+# Realm/app/functions是client端連server端的入口(Serverless Functions)
 
 # 要讓Atlas Function可以使用mymodule自訂的module, 需要在mymodule路徑下npm publish到npm上(版號要記得更新), 以下為自動化的工作流程說明
-# 首先要在Atlas functions那邊(Realm/aurafortest/functions)要即時使用mymodule IntelliSense(方法自動完成提示)要使用本地Module Link
-# 先切到mymodule專案資料夾下npm link 再到Atlas functions(Realm/aurafortest/)資料夾下npm link [模組名稱]
+# 首先要在Atlas functions那邊(Realm/app/functions)要即時使用mymodule IntelliSense(方法自動完成提示)要使用本地Module Link
+# 先切到mymodule專案資料夾下npm link 再到Atlas functions(Realm/app/functions)資料夾下npm link [模組名稱]
 npm link
 npm link [模組名稱]
 # 以上只是開發方便用, 最後程式都寫完後要上正式環境測試 要使用Makefile來建置版本
 # 切到Realm/mymodule資料夾下makea all來建置版本, 此步驟是更新module版號並push到npm上
 make all
-# 再切到Realm/aurafortest下make all來建置版本, 此步驟是安裝最新版本module並push到app上
+# 再切到Realm/app all來建置版本, 此步驟是安裝最新版本module並push到app上
 make all
 # 部屬上App後, 可以使用function run來測試function
 realm-cli function run --name=InitPlayerData
 
 
-# ====================MongoDB Shell使用說明===================
-# 1. 要先安裝cli工具, 這是官方連結: https://www.mongodb.com/docs/mongodb-shell/install/#procedure
-# 2. 連上mongoDB, 語法類似以下, 要把pem檔路徑改成自己放pem的路徑
-mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\X509-cert-6644120643259731564.pem"
-# 3. 連上後就可以進行CRUD等操作, 可參考官方文件: https://www.mongodb.com/docs/mongodb-shell/crud
-
-
 # ====================其他重要說明文件===================
-# 用戶送的要求都會包含自訂資料, 關於自訂資料可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/users/custom-metadata/
+# 用戶送的要求都會包含自訂資料(user custom data), 關於自訂資料可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/users/custom-metadata/
+

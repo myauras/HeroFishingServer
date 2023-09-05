@@ -6,7 +6,7 @@ db.template.deleteMany({});
 
 let nowDate = new Date();
 // 開始插入模板
-db.template.insertMany([
+let playerDoc = db.template.insertMany([
   // 模板-玩家資料
   {
     _id: "player",
@@ -31,3 +31,5 @@ db.template.insertMany([
     createdAt: nowDate,
   }
 ]);
+
+printjson(playerDoc);

@@ -7,7 +7,7 @@ exports = async function InitPlayerData(data) {
 
 
   if (!("AuthType" in data)) {
-    console.log("格式錯誤");
+    console.log("[InitPlayerData] 格式錯誤");
     return {
       Result: GameSetting.ResultTypes.Fail,
       Data: "格式錯誤",
@@ -22,11 +22,18 @@ exports = async function InitPlayerData(data) {
     "onlineState": ah.GameSetting.OnlineState.Online,
   };
   // 寫入玩家資料
-  result = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.player, writePlayerDocData);
-  if (!result) {
-    console.log(`插入player文件錯誤 表格: ${ah.GameSetting.ColName.player}  文件: ${JSON.stringify(writePlayerDocData)}`);
+  playerDoc = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.player, writePlayerDocData);
+  if (!playerDoc) {
+    let error = `[InitPlayerData] 插入player文件錯誤 表格: ${ah.GameSetting.ColName.player}  文件: ${JSON.stringify(writePlayerDocData)}`;
+    console.log(error);
+    //寫Log
+    ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, null, error);
     return JSON.stringify(ah.ReplyData.NewReplyData(null, "插入player表錯誤"));
   }
 
-  return JSON.stringify(ah.ReplyData.NewReplyData(result, null));
+  //寫Log
+  ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, playerDoc, null);
+
+
+  return JSON.stringify(ah.ReplyData.NewReplyData(playerDoc, null));
 }

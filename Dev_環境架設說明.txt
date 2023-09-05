@@ -32,7 +32,7 @@ helm uninstall my-release --namespace=agones-system
 gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.com
 # 要能push docker image要先建立儲存庫, 參考文件: https://cloud.google.com/artifact-registry/docs/repositories/create-repos#docker
 # 區域選擇可以參考文件: https://cloud.google.com/artifact-registry/docs/repositories/repo-locations
-# --async是讓建立過成不用等待並可透過cli查看建立進度, 例如: gcloud artifacts operations describe projects/aurafortest/locations/asia-east1/operations/d47ff63d-db40-430b-8f59-f02e0bc19f27
+# --async是讓建立過程不用等待並可透過cli查看建立進度, 例如: gcloud artifacts operations describe projects/aurafortest/locations/asia-east1/operations/d47ff63d-db40-430b-8f59-f02e0bc19f27
 gcloud artifacts repositories create herofishing --repository-format=docker --location=asia-east1 --description="herofishing的image儲存庫" --async
 # 配置Docker客戶端使用Google Cloud身份進行認證，這樣就可以推送和拉取image，而不會遇到權限問題
 gcloud auth configure-docker asia-east1-docker.pkg.dev
