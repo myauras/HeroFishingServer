@@ -30,10 +30,10 @@ exports = async function UpdateOnlineTime() {
 
   if (!updateSuccess) {
     console.log("[InitPlayerData] 更新在線時間失敗");
-    return JSON.stringify(ah.ReplyData.NewReplyData(null, "更新在線時間失敗"));
+    return JSON.stringify(ah.ReplyData.NewReplyData({}, "更新在線時間失敗"));
   }
 
 
-  return JSON.stringify(ah.ReplyData.NewReplyData(null, null));
+  return JSON.stringify(ah.ReplyData.NewReplyData({}, null));
 
 }

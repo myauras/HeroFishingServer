@@ -28,7 +28,7 @@ exports = async function InitPlayerData(data) {
     console.log(error);
     //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, null, error);
-    return JSON.stringify(ah.ReplyData.NewReplyData(null, "插入player表錯誤"));
+    return JSON.stringify(ah.ReplyData.NewReplyData({}, "插入player表錯誤"));
   }
 
   //寫Log

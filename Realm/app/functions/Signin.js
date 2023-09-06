@@ -19,7 +19,7 @@ exports = async function Signin() {
   }, null);
   if (!updateSuccess) {
     console.log("[Signin] 設為在線失敗")
-    return JSON.stringify(ah.ReplyData.NewReplyData(null, "設為在線失敗"));
+    return JSON.stringify(ah.ReplyData.NewReplyData({}, "設為在線失敗"));
   }
 
   let now = new Date();
@@ -38,12 +38,12 @@ exports = async function Signin() {
     console.log(error);
     //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.Signin, null, error);
-    return JSON.stringify(ah.ReplyData.NewReplyData(null, "更新在線時間失敗"));
+    return JSON.stringify(ah.ReplyData.NewReplyData({}, "更新在線時間失敗"));
   }
 
   //寫Log
   ah.WriteLog.Log(ah.GameSetting.LogType.Signin, null, null);
 
 
-  return JSON.stringify(ah.ReplyData.NewReplyData(null, null));
+  return JSON.stringify(ah.ReplyData.NewReplyData({}, null));
 }

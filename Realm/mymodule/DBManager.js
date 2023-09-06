@@ -111,17 +111,14 @@ function GetInsertResult(doc, result) {
     return doc;
 }
 function GetUpdateOneResult(result) {
-    console.log("result=" + JSON.stringify(result));
     // result格式是這樣
     // {
-    //     acknowledged: true,
-    //     insertedId: null,
+    //     upsertedId: null,(此欄位只有在upsert為true且update query沒有找到符合文件而建立文件時才會有)
     //     matchedCount: 1,
     //     modifiedCount: 0,
-    //     upsertedCount: 0
     // }
     if (!result) return false;
-    return result["acknowledged"];
+    else return true;
 }
 
 // 依據模板初始化文件欄位, 在GameSetting中的ColTemplate若有定義傳入的集合就會使用DB上的模板資料
