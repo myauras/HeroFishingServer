@@ -20,7 +20,7 @@ exports = async function OnUserCreation(user) {
     // 帳戶判斷綁定的是哪一份文件是依據, 用欄位id來綁定, 帳號登入會自動找playerCustom裡id符合帳戶id的文件作為custom data
     _id: user.id,
     // 紀錄建立時間
-    createAt: new Date(),
+    createdAt: new Date(),
     // 腳色(一般玩家註冊帳戶的腳色都是Player, 用於控制讀寫DB的權限)
     role: role,
   };
@@ -31,11 +31,12 @@ exports = async function OnUserCreation(user) {
     console.log(error);
     //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, null, error);
-    return;
+  } else {
+    //寫Log
+    ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, playerCustomDoc, null);
   }
-  ah.WriteLog.Log()
-  //寫Log
-  ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, playerCustomDoc, null);
+  console.log("end");
+
 
 
 }

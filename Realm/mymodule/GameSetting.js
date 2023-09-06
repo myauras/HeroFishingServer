@@ -2,6 +2,7 @@ module.exports = {
     // DB集合
     ColName: Object.freeze({
         player: "player",
+        playerCustom: "playerCustom",
         playerState: "playerState",
         playerHistory: "playerHistory",
         gameSetting: "gameSetting",

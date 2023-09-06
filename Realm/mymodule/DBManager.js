@@ -13,13 +13,13 @@ module.exports = {
             console.log(`[DBManager] 傳入資料錯誤 colName=${colName} , insert=${insert}`);
             return null;
         }
-        let myData = await GetTemplateData(colName)
-        if (myData == null) return null;
-        Object.assign(myData, insert);
+        let templateData = await GetTemplateData(colName)
+        if (templateData == null) return null;
+        let insertData = Object.assign(templateData, insert);
         col = GetCol(colName);
         if (!col) return null;
-        let result = await col.insertOne(myData);
-        let doc = GetInsertResult(myData, result);
+        let result = await col.insertOne(insertData);
+        let doc = GetInsertResult(insertData, result);
         return doc;
     },
     // 單筆查找
@@ -78,20 +78,16 @@ module.exports = {
         return doc;
     },
 }
-function GetCluster() {
+function GetAtlas() {
     return context.services.get("mongodb-atlas");
 }
 function GetDB() {
-    const cluster = GetCluster();
-    if (!cluster) {
-        console.log("[DBManager] 無此cluster");
+    const atlas = GetAtlas();
+    if (!atlas) {
+        console.log("[DBManager] 無此atlas");
         return null;
     }
-    const db = cluster.db("herofishing")
-    if (!db) {
-        console.log("[DBManager] 無此db");
-        return null;
-    }
+    const db = atlas.db("herofishing")//db不存在也會拋出一個可用的db，不會拋出錯誤或null
     return db;
 }
 function GetCol(colName) {
@@ -100,25 +96,16 @@ function GetCol(colName) {
         return null;
     }
     const db = GetDB();
-    if (!db) {
-        console.log("[DBManager] 無此db");
-        return null;
-    }
-    const col = db.collection(colName);
-    if (!col) {
-        console.log(`[DBManager] 無此collection: ${colName}`);
-        return null;
-    }
+    const col = db.collection(colName);//collection不存在也會拋出一個可用的collection，不會拋出錯誤或null
     return col;
 }
 function GetInsertResult(doc, result) {
     // result格式是這樣
-    // {
-    //     "acknowledged" : true,
+    // {   
     //     "insertedId" : ObjectId("5fb3e0ee04f507136c837a7b")
-    //   }
+    //   }    
     if (!result) return null;
-    if (result["acknowledged"] == false) return null;
+    if (!("insertedId" in result)) return null;
     doc._id = result["insertedId"];
     return doc;
 }
@@ -158,7 +145,7 @@ async function GetTemplateData(colName) {
         return data;
     }
     // 刪除不需要使用的模板資料
-    const keysToDelete = ['_id', 'createAt'];
+    const keysToDelete = ['_id', 'createdAt'];
     for (let key of keysToDelete) {
         delete templateDoc[key];
     }
