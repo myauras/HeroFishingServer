@@ -6,7 +6,7 @@
         "content": {
             "bsonType": "string"
         },
-        "createAt": {
+        "createdAt": {
             "bsonType": "date"
         },
         "customerServiceURL": {
@@ -66,7 +66,7 @@
     },
     "required": [
         "_id",
-        "createAt"
+        "createdAt"
     ],
     "title": "gameSetting"
 }

@@ -35,8 +35,6 @@ exports = async function OnUserCreation(user) {
     //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, playerCustomDoc, null);
   }
-  console.log("end");
-
 
 
 }

@@ -15,10 +15,10 @@
         "deviceUID": {
             "bsonType": "string"
         },
-        "lastSignin": {
+        "lastSigninAt": {
             "bsonType": "date"
         },
-        "lastSignout": {
+        "lastSignoutAt": {
             "bsonType": "date"
         },
         "onlineState": {
@@ -34,8 +34,8 @@
         "ban",
         "createdAt",
         "deviceUID",
-        "lastSignin",
-        "lastSignout",
+        "lastSigninAt",
+        "lastSignoutAt",
         "onlineState",
         "point"
     ],

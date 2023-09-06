@@ -18,6 +18,7 @@ module.exports = {
         let insertData = Object.assign(templateData, insert);
         col = GetCol(colName);
         if (!col) return null;
+        console.log("insertData=" + JSON.stringify(insertData));
         let result = await col.insertOne(insertData);
         let doc = GetInsertResult(insertData, result);
         return doc;
@@ -53,7 +54,7 @@ module.exports = {
             options = { upsert: false };
         }
         let result = await col.updateOne(query, update, options);
-        let success = GetUpdateOneResult(myData, result);
+        let success = GetUpdateOneResult(result);
         return success;
     },
     // 單筆查找並更新
@@ -110,6 +111,7 @@ function GetInsertResult(doc, result) {
     return doc;
 }
 function GetUpdateOneResult(result) {
+    console.log("result=" + JSON.stringify(result));
     // result格式是這樣
     // {
     //     acknowledged: true,
