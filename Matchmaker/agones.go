@@ -1,4 +1,4 @@
-package matchmaker
+package main
 
 import (
 	"context"
@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	gameServerImage      = "gcr.io/majampachinko-develop/majampachinko-game-server:latest"
+	gameServerImage      = "asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:latest"
 	gameserversNamespace = "default"
 )
 
-func CreateGameServer(roomName string, playerIDs []string, createrID string, roomID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
+func CreateGameServer(roomName string, playerIDs []string, createrID string, mapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
+	// 取目前pod所在k8s cluster的config
 	config, err := rest.InClusterConfig()
 	logger := runtime.NewLoggerWithSource("main")
 	if err != nil {
@@ -25,31 +26,36 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, roo
 		return nil, err
 	}
 
+	// 與agones連接
 	agonesClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		logger.WithError(err).Fatal("Could not create the agones api clientset")
 		return nil, err
 	}
 
-	// Create a GameServer
-	myLabels := map[string]string{"roomName": roomName, "MasterID": createrID, "FrontendPodName": matchmakerPodName}
-	myLabels["GameDataRoomUID"] = roomID
+	// 建立遊戲房伺服器標籤
+	myLabels := map[string]string{"RoomName": roomName, "CreaterID": createrID, "MatchmakerPodName": matchmakerPodName}
+	myLabels["MapID"] = mapID
 	for i := 0; i < len(playerIDs); i++ {
 		myLabels[fmt.Sprintf("player%d", i)] = playerIDs[i]
 	}
 
+	// 分配game server
 	allocacteInterface := agonesClient.AllocationV1().GameServerAllocations(gameserversNamespace)
-	gsa := &allocationv1.GameServerAllocation{
+	// 定義規範- 找game server(pod)並新增標籤
+	gsAllocation := &allocationv1.GameServerAllocation{
 		Spec: allocationv1.GameServerAllocationSpec{
+			// 找fleet.yaml定義的fleet metadata名稱
 			Required: allocationv1.GameServerSelector{
 				LabelSelector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"agones.dev/fleet": "simple-game-server"}}},
+			// 在產生的pod上新增Label
 			MetaPatch: allocationv1.MetaPatch{
 				Labels: myLabels},
 		},
 	}
-
-	GameServerAllocation, err := allocacteInterface.Create(context.Background(), gsa, metav1.CreateOptions{})
+	// 使用規範來找game server(pod)並新增標籤
+	GameServerAllocation, err := allocacteInterface.Create(context.Background(), gsAllocation, metav1.CreateOptions{})
 	if err != nil {
 		//panic(err)
 		return nil, err

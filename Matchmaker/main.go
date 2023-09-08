@@ -1,4 +1,4 @@
-package matchmaker
+package main
 
 import (
 	"encoding/json"
@@ -118,101 +118,109 @@ func handleConnectionTCP(conn net.Conn) {
 			return
 		}
 
+		// 封包處理
 		switch pack.CMD {
 		case AUTH:
-			authContent := packet.AuthCMD{}
-			if ok := authContent.Parse(pack.Content); !ok {
-				// 寫LOG
-				log.Error("Parse AuthCMD failed")
-				return
-			}
-
-			// 還沒實作Auth驗證 先直接設定為true
-			auth := true
-
-			// 不管驗證成功或失敗都回給client
-			if auth {
-				player.isAuth = true
-				err = packet.SendPack(player.encoder, &packet.Pack{
-					CMD:    AUTH_REPLY,
-					PackID: pack.PackID,
-					Content: &packet.AuthCMD_Reply{
-						IsAuth: true,
-					},
-				})
-				if err != nil {
-					return
-				}
-				continue
-			} else {
-				_ = packet.SendPack(player.encoder, &packet.Pack{
-					CMD:    AUTH_REPLY,
-					PackID: pack.PackID,
-					ErrMsg: err.Error(),
-					Content: &packet.AuthCMD_Reply{
-						IsAuth: false,
-					},
-				})
-			}
+			packHandle_Auth(pack, &player)
 		case CREATEROOM:
-			createRoomCMD := packet.CreateRoomCMD{}
-			if ok := createRoomCMD.Parse(pack.Content); !ok {
-				// 寫LOG
-				log.Error("Parse CreateRoomCMD failed")
+			packHandle_CreateRoom(pack, &player, remoteAddr)
+		default:
+			log.Errorf("%s got unknow Pack CMD: %s", logger.LOG_Main, pack.CMD)
+			return
+		}
+
+	}
+}
+
+// 處理封包-帳戶驗證
+func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
+	authContent := packet.AuthCMD{}
+	if ok := authContent.Parse(pack.Content); !ok {
+		// 寫LOG
+		log.Error("Parse AuthCMD failed")
+		return
+	}
+
+	// 還沒實作Auth驗證 先直接設定為true
+	auth := true
+	// 驗證失敗
+	if !auth {
+		_ = packet.SendPack(player.encoder, &packet.Pack{
+			CMD:    AUTH_REPLY,
+			PackID: pack.PackID,
+			ErrMsg: "Auth toekn驗證失敗",
+			Content: &packet.AuthCMD_Reply{
+				IsAuth: false,
+			},
+		})
+	}
+	// 驗證通過
+	player.isAuth = true
+	err := packet.SendPack(player.encoder, &packet.Pack{
+		CMD:    AUTH_REPLY,
+		PackID: pack.PackID,
+		Content: &packet.AuthCMD_Reply{
+			IsAuth: true,
+		},
+	})
+	if err != nil {
+		return
+	}
+}
+
+// 處理封包-開遊戲房
+func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr string) {
+	createRoomCMD := packet.CreateRoomCMD{}
+	if ok := createRoomCMD.Parse(pack.Content); !ok {
+		// 寫LOG
+		log.Error("Parse CreateRoomCMD failed")
+		return
+	}
+	//還沒實作DB資料
+	player.id = createRoomCMD.CreaterID
+
+	canCreate := true
+	if !canCreate {
+		packet.SendPack(player.encoder, &packet.Pack{
+			CMD:    CREATEROOM_REPLY,
+			PackID: pack.PackID,
+			Content: &packet.CreateRoomCMD_Reply{
+				GameServerIP:   "",
+				GameServerPort: -1,
+			},
+			ErrMsg: "創建房間失敗原因",
+		})
+	}
+
+	// 根據DB地圖設定來開遊戲房
+	var dbMap dbMapData
+
+	switch dbMap.matchType {
+	case MATCH_QUICK: // 快速配對
+		player.room = Receptionist.JoinRoom(dbMap, player)
+		if player.room == nil {
+			// 寫LOG
+			log.WithFields(log.Fields{
+				"dbMap":  dbMap,
+				"player": player,
+			}).Errorf("%s Join quick match room failed", logger.LOG_Main)
+			// 回送房間建立失敗封包
+			if err := sendCreateRoomCMD_Reply(*player, pack, "Join quick match room failed"); err != nil {
 				return
 			}
-			//還沒實作DB資料
-			player.id = createRoomCMD.CreaterID
+		}
+	default:
+		// 寫LOG
+		log.WithFields(log.Fields{
+			"dbMap.matchType": dbMap.matchType,
+			"remoteAddr":      remoteAddr,
+		}).Errorf("%s Undefined match type", logger.LOG_Main)
 
-			canCreate := true
-			if !canCreate {
-				packet.SendPack(player.encoder, &packet.Pack{
-					CMD:    CREATEROOM_REPLY,
-					PackID: pack.PackID,
-					Content: &packet.CreateRoomCMD_Reply{
-						GameServerIP:   "",
-						GameServerPort: -1,
-					},
-					ErrMsg: "創建房間失敗原因",
-				})
-				continue
-			}
-
-			var dbMap dbMapData
-
-			switch dbMap.matchType {
-			case MATCH_QUICK: // 快速配對
-				player.room = Receptionist.JoinQuickRoom(dbMap, &player)
-				if player.room == nil {
-					// 寫LOG
-					log.WithFields(log.Fields{
-						"dbMap":  dbMap,
-						"player": player,
-					}).Errorf("%s Join quick match room failed", logger.LOG_Main)
-					// 回送房間建立失敗封包
-					if err = sendCreateRoomCMD_Reply(player, pack, "Join quick match room failed"); err != nil {
-						return
-					}
-					continue
-				}
-			default:
-				// 寫LOG
-				log.WithFields(log.Fields{
-					"dbMap.matchType": dbMap.matchType,
-					"remoteAddr":      remoteAddr,
-				}).Errorf("%s Undefined match type", logger.LOG_Main)
-
-				// 回送房間建立失敗封包
-				if err = sendCreateRoomCMD_Reply(player, pack, "Undefined match type"); err != nil {
-					return
-				}
-				continue
-			}
-		default:
+		// 回送房間建立失敗封包
+		if err := sendCreateRoomCMD_Reply(*player, pack, "Undefined match type"); err != nil {
 			return
 		}
 	}
-
 }
 
 func checkForceDisconnect(p *roomPlayer) {

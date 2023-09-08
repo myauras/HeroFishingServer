@@ -1,9 +1,8 @@
-package matchmaker
+package main
 
 import (
 	"crypto/md5"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"net"
@@ -18,7 +17,7 @@ import (
 
 const (
 	RETRY_CREATE_GAMESERVER_TIMES = 2 // 開房失敗時重試X次
-	RETRY_INTERVAL_SECONDS        = 3 // 開房失敗重試間隔X秒
+	RETRY_INTERVAL_SECONDS        = 1 // 開房失敗重試間隔X秒
 	MAX_PLAYER                    = 4 // 房間容納玩家上限為X人
 	ROUTINE_CHECK_OCCUPIED_ROOM   = 5 // 每X分鐘檢查佔用房間
 )
@@ -33,10 +32,11 @@ type Usher struct {
 }
 type room struct {
 	gameServer *agonesv1.GameServer
-	roomID     string        // 房間ID
+	mapID      string        // 地圖ID
 	matchType  string        // 配對類型
 	maxPlayer  int           //最大玩家數
 	players    []*roomPlayer //房間內的玩家
+	creater    *roomPlayer   //創房者
 	createTime *time.Time    //開房時間
 }
 type roomPlayer struct {
@@ -99,7 +99,7 @@ func (r *RoomReceptionist) getUsher(mapID string) *Usher {
 }
 
 // 加入房間-快速房
-func (r *RoomReceptionist) JoinQuickRoom(dbMap dbMapData, player *roomPlayer) *room {
+func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 
 	// 取得房間接待員
 	usher := r.getUsher(dbMap.mapID)
@@ -108,7 +108,7 @@ func (r *RoomReceptionist) JoinQuickRoom(dbMap dbMapData, player *roomPlayer) *r
 	for i, _ := range usher.rooms {
 		roomIdx := (usher.lastJoinRoomIdx + i) % len(usher.rooms)
 		room := usher.rooms[roomIdx]
-		joined := room.joinRoomWithPlayer(player)
+		joined := room.AddPlayer(player)
 		// 房間不可加入就換下一間檢查
 		if !joined {
 			usher.lastJoinRoomIdx = roomIdx
@@ -129,16 +129,17 @@ func (r *RoomReceptionist) JoinQuickRoom(dbMap dbMapData, player *roomPlayer) *r
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
-		roomID:     dbMap.mapID,
+		mapID:      dbMap.mapID,
 		matchType:  dbMap.matchType,
 		maxPlayer:  MAX_PLAYER,
 		players:    nil,
+		creater:    nil,
 		createTime: &newCreateTime,
 	}
 	// 設定玩家所在地圖
 	player.mapID = dbMap.mapID
 	// 開房者加入此新房
-	newRoom.joinRoomWithPlayer(player)
+	newRoom.AddPlayer(player)
 	// 將新房加到房間清單中
 	usher.rooms = append(usher.rooms, &newRoom)
 	roomIdx := len(usher.rooms) - 1
@@ -168,7 +169,7 @@ func (r *room) IsIDExist(playerID string) bool {
 }
 
 // 將玩家加入此房間中
-func (r *room) joinRoomWithPlayer(player *roomPlayer) bool {
+func (r *room) AddPlayer(player *roomPlayer) bool {
 	// 滿足以下條件之一的房間不可加入
 	// 1. 該玩家已在此房間
 	// 2. 房間已滿
@@ -180,17 +181,19 @@ func (r *room) joinRoomWithPlayer(player *roomPlayer) bool {
 	return true
 }
 
-func (r *room) tryCreateGame() (bool, error) {
+func (r *room) CreateGame() (bool, error) {
 	var createGameOK bool
 	var err error
+
+	// 產生房間名稱
 	roomName, getRoomNameOK := r.generateRoomName()
 	if !getRoomNameOK {
+		createGameOK = false
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"room": r,
-		}).Errorf("%s Generate Room Name Failed!", logger.LOG_ROOM)
-		createGameOK = false
-		err = errors.New(fmt.Sprintf("%s Generate Room Name Failed!", logger.LOG_ROOM))
+		}).Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
+		err = fmt.Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
 		return createGameOK, err
 	}
 
@@ -200,23 +203,21 @@ func (r *room) tryCreateGame() (bool, error) {
 		"roomName": roomName,
 	}).Infof("%s Generate Room Name \n", logger.LOG_ROOM)
 
-	createGameOK = true
+	// 建立遊戲房
 	retryTimes := 0
+	timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
+	for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
+		retryTimes = i
+		r.gameServer, err = CreateGameServer(roomName, r.getPlayerIDs(), r.creater.id, r.mapID, SelfPodName)
+		if err == nil {
+			createGameOK = true
+			break
+		}
+		<-timer.C
+	}
+	timer.Stop()
 
-	// playerUIDs := r.getAllPlayerID()
-	// timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
-	// retryTimes := 0
-	// for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
-	// 	retryTimes = i
-	// 	r.gameServer, err = CreateGameServer(roomName, playerUIDs, playerUIDs[0], r.roomID, SelfPodName)
-	// 	if err == nil {
-	// 		createGameOK = true
-	// 		break
-	// 	}
-	// 	<-timer.C
-	// }
-	// timer.Stop()
-
+	// 寫入建立遊戲房結果Log
 	if createGameOK {
 		if retryTimes > 0 {
 			// 寫LOG
@@ -231,32 +232,28 @@ func (r *room) tryCreateGame() (bool, error) {
 			"retryTimes": RETRY_CREATE_GAMESERVER_TIMES,
 			"error:":     err.Error(),
 		}).Errorf("%s Create gameServer error: \n", logger.LOG_ROOM)
-		err = errors.New(fmt.Sprintf("%s Gameserver allocated failed", logger.LOG_ROOM))
+		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_ROOM)
 	}
 
 	return createGameOK, err
 }
 
-// 以第一位玩家的id來產生房名
+// 以創房者的id來產生房名
 func (r *room) generateRoomName() (string, bool) {
 	ok := false
 	var roomName string
-	for _, v := range r.players {
-		md5Data := []byte(v.id + time.Now().String())
-		roomName = fmt.Sprintf("%x", md5.Sum(md5Data))
-		ok = true
-		break
+	if r.creater == nil {
+		// 寫LOG
+		log.Errorf("%s Generating room name failed, creater is nil", logger.LOG_ROOM)
+		return roomName, false
 	}
+	md5Data := []byte(r.creater.id + time.Now().String())
+	roomName = fmt.Sprintf("%x", md5.Sum(md5Data))
+	roomName += "_" + time.Now().Format(time.RFC3339) //結尾加入 _時間 做為房間名
 
-	if ok {
-		taipeiLoc, err := time.LoadLocation("Asia/Taipei")
-		if err == nil {
-			roomName = roomName + time.Now().In(taipeiLoc).Format("20060102")
-		}
-	}
 	return roomName, ok
 }
-func (r *room) getAllPlayerID() []string {
+func (r *room) getPlayerIDs() []string {
 	ids := []string{}
 	for _, v := range r.players {
 		ids = append(ids, v.id)
