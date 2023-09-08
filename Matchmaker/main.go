@@ -1,9 +1,9 @@
-package main
+package matchmaker
 
 import (
 	"encoding/json"
 	"flag"
-	logger "matchmaker/Logger"
+	logger "matchmaker/logger"
 	"matchmaker/packet"
 	"net"
 	"os"
@@ -101,39 +101,41 @@ func handleConnectionTCP(conn net.Conn) {
 	go checkForceDisconnect(&player)
 
 	for {
-		pkt, err := packet.ReadPacket(player.decoder)
+		pack, err := packet.ReadPack(player.decoder)
 		if err != nil {
 			return
 		}
 		// 寫LOG
-		log.Infof("%s Receive %s from %s", logger.LOG_Main, pkt.CMD, remoteAddr)
+		log.Infof("%s Receive %s from %s", logger.LOG_Main, pack.CMD, remoteAddr)
 
 		//收到Auth以外的命令如果未驗證就都擋掉
-		if !player.isAuth && pkt.CMD != AUTH {
+		if !player.isAuth && pack.CMD != AUTH {
 			// 寫LOG
 			log.WithFields(log.Fields{
-				"cmd":     pkt.CMD,
+				"cmd":     pack.CMD,
 				"address": remoteAddr,
 			}).Infof("%s UnAuthed CMD", logger.LOG_Main)
 			return
 		}
 
-		switch pkt.CMD {
+		switch pack.CMD {
 		case AUTH:
 			authContent := packet.AuthCMD{}
-			if ok := authContent.Parse(pkt.Content); !ok {
+			if ok := authContent.Parse(pack.Content); !ok {
+				// 寫LOG
+				log.Error("Parse AuthCMD failed")
 				return
 			}
 
-			// 還沒實作Auth驗證先直接設定為true
+			// 還沒實作Auth驗證 先直接設定為true
 			auth := true
 
 			// 不管驗證成功或失敗都回給client
 			if auth {
 				player.isAuth = true
-				err = packet.SendPacket(player.encoder, &packet.Packet{
-					CMD:      AUTH_REPLY,
-					PacketID: pkt.PacketID,
+				err = packet.SendPack(player.encoder, &packet.Pack{
+					CMD:    AUTH_REPLY,
+					PackID: pack.PackID,
 					Content: &packet.AuthCMD_Reply{
 						IsAuth: true,
 					},
@@ -143,10 +145,10 @@ func handleConnectionTCP(conn net.Conn) {
 				}
 				continue
 			} else {
-				_ = packet.SendPacket(player.encoder, &packet.Packet{
-					CMD:      AUTH_REPLY,
-					PacketID: pkt.PacketID,
-					ErrMsg:   err.Error(),
+				_ = packet.SendPack(player.encoder, &packet.Pack{
+					CMD:    AUTH_REPLY,
+					PackID: pack.PackID,
+					ErrMsg: err.Error(),
 					Content: &packet.AuthCMD_Reply{
 						IsAuth: false,
 					},
@@ -154,7 +156,9 @@ func handleConnectionTCP(conn net.Conn) {
 			}
 		case CREATEROOM:
 			createRoomCMD := packet.CreateRoomCMD{}
-			if ok := createRoomCMD.Parse(pkt.Content); !ok {
+			if ok := createRoomCMD.Parse(pack.Content); !ok {
+				// 寫LOG
+				log.Error("Parse CreateRoomCMD failed")
 				return
 			}
 			//還沒實作DB資料
@@ -162,9 +166,9 @@ func handleConnectionTCP(conn net.Conn) {
 
 			canCreate := true
 			if !canCreate {
-				packet.SendPacket(player.encoder, &packet.Packet{
-					CMD:      CREATEROOM_REPLY,
-					PacketID: pkt.PacketID,
+				packet.SendPack(player.encoder, &packet.Pack{
+					CMD:    CREATEROOM_REPLY,
+					PackID: pack.PackID,
 					Content: &packet.CreateRoomCMD_Reply{
 						GameServerIP:   "",
 						GameServerPort: -1,
@@ -186,7 +190,7 @@ func handleConnectionTCP(conn net.Conn) {
 						"player": player,
 					}).Errorf("%s Join quick match room failed", logger.LOG_Main)
 					// 回送房間建立失敗封包
-					if err = sendCreateRoomCMD_Reply(player, pkt, "Join quick match room failed"); err != nil {
+					if err = sendCreateRoomCMD_Reply(player, pack, "Join quick match room failed"); err != nil {
 						return
 					}
 					continue
@@ -199,7 +203,7 @@ func handleConnectionTCP(conn net.Conn) {
 				}).Errorf("%s Undefined match type", logger.LOG_Main)
 
 				// 回送房間建立失敗封包
-				if err = sendCreateRoomCMD_Reply(player, pkt, "Undefined match type"); err != nil {
+				if err = sendCreateRoomCMD_Reply(player, pack, "Undefined match type"); err != nil {
 					return
 				}
 				continue
@@ -223,12 +227,12 @@ func checkForceDisconnect(p *roomPlayer) {
 	}
 }
 
-func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Packet, log string) error {
-	err := packet.SendPacket(player.encoder, &packet.Packet{
-		CMD:      CREATEROOM_REPLY,
-		PacketID: p.PacketID,
-		Content:  &packet.CreateRoomCMD_Reply{},
-		ErrMsg:   log,
+func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Pack, log string) error {
+	err := packet.SendPack(player.encoder, &packet.Pack{
+		CMD:     CREATEROOM_REPLY,
+		PackID:  p.PackID,
+		Content: &packet.CreateRoomCMD_Reply{},
+		ErrMsg:  log,
 	})
 	return err
 }

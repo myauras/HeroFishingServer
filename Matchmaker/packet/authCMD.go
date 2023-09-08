@@ -1,7 +1,7 @@
 package packet
 
 import (
-	logger "matchmaker/Logger"
+	logger "matchmaker/logger"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -19,7 +19,7 @@ func (p *AuthCMD) Parse(common CMDContent) bool {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"log": "Token資料錯誤",
-		}).Errorf("%s Parse error: %s", logger.LOG_Packet, "AuthCMD")
+		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "AuthCMD")
 		return false
 	}
 	return true

@@ -3,58 +3,60 @@ package packet
 import (
 	"encoding/json"
 
-	logger "matchmaker/Logger"
+	logger "matchmaker/logger"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type Packet struct {
-	CMD      string
-	PacketID int
-	ErrMsg   string
-	Content  CMDContent
+type Pack struct {
+	CMD     string
+	PackID  int
+	ErrMsg  string
+	Content CMDContent
 }
 
 type CMDContent interface {
 }
 
-func ReadPacket(decoder *json.Decoder) (Packet, error) {
-	var packet Packet
+func ReadPack(decoder *json.Decoder) (Pack, error) {
+	var packet Pack
 	err := decoder.Decode(&packet)
-	if err == nil {
-		// 寫LOG
-		log.WithFields(log.Fields{
-			"cmd":     packet.CMD,
-			"content": packet.Content,
-			"error":   packet.ErrMsg,
-		}).Infof("%s Read: %s", logger.LOG_Packet, packet.CMD)
-	} else {
-		// 寫LOG
-		log.WithFields(log.Fields{
-			"cmd":     packet.CMD,
-			"content": packet.Content,
-			"error":   packet.ErrMsg,
-		}).Errorf("%s Read: %s", logger.LOG_Packet, packet.CMD)
+
+	// 寫LOG
+	// log.WithFields(log.Fields{
+	// 	"cmd":     packet.CMD,
+	// 	"content": packet.Content,
+	// 	"error":   packet.ErrMsg,
+	// }).Infof("%s Read: %s", logger.LOG_Pack, packet.CMD)
+	if err != nil {
+		if err.Error() == "EOF" {
+			//discoonect
+		} else {
+			// 寫LOG
+			log.WithFields(log.Fields{
+				"error": packet.ErrMsg,
+			}).Errorf("Decode packet error: %s", err.Error())
+		}
 	}
 
 	return packet, err
 }
 
-func SendPacket(encoder *json.Encoder, packet *Packet) error {
+func SendPack(encoder *json.Encoder, packet *Pack) error {
 	err := encoder.Encode(packet)
 
-	if err == nil {
-		// 寫LOG
-		log.WithFields(log.Fields{
-			"cmd":     packet.CMD,
-			"content": packet.Content,
-		}).Infof("%s Send packet: %s", logger.LOG_Packet, packet.CMD)
-	} else {
+	// // 寫LOG
+	// log.WithFields(log.Fields{
+	// 	"cmd":     packet.CMD,
+	// 	"content": packet.Content,
+	// }).Infof("%s Send packet: %s", logger.LOG_Pack, packet.CMD)
+
+	if err != nil {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"error": err.Error(),
-		}).Errorf("%s Send packet encoder error", logger.LOG_Packet)
-	}
+		}).Errorf("%s Send packet encoder error", logger.LOG_Pack)
 
+	}
 	return err
 }

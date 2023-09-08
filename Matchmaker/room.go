@@ -1,4 +1,4 @@
-package main
+package matchmaker
 
 import (
 	"crypto/md5"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	logger "matchmaker/Logger"
+	logger "matchmaker/logger"
 
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"

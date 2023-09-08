@@ -2,7 +2,7 @@ package packet
 
 import (
 	"fmt"
-	logger "matchmaker/Logger"
+	logger "matchmaker/logger"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -25,7 +25,7 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"log": "playerIDs資料錯誤",
-		}).Errorf("%s Parse error: %s", logger.LOG_Packet, "CreateRoomCMD")
+		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "CreateRoomCMD")
 		return false
 	}
 
@@ -35,7 +35,7 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"log": "CreaterID資料錯誤",
-		}).Errorf("%s Parse error: %s", logger.LOG_Packet, "CreateRoomCMD")
+		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "CreateRoomCMD")
 		return false
 	}
 
@@ -45,7 +45,7 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"log": "MapID資料錯誤",
-		}).Errorf("%s Parse error: %s", logger.LOG_Packet, "CreateRoomCMD")
+		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "CreateRoomCMD")
 		return false
 	}
 
