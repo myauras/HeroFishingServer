@@ -20,12 +20,12 @@
 apiVersion: "autoscaling.agones.dev/v1"
 kind: FleetAutoscaler
 metadata:
-  name: simple-game-server-autoscaler
+  name: herofishing-game-server-autoscaler
 spec:
-  fleetName: simple-game-server
+  fleetName: herofishing-game-server
   policy:
     type: Buffer
     buffer:
-      bufferSize: 5
-      minReplicas: 5
-      maxReplicas: 40
+      bufferSize: 5 #預熱最少5個gameserver(pod)數量
+      minReplicas: 5 #這是自動縮放的下限。也就是說，無論負載多低，Fleet都會維護至少5個GameServer Pods
+      maxReplicas: 10 #這是自動縮放的上限。即使負載增加，自動擴展的gameserver(pod)也不會超過這個數量

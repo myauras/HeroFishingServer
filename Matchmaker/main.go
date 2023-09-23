@@ -205,10 +205,11 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 				"player": player,
 			}).Errorf("%s Join quick match room failed", logger.LOG_Main)
 			// 回送房間建立失敗封包
-			if err := sendCreateRoomCMD_Reply(*player, pack, "Join quick match room failed"); err != nil {
-				return
-			}
+			sendCreateRoomCMD_Reply(*player, pack, "Join quick match room failed")
+			return
 		}
+		// 建立遊戲房
+		player.room.CreateGame()
 	default:
 		// 寫LOG
 		log.WithFields(log.Fields{

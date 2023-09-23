@@ -15,7 +15,7 @@
 apiVersion: "agones.dev/v1"
 kind: Fleet
 metadata:
-  name: simple-game-server
+  name: herofishing-game-server
 spec:
   replicas: 1
   template:
@@ -28,8 +28,8 @@ spec:
       template:
         spec:
           containers:
-          - name: simple-game-server
-            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:latest
+          - name: herofishing-game-server
+            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-game:latest
             resources:
               requests:
                 memory: "32Mi"

@@ -118,10 +118,10 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"playerID":   player.id,
-			"mapID":      dbMap.mapID,
+			"dbMapID":      dbMap.mapID,
 			"roomIdx":    roomIdx,
 			"room":       room,
-			"dbRoomData": dbMap,
+			"dbMapData": dbMap,
 		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
 		return room
 	}

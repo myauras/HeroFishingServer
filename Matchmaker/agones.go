@@ -34,8 +34,13 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, map
 	}
 
 	// 建立遊戲房伺服器標籤
-	myLabels := map[string]string{"RoomName": roomName, "CreaterID": createrID, "MatchmakerPodName": matchmakerPodName}
-	myLabels["MapID"] = mapID
+	myLabels := map[string]string{
+		"RoomName":          roomName,
+		"CreaterID":         createrID,
+		"MatchmakerPodName": matchmakerPodName,
+		"MapID":             mapID,
+	}
+
 	for i := 0; i < len(playerIDs); i++ {
 		myLabels[fmt.Sprintf("player%d", i)] = playerIDs[i]
 	}
@@ -48,13 +53,13 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, map
 			// 找fleet.yaml定義的fleet metadata名稱
 			Required: allocationv1.GameServerSelector{
 				LabelSelector: metav1.LabelSelector{
-					MatchLabels: map[string]string{"agones.dev/fleet": "simple-game-server"}}},
+					MatchLabels: map[string]string{"agones.dev/fleet": "herofishing-game-server"}}},
 			// 在產生的pod上新增Label
 			MetaPatch: allocationv1.MetaPatch{
 				Labels: myLabels},
 		},
 	}
-	// 使用規範來找game server(pod)並新增標籤
+	// 使用規範來建立game server(pod)並新增標籤
 	GameServerAllocation, err := allocacteInterface.Create(context.Background(), gsAllocation, metav1.CreateOptions{})
 	if err != nil {
 		//panic(err)
