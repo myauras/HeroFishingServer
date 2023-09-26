@@ -27,14 +27,6 @@ const (
 	MATCH_QUICK = "Quick"
 )
 
-// 命令列表
-const (
-	AUTH             = "Auth"             // 身分驗證
-	AUTH_REPLY       = "Auth_Reply"       // 身分驗證回傳
-	CREATEROOM       = "CreateRoom"       // 建立房間
-	CREATEROOM_REPLY = "CreateRoom_Reply" // 建立房間回傳
-)
-
 var EvnVersion string             // 環境版本
 var SelfPodName string            // K8s上所屬的Pod名稱
 var Receptionist RoomReceptionist // 房間接待員
@@ -109,7 +101,7 @@ func handleConnectionTCP(conn net.Conn) {
 		log.Infof("%s Receive %s from %s", logger.LOG_Main, pack.CMD, remoteAddr)
 
 		//收到Auth以外的命令如果未驗證就都擋掉
-		if !player.isAuth && pack.CMD != AUTH {
+		if !player.isAuth && pack.CMD != packet.AUTH {
 			// 寫LOG
 			log.WithFields(log.Fields{
 				"cmd":     pack.CMD,
@@ -120,9 +112,9 @@ func handleConnectionTCP(conn net.Conn) {
 
 		// 封包處理
 		switch pack.CMD {
-		case AUTH:
+		case packet.AUTH:
 			packHandle_Auth(pack, &player)
-		case CREATEROOM:
+		case packet.CREATEROOM:
 			packHandle_CreateRoom(pack, &player, remoteAddr)
 		default:
 			log.Errorf("%s got unknow Pack CMD: %s", logger.LOG_Main, pack.CMD)
@@ -146,7 +138,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	// 驗證失敗
 	if !auth {
 		_ = packet.SendPack(player.encoder, &packet.Pack{
-			CMD:    AUTH_REPLY,
+			CMD:    packet.AUTH_REPLY,
 			PackID: pack.PackID,
 			ErrMsg: "Auth toekn驗證失敗",
 			Content: &packet.AuthCMD_Reply{
@@ -157,7 +149,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	// 驗證通過
 	player.isAuth = true
 	err := packet.SendPack(player.encoder, &packet.Pack{
-		CMD:    AUTH_REPLY,
+		CMD:    packet.AUTH_REPLY,
 		PackID: pack.PackID,
 		Content: &packet.AuthCMD_Reply{
 			IsAuth: true,
@@ -182,7 +174,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	canCreate := true
 	if !canCreate {
 		packet.SendPack(player.encoder, &packet.Pack{
-			CMD:    CREATEROOM_REPLY,
+			CMD:    packet.CREATEROOM_REPLY,
 			PackID: pack.PackID,
 			Content: &packet.CreateRoomCMD_Reply{
 				GameServerIP:   "",
@@ -238,7 +230,7 @@ func checkForceDisconnect(p *roomPlayer) {
 
 func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Pack, log string) error {
 	err := packet.SendPack(player.encoder, &packet.Pack{
-		CMD:     CREATEROOM_REPLY,
+		CMD:     packet.CREATEROOM_REPLY,
 		PackID:  p.PackID,
 		Content: &packet.CreateRoomCMD_Reply{},
 		ErrMsg:  log,

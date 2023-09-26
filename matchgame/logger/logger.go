@@ -2,6 +2,6 @@ package logger
 
 const (
 	LOG_Main = "[Main]"
-	LOG_ROOM = "[Game]"
+	LOG_Room = "[Game]"
 	LOG_Pack = "[Pake]"
 )

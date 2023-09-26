@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	mainGame "majampachinkogame/game"
+	"matchgame/game"
 	"matchgame/packet"
 	"net"
 	"os"
@@ -29,7 +29,7 @@ const (
 )
 
 const ALLOW_PLAYER_NUMBER int = 4
-const TIME_UPDATE_INTERVAL_MS = 200
+const TIME_UPDATE_INTERVAL_MS = 200 //每X毫秒更新Server時間
 
 var RoomName string
 var connectionTokens []string
@@ -52,7 +52,7 @@ func main() {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
 
-	roomDataChan := make(chan *mainGame.GameRoom)
+	roomDataChan := make(chan *game.Room)
 
 	roomInit := false
 	var matchmakerPodName string
@@ -125,8 +125,8 @@ func main() {
 	// 開啟連線
 	log.Infof("%s Open TCP&UDP Connection", logger.LOG_Main)
 	go openConnectTCP(s, stop, ":"+*port, gameRoom)
-	go OpenConnectUDP(s, stop, ":"+*port, gameRoom)
 	// FirebaseFunction.CreateGameRoomByRoomName(gsLoadDone.Status.Address, gsLoadDone.Status.Ports[0].Port, gsLoadDone.ObjectMeta.Labels["roomName"], playerIDs, dbMapID, gsLoadDone.ObjectMeta.Name)
+	go OpenConnectUDP(s, stop, ":"+*port, gameRoom)
 	endGameChan := make(chan struct{})
 	gameRoom.StartRun(stop, endGameChan)
 	select {
@@ -244,12 +244,12 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, gameRoom *mainGame.G
 		log.Infof("%s Receive: %s from %s \n", logger.LOG_Main, pack.CMD, remoteAddr)
 
 		//除了Auth指令進來未驗證都擋掉
-		if !isAuth && pack.CMD != "Auth" {
+		if !isAuth && pack.CMD != packet.AUTH {
 			log.Infof("%s UnAuth command", logger.LOG_Main)
 			return
 		}
 
-		if pack.CMD == "Auth" {
+		if pack.CMD == packet.AUTH {
 
 			authContent := packet.AuthCMD{}
 			if ok := authContent.Parse(pack.Content); !ok {
@@ -263,7 +263,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, gameRoom *mainGame.G
 				isAuth = true
 				secretKey := generateSecureToken(32)
 				err = packet.SendPack(encoder, &packet.Pack{
-					CMD:    "ReAuth",
+					CMD:    packet.AUTH_REPLY,
 					PackID: pack.PackID,
 					Content: &packet.AuthCMD_Reply{
 						IsAuth:   true,
@@ -279,7 +279,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, gameRoom *mainGame.G
 				continue
 			}
 			err = packet.SendPack(encoder, &packet.Pack{
-				CMD:    "ReAuth",
+				CMD:    packet.AUTH_REPLY,
 				PackID: pack.PackID,
 				ErrMsg: err.Error(),
 				Content: &packet.AuthCMD_Reply{
@@ -310,7 +310,7 @@ func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr,
 			return
 		case <-timer.C:
 			sendData, err := json.Marshal(&packet.Pack{
-				CMD:    "UDP_UPDATE",
+				CMD:    packet.UPDATE_UDP,
 				PackID: -1,
 				Content: mainGame.UdpUpdatePacket{
 					ServerTime: gameRoom.ServerTime,

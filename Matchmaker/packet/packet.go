@@ -8,6 +8,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// 封包命令列表
+const (
+	AUTH             = "AUTH"             // 身分驗證
+	AUTH_REPLY       = "AUTH_REPLY"       // 身分驗證回傳
+	CREATEROOM       = "CREATEROOM"       // 建立房間
+	CREATEROOM_REPLY = "CREATEROOM_REPLY" // 建立房間回傳
+)
+
 type Pack struct {
 	CMD     string
 	PackID  int
