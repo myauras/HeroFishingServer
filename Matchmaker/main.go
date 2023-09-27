@@ -56,17 +56,17 @@ func main() {
 
 	// 偵聽TCP封包
 	src := ":" + *port
-	listener, err := net.Listen("tcp", src)
+	tcpListener, err := net.Listen("tcp", src)
 	if err != nil {
 		log.Errorf("%s Listen error %s.\n", logger.LOG_Main, err.Error())
 	}
-	defer listener.Close()
+	defer tcpListener.Close()
 	log.Infof("%s TCP server start and listening on %s.\n", logger.LOG_Main, src)
 
 	Receptionist.Init()
 
 	for {
-		conn, err := listener.Accept()
+		conn, err := tcpListener.Accept()
 		if err != nil {
 			log.Errorf("%s Connection error %s.\n", logger.LOG_Main, err)
 		}
@@ -81,19 +81,21 @@ func handleConnectionTCP(conn net.Conn) {
 	defer conn.Close()
 
 	player := roomPlayer{
-		id:      "",
-		isAuth:  false,
-		conn:    conn,
-		encoder: json.NewEncoder(conn),
-		decoder: json.NewDecoder(conn),
-		mapID:   "",
-		room:    nil,
+		id:     "",
+		isAuth: false,
+		connTCP: ConnectionTCP{
+			Conn:    conn,
+			Encoder: json.NewEncoder(conn),
+			Decoder: json.NewDecoder(conn),
+		},
+		mapID: "",
+		room:  nil,
 	}
 
 	go checkForceDisconnect(&player)
 
 	for {
-		pack, err := packet.ReadPack(player.decoder)
+		pack, err := packet.ReadPack(player.connTCP.Decoder)
 		if err != nil {
 			return
 		}
@@ -137,7 +139,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	auth := true
 	// 驗證失敗
 	if !auth {
-		_ = packet.SendPack(player.encoder, &packet.Pack{
+		_ = packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 			CMD:    packet.AUTH_REPLY,
 			PackID: pack.PackID,
 			ErrMsg: "Auth toekn驗證失敗",
@@ -148,7 +150,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	}
 	// 驗證通過
 	player.isAuth = true
-	err := packet.SendPack(player.encoder, &packet.Pack{
+	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 		CMD:    packet.AUTH_REPLY,
 		PackID: pack.PackID,
 		Content: &packet.AuthCMD_Reply{
@@ -173,7 +175,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 	canCreate := true
 	if !canCreate {
-		packet.SendPack(player.encoder, &packet.Pack{
+		packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 			CMD:    packet.CREATEROOM_REPLY,
 			PackID: pack.PackID,
 			Content: &packet.CreateRoomCMD_Reply{
@@ -221,15 +223,15 @@ func checkForceDisconnect(p *roomPlayer) {
 	for {
 		<-timer.C
 		if p.room == nil || p.id == "" {
-			log.Infof("%s Disconnect because it's life is over: %s", logger.LOG_Main, p.conn.RemoteAddr().String())
-			p.conn.Close()
+			log.Infof("%s Disconnect because it's life is over: %s", logger.LOG_Main, p.connTCP.Conn.RemoteAddr().String())
+			p.connTCP.Conn.Close()
 			return
 		}
 	}
 }
 
 func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Pack, log string) error {
-	err := packet.SendPack(player.encoder, &packet.Pack{
+	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 		CMD:     packet.CREATEROOM_REPLY,
 		PackID:  p.PackID,
 		Content: &packet.CreateRoomCMD_Reply{},

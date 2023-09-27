@@ -3,17 +3,20 @@ package game
 import (
 	"encoding/json"
 	"net"
-	"time"
 )
 
 // 玩家
 type Player struct {
 	ID       string
+	Index    int // 玩家在房間的索引(座位)
 	Status   *PlayerStatus
-	Conn_TCP net.Conn
-	Conn_UDP net.Conn
-	Encoder  *json.Encoder
-	Decoder  *json.Decoder
+	LeftSecs float64       // 玩家已離開遊戲房X秒
+	connTCP  ConnectionTCP // TCP連線
+}
+type ConnectionTCP struct {
+	Conn    net.Conn      // TCP連線
+	Encoder *json.Encoder // 連線編碼
+	Decoder *json.Decoder // 連線解碼
 }
 
 // 玩家狀態
@@ -21,12 +24,8 @@ type PlayerStatus struct {
 }
 
 func (player *Player) CloseConnection() {
-	if player.Conn_TCP != nil {
-		player.Conn_TCP.Close()
-		player.Conn_TCP = nil
-	}
-	if player.Conn_UDP != nil {
-		player.Conn_UDP.Close()
-		player.Conn_UDP = nil
+	if player.connTCP.Conn != nil {
+		player.connTCP.Conn.Close()
+		player.connTCP.Conn = nil
 	}
 }

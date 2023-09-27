@@ -1,10 +1,8 @@
 package game
 
 import (
-	"fmt"
-	"time"
-
 	log "github.com/sirupsen/logrus"
+	logger "matchgame/logger"
 )
 
 const CHAN_BUFFER = 4
@@ -19,41 +17,23 @@ type DBMap struct {
 	Enable bool   // 是否開放
 }
 
-func InitGameRoom(firebaseDocID string, roomName string, playerIDs [PLAYER_NUMBER]string, outputPlayerUIDs [PLAYER_NUMBER]string, gameSetting DBMap, waitRoom chan *Room, serverName string) {
+func InitGameRoom(serverName string, dbMapID string, roomName string, player Player, waitRoom chan *Room) {
 	if room.RoomName != "" {
 		return
 	}
 
 	if UPDATE_INTERVAL_MS <= 0 {
-		log.Println("Error Setting UDP Update interval.")
+		log.Errorf("%s Error Setting UDP Update interval", logger.LOG_Game)
 		UPDATE_INTERVAL_MS = 200
 	}
 
-	room.Init(gameSetting)
-	room.SetDocumentID(firebaseDocID)
-	room.SetRoomName(roomName)
-	room.SetPlayers(playerIDs, outputPlayerUIDs)
-	var logUIDs [PLAYER_NUMBER]string
-	logUIDs = playerIDs
-	if AI_LOAD_STORAGE {
-		logUIDs = outputPlayerUIDs
-	}
+	// 依據dbMapID從DB中取dbMap設定
+	dbMap := DBMap{}
+	room.Init(roomName, dbMap, player)
 
-	createRoomLogData := map[string]interface{}{
-		"UID":            roomName,
-		"PlayerList":     logUIDs,
-		"SettlementRoom": gameSetting.GameDataRoomUID,
-		"CreateTime":     time.Now(),
-		"Bet":            gameSetting.Bet,
-		"ThinkTime":      gameSetting.ThinkTime,
-		"ServerName":     serverName,
-	}
-	//FirebaseFunction.LogCreateGameRoom(createRoomLogData)
-	FirebaseFunction.LogCreateGameRoomByRoomName(roomName, createRoomLogData)
-	fmt.Println("InitGameRoom RoomType: ", gameSetting.RoomType)
-	if gameSetting.RoomType == "Friend" {
-		FirebaseFunction.AddCreateFriendRoomTimes(playerIDs[0])
-	}
+	// 這裡之後要加房間初始化Log到DB
+
+	log.Infof("%s Init room", logger.LOG_Game)
 	waitRoom <- &room
 }
 func (r *Room) WriteGameErrorLog(log string) {

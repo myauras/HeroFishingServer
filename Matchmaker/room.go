@@ -36,18 +36,22 @@ type room struct {
 	matchType  string        // 配對類型
 	maxPlayer  int           //最大玩家數
 	players    []*roomPlayer //房間內的玩家
-	creater    *roomPlayer   //創房者
+	creater    *roomPlayer   //開房者
 	createTime *time.Time    //開房時間
 }
 type roomPlayer struct {
 	id      string        // 玩家ID
 	isAuth  bool          // 是否經過帳戶驗證了
-	conn    net.Conn      // 連線
-	encoder *json.Encoder // 連線編碼
-	decoder *json.Decoder // 連線解碼
+	connTCP ConnectionTCP // TCP連線
 	mapID   string        // 地圖ID
 	room    *room         // 房間資料
 }
+type ConnectionTCP struct {
+	Conn    net.Conn      // TCP連線
+	Encoder *json.Encoder // 連線編碼
+	Decoder *json.Decoder // 連線解碼
+}
+
 type dbMapData struct {
 	mapID     string `bson:"id"`
 	matchType string `bson:"matchType"`
@@ -117,10 +121,10 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 
 		// 寫LOG
 		log.WithFields(log.Fields{
-			"playerID":   player.id,
-			"dbMapID":      dbMap.mapID,
-			"roomIdx":    roomIdx,
-			"room":       room,
+			"playerID":  player.id,
+			"dbMapID":   dbMap.mapID,
+			"roomIdx":   roomIdx,
+			"room":      room,
 			"dbMapData": dbMap,
 		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
 		return room
@@ -272,7 +276,7 @@ func (p roomPlayer) playerLeaveRoom() {
 func (r *room) removePlayer(p roomPlayer) {
 	tarIdx := -1
 	for i, player := range r.players {
-		if player.conn == p.conn {
+		if player.connTCP == p.connTCP {
 			tarIdx = i
 		}
 	}

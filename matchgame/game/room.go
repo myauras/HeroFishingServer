@@ -1,9 +1,7 @@
 package game
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	logger "matchgame/logger"
 	"matchgame/packet"
 	"net"
@@ -26,25 +24,30 @@ const (
 	End
 )
 
-const MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線秒數
+const MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
 
 type Room struct {
-	RoomName               string                // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	gameState              GameState             // 遊戲狀態
-	CreaterID              string                // 開房者ID
-	players                [PLAYER_NUMBER]Player // 玩家陣列(也是座位0~3 分別代表4個玩家)
-	DBmap                  DBMap                 // DB地圖設定
-	ServerIP               string                // ServerIP
-	ServerPort             int                   // ServerPort
-	PassSecs               float64               // 遊戲開始X秒
-	MaxAllowDisconnectSecs float64               // 最長允許玩家斷線秒數
-	ErrorLogs              []string              // ErrorLogs
-	lastChangeStateTime    time.Time             // 上次更新房間狀態時間
+	RoomName  string    // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	gameState GameState // 遊戲狀態
+	CreaterID string    // 開房者ID
+
+	// 玩家陣列(索引0~3 分別代表4個玩家)
+	// 1. 索引代表玩家座位
+	// 2. 座位無關順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
+	players [PLAYER_NUMBER]Player // 玩家陣列
+
+	DBmap                  DBMap     // DB地圖設定
+	ServerIP               string    // ServerIP
+	ServerPort             int       // ServerPort
+	PassSecs               float64   // 遊戲開始X秒
+	MaxAllowDisconnectSecs float64   // 最長允許玩家斷線秒數
+	ErrorLogs              []string  // ErrorLogs
+	lastChangeStateTime    time.Time // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
 }
 
 // 初始化房間
-func (r *Room) Init(roomName string, dbMap DBMap) {
+func (r *Room) Init(roomName string, dbMap DBMap, creater Player) {
 
 	// 初始化房間設定
 	r.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
@@ -53,14 +56,18 @@ func (r *Room) Init(roomName string, dbMap DBMap) {
 	// 初始化DB中的地圖設定
 	r.RoomName = roomName
 	r.DBmap = dbMap
+	r.CreaterID = creater.ID
+
+	//加入開房者
+	r.PlayerJoin(creater)
 }
 
 // 玩家加入房間 成功時回傳true
-func (g *Room) PlayerJoin(conn net.Conn, encoder *json.Encoder, decoder *json.Decoder, playerID string) bool {
+func (g *Room) PlayerJoin(player Player) bool {
 	index := -1
 	for i, v := range g.players {
-		if v.ID == playerID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
-			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, playerID)
+		if v.ID == player.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
+			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.ID)
 			return false
 		}
 		if index != -1 && v.ID == "" { // 有座位是空的就把座位索引存起來
@@ -72,9 +79,9 @@ func (g *Room) PlayerJoin(conn net.Conn, encoder *json.Encoder, decoder *json.De
 		log.Errorf("%s PlayerJoin failed, room is full", logger.LOG_Room)
 		return false
 	}
-	// 設定連線
-	g.players[index].Conn_TCP = conn
-	g.players[index].Encoder = encoder
+
+	// 設定玩家
+	g.players[index] = player
 	return true
 }
 
@@ -99,9 +106,7 @@ func (g *Room) HandleMessage(conn net.Conn, packet packet.Pack, stop chan struct
 	}
 	g.MutexLock.Lock()
 	defer g.MutexLock.Unlock()
-	conn.SetDeadline(time.Time{})
-	g.players[seatIndex].TimeoutTime = time.Time{}
-
+	conn.SetDeadline(time.Time{}) // 移除連線超時設定
 	// 處理各類型封包
 	switch packet.CMD {
 	case "CMD類型":
@@ -112,7 +117,7 @@ func (g *Room) HandleMessage(conn net.Conn, packet packet.Pack, stop chan struct
 // 取得玩家座位索引
 func (g *Room) getPlayerIndex(conn net.Conn) int {
 	for i, v := range g.players {
-		if v.Conn_TCP == conn {
+		if v.connTCP.Conn == conn {
 			return i
 		}
 	}
@@ -177,10 +182,10 @@ func (r *Room) broadCastPacket(pack *packet.Pack) {
 
 	// 送封包給所有房間中的玩家
 	for _, v := range r.players {
-		if v.Conn_TCP == nil {
+		if v.connTCP.Conn == nil {
 			continue
 		}
-		err := packet.SendPack(v.Encoder, pack)
+		err := packet.SendPack(v.connTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s BroadCastPacket with error: %v", logger.LOG_Room, err)
 			anyError = true
@@ -194,10 +199,10 @@ func (r *Room) broadCastPacket(pack *packet.Pack) {
 
 // 送封包給玩家
 func (r *Room) sendPacketToPlayer(pIndex int, pack *packet.Pack) {
-	if r.players[pIndex].Conn_TCP == nil {
+	if r.players[pIndex].connTCP.Conn == nil {
 		return
 	}
-	err := packet.SendPack(r.players[pIndex].Encoder, pack)
+	err := packet.SendPack(r.players[pIndex].connTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
 		r.players[pIndex].CloseConnection()
@@ -219,16 +224,17 @@ func (r *Room) UpdatePlayerStatus() {
 	r.broadCastPacket(&packet.Pack{
 		CMD:    packet.UPDATE_GAME_STATE_REPLY,
 		PackID: -1,
-		Content: &packet.UpdateRoomContent{
+		Content: &UpdateRoomContent{
 			PlayerStatuss: r.GetPlayerStatus(),
 		},
 	})
 }
 
-func (g *Room) UpdatePlayerLeaveTime(stop chan struct{}) {
+// 更新玩家離開時間
+func (r *Room) UpdatePlayerLeaveTime(stop chan struct{}) {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Printf("UpdatePlayerLeaveTime error: %v.\n%s", err, string(debug.Stack()))
+			log.Errorf("%s UpdatePlayerLeaveTime error: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
 			stop <- struct{}{}
 		}
 	}()
@@ -236,237 +242,23 @@ func (g *Room) UpdatePlayerLeaveTime(stop chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			g.MutexLock.Lock()
-			g.PassSecs += UPDATE_INTERVAL_MS / 1000
+			r.MutexLock.Lock()
+			r.PassSecs += UPDATE_INTERVAL_MS / 1000
 			for i := 0; i < PLAYER_NUMBER; i++ {
-				if g.players[i].Conn_TCP == nil && !g.players[i].IsAI {
-					if g.players[i].leaveTimer < MAX_ALLOW_DISCONNECT_SECS {
-						g.players[i].leaveTimer += UPDATE_INTERVAL_MS / 1000
-					} else {
-						g.players[i].leaveTimer = MAX_ALLOW_DISCONNECT_SECS
-					}
+				if r.players[i].connTCP.Conn == nil {
+					r.players[i].LeftSecs += UPDATE_INTERVAL_MS / 1000
+					// if r.players[i].LeftSecs < MAX_ALLOW_DISCONNECT_SECS {
+					// 	r.players[i].LeftSecs += UPDATE_INTERVAL_MS / 1000
+					// } else {
+					// 	r.players[i].LeftSecs = MAX_ALLOW_DISCONNECT_SECS
+					// }
 				} else {
-					g.players[i].leaveTimer = 0
+					r.players[i].LeftSecs = 0
 				}
 			}
-			g.MutexLock.Unlock()
+			r.MutexLock.Unlock()
 		case <-stop:
 			return
 		}
 	}
-}
-
-func (g *Room) CheckActionValid(playerIndex int, actionContent PlayerAction) (bool, error) {
-	if playerIndex != actionContent.PlayerIndex {
-		//log.Printf("Error Player index not the same.")
-		return false, errors.New("Error Player index not the same.")
-	}
-	//先判斷封包ID是不是這次行動
-	if g.TellPlayerAction[playerIndex] == nil || g.TellPlayerAction[playerIndex].ActionInfo.ID != actionContent.ID {
-		if EnvironmentVersion != "Release" {
-			log.Printf("ActionInfo.ID not the same.")
-		}
-		return false, nil
-	}
-
-	if (g.TellPlayerAction[playerIndex].ActionInfo.CanActions & actionContent.ActionType) != actionContent.ActionType {
-		fmt.Println("ActionERROR: ", g.TellPlayerAction[playerIndex].ActionInfo.CanActions, actionContent.ActionType)
-		g.sendPacketToPlayer(playerIndex, &packet.Pack{
-			Command:  "ACTION_ERROR",
-			PacketID: -1,
-			Content:  nil,
-		})
-		return false, errors.New("ACTION_ERROR")
-	}
-	//要打一張牌的情況
-	switch actionContent.ActionType {
-	case NoneAction:
-		if g.TellPlayerAction[playerIndex].ActionInfo.CanActions != NoneAction {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case Discard:
-		if !IntArrayContain(g.TellPlayerAction[playerIndex].CanDiscardList, actionContent.TileID) {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":      actionContent.ActionType,
-				"CanDiscardList":  g.TellPlayerAction[playerIndex].CanDiscardList,
-				"ActionTile":      actionContent.TileID,
-				"CreateTime":      time.Now(),
-				"TellCanAction":   g.TellPlayerAction[playerIndex].ActionInfo.CanActions,
-				"TellActionTile":  g.TellPlayerAction[playerIndex].ActionInfo.ActionTileID,
-				"PlayingRoomName": g.FirebaseDocID,
-				"RoundLen":        len(g.jamData.roundDataList),
-				"PlayerIndex":     playerIndex,
-				"RoundStep":       len(g.roundData.GetActionLog()),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case EarthListen:
-		fallthrough
-	case NotifyListen:
-		isInKey := false
-		for key, _ := range g.TellPlayerAction[playerIndex].CanListenList {
-			if key == actionContent.TileID {
-				isInKey = true
-				break
-			}
-		}
-		if !isInKey {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			canListenTiles := make([]int, 0, len(g.TellPlayerAction[playerIndex].CanListenList))
-			for key, _ := range g.TellPlayerAction[playerIndex].CanListenList {
-				canListenTiles = append(canListenTiles, key)
-			}
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":        actionContent.ActionType,
-				"CanDiscardList":    g.TellPlayerAction[playerIndex].CanDiscardList,
-				"ActionTile":        actionContent.TileID,
-				"CanListenTileList": canListenTiles,
-				"CreateTime":        time.Now(),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case Chow:
-		inList := false
-		for _, meldList := range g.TellPlayerAction[playerIndex].CanChowList {
-			if IntArrayCompare(meldList.Tiles, actionContent.MeldTiles) {
-				inList = true
-				break
-			}
-		}
-		if !inList {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":      actionContent.ActionType,
-				"CanChowList":     g.TellPlayerAction[playerIndex].CanChowList,
-				"ActionMeldTiles": actionContent.MeldTiles,
-				"CreateTime":      time.Now(),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case Pong:
-		if !IntArrayCompare(g.TellPlayerAction[playerIndex].CanPongList.Tiles, actionContent.MeldTiles) {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":      actionContent.ActionType,
-				"CanChowList":     g.TellPlayerAction[playerIndex].CanPongList,
-				"ActionMeldTiles": actionContent.MeldTiles,
-				"CreateTime":      time.Now(),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case ExposedKong:
-		fallthrough
-	case AddKong:
-		inList := false
-		for _, meldList := range g.TellPlayerAction[playerIndex].CanKongList {
-			if IntArrayCompare(meldList.Tiles, actionContent.MeldTiles) {
-				inList = true
-				break
-			}
-		}
-		if !inList {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":      actionContent.ActionType,
-				"CanChowList":     g.TellPlayerAction[playerIndex].CanKongList,
-				"ActionMeldTiles": actionContent.MeldTiles,
-				"CreateTime":      time.Now(),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	case ConcealedKong:
-		inList := false
-		for _, meldList := range g.TellPlayerAction[playerIndex].CanConcealedKongList {
-			if IntArrayCompare(meldList.Tiles, actionContent.MeldTiles) {
-				inList = true
-				break
-			}
-		}
-		if !inList {
-			g.sendPacketToPlayer(playerIndex, &packet.Pack{
-				Command:  "ACTION_ERROR",
-				PacketID: -1,
-				Content:  nil,
-			})
-			g.WriteGameErrorLog(ERROR_ACTION, map[string]interface{}{
-				"ActionType":      actionContent.ActionType,
-				"CanChowList":     g.TellPlayerAction[playerIndex].CanConcealedKongList,
-				"ActionMeldTiles": actionContent.MeldTiles,
-				"CreateTime":      time.Now(),
-			})
-			return false, errors.New("ACTION_ERROR")
-		}
-	}
-	return true, nil
-}
-
-// 萬筒條字
-func (g *Room) GetWinPointRate(tileType int) int {
-	rate := g.GetAllWinPointRate()
-	return rate[tileType]
-}
-
-func (g *Room) GetAllWinPointRate() [5]int {
-	rate := [5]int{1, 1, 1, 1, 1}
-	bagBallNum := [5]int{0, 0, 0, 0, 0}
-	pachinkoData := g.roundData.Pachinko.GetRevisedPachinkoData()
-	allBagBallNum := pachinkoData[1]
-
-	fmt.Println("GetAllWinPointRateStart: ", bagBallNum, pachinkoData, allBagBallNum)
-
-	pushRecord := []int{}
-	for i := 0; i < pachinkoData[1]; i++ {
-		bag := g.roundData.Pachinko.GoalSlotRecord[i%len(g.roundData.Pachinko.GoalSlotRecord)]
-		bagBallNum[bag]++
-		pushRecord = append(pushRecord, bag)
-	}
-
-	allFull := true
-	for i := 1; i < len(rate); i++ { // 0是未進洞
-		if bagBallNum[i] >= g.DBmap.FullBagBalls {
-			rate[i] = g.roundData.Pachinko.FullRewardRate[i]
-		} else {
-			allFull = false
-		}
-	}
-
-	if allFull {
-		allFullRate := g.roundData.Pachinko.AllFullRewardRate
-		rate = [5]int{allFullRate, allFullRate, allFullRate, allFullRate, allFullRate}
-		fmt.Println("GetAllWinPointRateByData: ", pachinkoData)
-		fmt.Println("GetAllWinPointRateEnd: (AllFull)BagBallNum:", bagBallNum, " ,pachinkoData:", pachinkoData, " ,pushRecord:", pushRecord)
-		fmt.Println("Rate => ", rate)
-		return rate
-	}
-
-	fmt.Println("GetAllWinPointRateEnd: BagBallNum:", bagBallNum, " ,pachinkoData:", pachinkoData, " ,pushRecord:", pushRecord)
-	fmt.Println("GetAllWinPointRateByData: ", pachinkoData)
-	fmt.Println("Rate => ", rate, "(", g.roundData.Pachinko.FullRewardRate, ")")
-	return rate
 }

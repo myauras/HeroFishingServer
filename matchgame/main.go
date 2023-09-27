@@ -163,14 +163,14 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, address string, gameRoom *ma
 			stop <- struct{}{}
 		}
 	}()
-	ln, err := net.Listen("tcp", address)
+	tcpListener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Errorf("%s Could not start tcp server: %v.\n", logger.LOG_Main, err)
 	}
-	defer ln.Close() // nolint: errcheck
+	defer tcpListener.Close() // nolint: errcheck
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := tcpListener.Accept()
 		if err != nil {
 			log.Errorf("%s Unable to accept incoming tcp connection: %v.\n", logger.LOG_Main, err)
 			continue
