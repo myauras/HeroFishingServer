@@ -11,7 +11,7 @@ type Player struct {
 	Index    int // 玩家在房間的索引(座位)
 	Status   *PlayerStatus
 	LeftSecs float64       // 玩家已離開遊戲房X秒
-	connTCP  ConnectionTCP // TCP連線
+	ConnTCP  ConnectionTCP // TCP連線
 }
 type ConnectionTCP struct {
 	Conn    net.Conn      // TCP連線
@@ -24,8 +24,8 @@ type PlayerStatus struct {
 }
 
 func (player *Player) CloseConnection() {
-	if player.connTCP.Conn != nil {
-		player.connTCP.Conn.Close()
-		player.connTCP.Conn = nil
+	if player.ConnTCP.Conn != nil {
+		player.ConnTCP.Conn.Close()
+		player.ConnTCP.Conn = nil
 	}
 }

@@ -17,7 +17,7 @@ type DBMap struct {
 	Enable bool   // 是否開放
 }
 
-func InitGameRoom(serverName string, dbMapID string, roomName string, player Player, waitRoom chan *Room) {
+func InitGameRoom(serverName string, dbMapID string, roomName string, roomChan chan *Room) {
 	if room.RoomName != "" {
 		return
 	}
@@ -29,12 +29,12 @@ func InitGameRoom(serverName string, dbMapID string, roomName string, player Pla
 
 	// 依據dbMapID從DB中取dbMap設定
 	dbMap := DBMap{}
-	room.Init(roomName, dbMap, player)
+	room.Init(roomName, dbMap)
 
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s Init room", logger.LOG_Game)
-	waitRoom <- &room
+	roomChan <- &room
 }
 func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
