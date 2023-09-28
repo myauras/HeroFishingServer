@@ -1,5 +1,5 @@
 @echo off
-
+REM 可在powershell中執行.\批次檔名稱.bat
 REM Build Image並推上google artifact registry, google放image的地方)
 
 REM 以下為gcr版本，因為gcr逐漸被google淘汰所以就不使用了

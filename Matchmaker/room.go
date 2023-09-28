@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-
+	"matchmaker/setting"
 	"net"
 	"sync"
 	"time"
@@ -13,13 +13,6 @@ import (
 
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	RETRY_CREATE_GAMESERVER_TIMES = 2 // 開房失敗時重試X次
-	RETRY_INTERVAL_SECONDS        = 1 // 開房失敗重試間隔X秒
-	MAX_PLAYER                    = 4 // 房間容納玩家上限為X人
-	ROUTINE_CHECK_OCCUPIED_ROOM   = 5 // 每X分鐘檢查佔用房間
 )
 
 type RoomReceptionist struct {
@@ -75,7 +68,7 @@ func (rr *RoomReceptionist) Init() {
 
 // }
 func (r *room) clearRoom() {
-	// 寫LOG
+
 	log.WithFields(log.Fields{
 		"players": r.players,
 	}).Infof("%s ClearRoom", logger.LOG_ROOM)
@@ -119,7 +112,6 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 			continue
 		}
 
-		// 寫LOG
 		log.WithFields(log.Fields{
 			"playerID":  player.id,
 			"dbMapID":   dbMap.mapID,
@@ -135,7 +127,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 	newRoom := room{
 		mapID:      dbMap.mapID,
 		matchType:  dbMap.matchType,
-		maxPlayer:  MAX_PLAYER,
+		maxPlayer:  setting.MAX_PLAYER,
 		players:    nil,
 		creater:    nil,
 		createTime: &newCreateTime,
@@ -149,7 +141,6 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 	roomIdx := len(usher.rooms) - 1
 	usher.lastJoinRoomIdx = roomIdx
 
-	// 寫LOG
 	log.WithFields(log.Fields{
 		"playerID":   player.id,
 		"waitStr":    dbMap.mapID,
@@ -193,7 +184,7 @@ func (r *room) CreateGame() (bool, error) {
 	roomName, getRoomNameOK := r.generateRoomName()
 	if !getRoomNameOK {
 		createGameOK = false
-		// 寫LOG
+
 		log.WithFields(log.Fields{
 			"room": r,
 		}).Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
@@ -201,7 +192,6 @@ func (r *room) CreateGame() (bool, error) {
 		return createGameOK, err
 	}
 
-	// 寫LOG
 	log.WithFields(log.Fields{
 		"room":     r,
 		"roomName": roomName,
@@ -209,8 +199,8 @@ func (r *room) CreateGame() (bool, error) {
 
 	// 建立遊戲房
 	retryTimes := 0
-	timer := time.NewTicker(RETRY_INTERVAL_SECONDS * time.Second)
-	for i := 0; i < RETRY_CREATE_GAMESERVER_TIMES; i++ {
+	timer := time.NewTicker(setting.RETRY_INTERVAL_SECONDS * time.Second)
+	for i := 0; i < setting.RETRY_CREATE_GAMESERVER_TIMES; i++ {
 		retryTimes = i
 		r.gameServer, err = CreateGameServer(roomName, r.getPlayerIDs(), r.creater.id, r.mapID, SelfPodName)
 		if err == nil {
@@ -224,16 +214,16 @@ func (r *room) CreateGame() (bool, error) {
 	// 寫入建立遊戲房結果Log
 	if createGameOK {
 		if retryTimes > 0 {
-			// 寫LOG
+
 			log.WithFields(log.Fields{
 				"retryTimes": retryTimes,
 				"error:":     err.Error(),
 			}).Infof("%s Create gameServer with retry: \n", logger.LOG_ROOM)
 		}
 	} else {
-		// 寫LOG
+
 		log.WithFields(log.Fields{
-			"retryTimes": RETRY_CREATE_GAMESERVER_TIMES,
+			"retryTimes": setting.RETRY_CREATE_GAMESERVER_TIMES,
 			"error:":     err.Error(),
 		}).Errorf("%s Create gameServer error: \n", logger.LOG_ROOM)
 		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_ROOM)
@@ -247,7 +237,7 @@ func (r *room) generateRoomName() (string, bool) {
 	ok := false
 	var roomName string
 	if r.creater == nil {
-		// 寫LOG
+
 		log.Errorf("%s Generating room name failed, creater is nil", logger.LOG_ROOM)
 		return roomName, false
 	}

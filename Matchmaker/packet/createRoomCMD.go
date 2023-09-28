@@ -9,26 +9,12 @@ import (
 
 type CreateRoomCMD struct {
 	CMDContent
-	PlayerIDs []string
 	CreaterID string
-	MapID     string
+	DBMapID   string
 }
 
 func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 	m := content.(map[string]interface{})
-	if playerIDs, ok := m["PlayerIDs"].([]interface{}); ok {
-		cmd.PlayerIDs = make([]string, len(playerIDs))
-		for i, v := range playerIDs {
-			cmd.PlayerIDs[i] = fmt.Sprint(v)
-		}
-	} else {
-		// 寫LOG
-		log.WithFields(log.Fields{
-			"log": "playerIDs資料錯誤",
-		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "CreateRoomCMD")
-		return false
-	}
-
 	if value, ok := m["CreaterID"].(string); ok {
 		cmd.CreaterID = value
 	} else {
@@ -39,12 +25,12 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 		return false
 	}
 
-	if value, ok := m["MapID"].(string); ok {
-		cmd.MapID = value
+	if value, ok := m["DBMapID"].(string); ok {
+		cmd.DBMapID = value
 	} else {
 		// 寫LOG
 		log.WithFields(log.Fields{
-			"log": "MapID資料錯誤",
+			"log": "DBMapID資料錯誤",
 		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "CreateRoomCMD")
 		return false
 	}

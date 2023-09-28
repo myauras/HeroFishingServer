@@ -1,5 +1,6 @@
 package setting
 
+// 伺服器設定
 const (
 	PLAYER_NUMBER                  = 4   // 遊戲房最多X位玩家
 	TIME_UPDATE_INTERVAL_MS        = 200 // 每X毫秒更新Server時間

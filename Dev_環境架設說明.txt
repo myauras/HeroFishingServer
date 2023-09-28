@@ -25,8 +25,13 @@ gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
 helm install agones-release --namespace agones-system --create-namespace agones/agones
-#如果要移除agones使用以下語法
+# 可以使用以下語法來查看部屬結果
+helm list -n agones-system # 使用命名空間查看helm部屬的內容
+kubectl get services -n agones-system # 使用命名空間查看k8s上的服務(agones-controller-service & agones-allocator-service就是agones服務)
+kubectl get pods -n agones-system -o wide # 取得k8s的pods來確認部屬與執行狀況
+# 如果要移除agones使用以下語法
 helm uninstall my-release --namespace=agones-system
+
     
 # 要能push docker image要先啟用artifact registry服務
 gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.com

@@ -26,12 +26,12 @@ exports = async function InitPlayerData(data) {
   if (!playerDoc) {
     let error = `[InitPlayerData] 插入player文件錯誤 表格: ${ah.GameSetting.ColName.player}  文件: ${JSON.stringify(writePlayerDocData)}`;
     console.log(error);
-    //寫Log
+    
     ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, null, error);
     return JSON.stringify(ah.ReplyData.NewReplyData({}, "插入player表錯誤"));
   }
 
-  //寫Log
+  
   ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, playerDoc, null);
 
 

@@ -3,31 +3,17 @@ package main
 import (
 	"encoding/json"
 	"flag"
+
+	log "github.com/sirupsen/logrus"
 	logger "matchmaker/logger"
 	"matchmaker/packet"
+	"matchmaker/setting"
 	"net"
 	"os"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
-const (
-	CONNECTION_CHECK_CYCLE = 3
-)
-
-// 環境版本
-const (
-	ENV_DEV     = "Dev"
-	ENV_RELEASE = "Release"
-)
-
-// 配對類型
-const (
-	MATCH_QUICK = "Quick"
-)
-
-var EvnVersion string             // 環境版本
+var Env string             // 環境版本
 var SelfPodName string            // K8s上所屬的Pod名稱
 var Receptionist RoomReceptionist // 房間接待員
 
@@ -42,11 +28,11 @@ func main() {
 	log.Infof("%s Port: %s", logger.LOG_Main, *port)
 
 	// 設定環境版本
-	EvnVersion = *flag.String("Version", "Dev", "EnvVersion setting")
+	Env = *flag.String("Version", "Dev", "Env setting")
 	if ep := os.Getenv("Version"); ep != "" {
-		EvnVersion = ep
+		Env = ep
 	}
-	log.Infof("%s EvnVersion: %s", logger.LOG_Main, EvnVersion)
+	log.Infof("%s EvnVersion: %s", logger.LOG_Main, Env)
 
 	// 設定K8s上所屬的Pod名稱
 	SelfPodName = *flag.String("MY_POD_NAME", "myPodName", "Pod Name")
@@ -92,19 +78,19 @@ func handleConnectionTCP(conn net.Conn) {
 		room:  nil,
 	}
 
-	go checkForceDisconnect(&player)
+	go disconnectCheck(&player)
 
 	for {
 		pack, err := packet.ReadPack(player.connTCP.Decoder)
 		if err != nil {
 			return
 		}
-		// 寫LOG
+
 		log.Infof("%s Receive %s from %s", logger.LOG_Main, pack.CMD, remoteAddr)
 
 		//收到Auth以外的命令如果未驗證就都擋掉
 		if !player.isAuth && pack.CMD != packet.AUTH {
-			// 寫LOG
+
 			log.WithFields(log.Fields{
 				"cmd":     pack.CMD,
 				"address": remoteAddr,
@@ -117,6 +103,7 @@ func handleConnectionTCP(conn net.Conn) {
 		case packet.AUTH:
 			packHandle_Auth(pack, &player)
 		case packet.CREATEROOM:
+			log.Infof("%s =========CREATEROOM=========", logger.LOG_Main)
 			packHandle_CreateRoom(pack, &player, remoteAddr)
 		default:
 			log.Errorf("%s got unknow Pack CMD: %s", logger.LOG_Main, pack.CMD)
@@ -130,7 +117,7 @@ func handleConnectionTCP(conn net.Conn) {
 func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	authContent := packet.AuthCMD{}
 	if ok := authContent.Parse(pack.Content); !ok {
-		// 寫LOG
+
 		log.Error("Parse AuthCMD failed")
 		return
 	}
@@ -166,7 +153,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr string) {
 	createRoomCMD := packet.CreateRoomCMD{}
 	if ok := createRoomCMD.Parse(pack.Content); !ok {
-		// 寫LOG
+
 		log.Error("Parse CreateRoomCMD failed")
 		return
 	}
@@ -190,10 +177,10 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	var dbMap dbMapData
 
 	switch dbMap.matchType {
-	case MATCH_QUICK: // 快速配對
+	case setting.MATCH_QUICK: // 快速配對
 		player.room = Receptionist.JoinRoom(dbMap, player)
 		if player.room == nil {
-			// 寫LOG
+
 			log.WithFields(log.Fields{
 				"dbMap":  dbMap,
 				"player": player,
@@ -205,7 +192,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 		// 建立遊戲房
 		player.room.CreateGame()
 	default:
-		// 寫LOG
+
 		log.WithFields(log.Fields{
 			"dbMap.matchType": dbMap.matchType,
 			"remoteAddr":      remoteAddr,
@@ -218,18 +205,20 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	}
 }
 
-func checkForceDisconnect(p *roomPlayer) {
-	timer := time.NewTicker(CONNECTION_CHECK_CYCLE * time.Minute)
+// 斷線玩家偵測
+func disconnectCheck(p *roomPlayer) {
+	timer := time.NewTicker(setting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second)
 	for {
 		<-timer.C
 		if p.room == nil || p.id == "" {
-			log.Infof("%s Disconnect because it's life is over: %s", logger.LOG_Main, p.connTCP.Conn.RemoteAddr().String())
+			log.Infof("%s Disconnect IP: %s , because it's life is over", logger.LOG_Main, p.connTCP.Conn.RemoteAddr().String())
 			p.connTCP.Conn.Close()
 			return
 		}
 	}
 }
 
+// 送創建房間結果封包
 func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Pack, log string) error {
 	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 		CMD:     packet.CREATEROOM_REPLY,

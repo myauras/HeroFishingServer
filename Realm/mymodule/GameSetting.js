@@ -9,6 +9,17 @@ module.exports = {
         gameLog: "gameLog",
         template: "template",
     }),
+    // 環境版本對應ProjectID
+    EnvProject: Object.freeze({
+        Dev: "aurafortest-bikmm",// 開發版
+        Release: "???",// 正式版
+    }),
+    // 環境版本對應AppID
+    EnvApp: Object.freeze({
+        Dev: "aurafortest-bikmm",// 開發版
+        Release: "???",// 正式版
+    }),
+
     // 註冊類型
     AuthType: Object.freeze({
         Guest: "Guest",// 訪客
@@ -30,6 +41,7 @@ module.exports = {
         OnUserCreation: "OnUserCreation",// 玩家創Realm帳戶時會寫入此Log
         InitPlayerData: "InitPlayerData",// 玩家初始化玩家資料時會寫入此Log
         Signin: "Signin",// 玩家登入時寫入此Log
+        PlayerVerify: "PlayerVerify",// 玩家登入時寫入此Log
     }),
     // 這邊要填入ColName的Key值, 如果template集合中有定義對應表的模板資料就要加在這裡
     ColTemplate: new Set(['player', 'playerState', 'playerHistory']),
