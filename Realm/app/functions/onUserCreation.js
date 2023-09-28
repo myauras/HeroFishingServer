@@ -29,10 +29,10 @@ exports = async function OnUserCreation(user) {
   if (!playerCustomDoc) {
     let error = `[OnUserCreation] 寫入Custom User Data文件失敗, 帳戶id為: ${user.id}`;
     console.log(error);
-    //寫Log
+    
     ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, null, error);
   } else {
-    //寫Log
+    
     ah.WriteLog.Log(ah.GameSetting.LogType.OnUserCreation, playerCustomDoc, null);
   }
 

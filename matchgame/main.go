@@ -30,7 +30,7 @@ const (
 )
 
 var connectionTokens []string // 連線驗證Token
-var EnvVersion string         // 環境版本
+var Env string         // 環境版本
 
 func main() {
 	go signalListen()
@@ -39,9 +39,9 @@ func main() {
 	if ep := os.Getenv("PORT"); ep != "" {
 		port = &ep
 	}
-	EnvVersion = *flag.String("Version", "Dev", "version setting")
+	Env = *flag.String("Version", "Dev", "version setting")
 	if ep := os.Getenv("Version"); ep != "" {
-		EnvVersion = ep
+		Env = ep
 	}
 
 	agonesSDK, err := sdk.NewSDK()

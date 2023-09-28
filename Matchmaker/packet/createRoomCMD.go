@@ -27,6 +27,7 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 
 	if value, ok := m["DBMapID"].(string); ok {
 		cmd.DBMapID = value
+		
 	} else {
 		// 寫LOG
 		log.WithFields(log.Fields{
