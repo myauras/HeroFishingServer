@@ -4,16 +4,16 @@ exports = async function InitPlayerData(data) {
     console.log(JSON.stringify(context.user))
     return
   }
-
+  const ah = require("aurafortest-herofishing");
 
   if (!("AuthType" in data)) {
     console.log("[InitPlayerData] 格式錯誤");
     return {
-      Result: GameSetting.ResultTypes.Fail,
+      Result: ah.GameSetting.ResultTypes.Fail,
       Data: "格式錯誤",
     };
   }
-  const ah = require("aurafortest-herofishing");
+
   // 建立玩家資料
   writePlayerDocData = {
     "_id": context.user.id,
@@ -26,12 +26,12 @@ exports = async function InitPlayerData(data) {
   if (!playerDoc) {
     let error = `[InitPlayerData] 插入player文件錯誤 表格: ${ah.GameSetting.ColName.player}  文件: ${JSON.stringify(writePlayerDocData)}`;
     console.log(error);
-    
+    //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, null, error);
     return JSON.stringify(ah.ReplyData.NewReplyData({}, "插入player表錯誤"));
   }
 
-  
+  //寫Log
   ah.WriteLog.Log(ah.GameSetting.LogType.InitPlayerData, playerDoc, null);
 
 

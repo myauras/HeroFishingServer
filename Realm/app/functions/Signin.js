@@ -36,12 +36,12 @@ exports = async function Signin() {
   if (!updateSuccess) {
     let error = "[Signin] 更新在線時間失敗";
     console.log(error);
-    
+    //寫Log
     ah.WriteLog.Log(ah.GameSetting.LogType.Signin, null, error);
     return JSON.stringify(ah.ReplyData.NewReplyData({}, "更新在線時間失敗"));
   }
 
-  
+  //寫Log
   ah.WriteLog.Log(ah.GameSetting.LogType.Signin, null, null);
 
 

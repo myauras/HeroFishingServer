@@ -22,7 +22,7 @@ async function GetBaseTemplateData(type, error) {
 }
 function ModifyLogData(logData) {
     // 把_id替換為playerID並移除本來的_id
-    if ("_id" in logData) {
+    if (logData && "_id" in logData) {
         logData["playerID"] = logData._id;
         delete logData["_id"];
     }

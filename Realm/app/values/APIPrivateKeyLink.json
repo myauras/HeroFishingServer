@@ -1,0 +1,5 @@
+{
+    "name": "APIPrivateKeyLink",
+    "value": "APIPrivateKey",
+    "from_secret": true
+}
