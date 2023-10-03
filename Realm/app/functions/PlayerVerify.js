@@ -28,17 +28,22 @@ exports = async function PlayerTokenVerify(data) {
     },
     encodeBodyAsJSON: true
   });
+  // 取得admin access_token失敗
+  if (!authResponse || authResponse.statusCode != 200) {
+    let replyData = {
+      playerID: null,
+    }
+    ah.WriteLog.Log(ah.GameSetting.LogType.PlayerVerify, verifyResponse, "取得admin access_token失敗");
+    return JSON.stringify(ah.ReplyData.NewReplyData(replyData, null));
+  }
+  // 取得admin access_token成功
   let base64Data = authResponse.body.toBase64();
   let decodedText = new Buffer(base64Data, 'base64').toString('utf-8');
   let responseBody = JSON.parse(decodedText);
   const adminToken = responseBody.access_token;
 
-  // 取得玩家token驗證結果
+  // 驗證token驗證
   const verifyEndpoint = `https://realm.mongodb.com/api/admin/v3.0/groups/${ah.GameSetting.EnvGroupID.Dev}/apps/${ah.GameSetting.EnvAppObjID.Dev}/users/verify_token`;
-  console.log("ah.GameSetting.EnvGroupID=" + ah.GameSetting.EnvGroupID.Dev);
-  console.log("ah.GameSetting.EnvAppObjID=" + ah.GameSetting.EnvAppObjID.Dev);
-  console.log("verifyEndpoint=" + verifyEndpoint);
-  // 執行HTTP POST請求
   const verifyResponse = await context.http.post({
     url: verifyEndpoint,
     headers: {
@@ -50,14 +55,29 @@ exports = async function PlayerTokenVerify(data) {
     },
     encodeBodyAsJSON: true
   });
-  console.log("verifyResponse=" + JSON.stringify(verifyResponse));
+  // 驗證token驗證
+  if (!verifyResponse || verifyResponse.statusCode != 200) {
+    let replyData = {
+      playerID: null,
+    }
+    ah.WriteLog.Log(ah.GameSetting.LogType.PlayerVerify, verifyResponse, "玩家token驗證失敗");
+    return JSON.stringify(ah.ReplyData.NewReplyData(replyData, null));
+  }
+  // 驗證token驗證成功
+  // console.log("verifyResponse=" + JSON.stringify(verifyResponse));
   base64Data = verifyResponse.body.toBase64();
   decodedText = new Buffer(base64Data, 'base64').toString('utf-8');
-  console.log("decodedText=" + JSON.stringify(decodedText));
+  // console.log("decodedText=" + JSON.stringify(decodedText));
   responseBody = JSON.parse(decodedText);
-  console.log("responseBody: " + responseBody)
+  // console.log("responseBody: " + responseBody)
   const playerID = responseBody.custom_user_data._id;
   console.log("playerID=" + playerID);
+  const userId = JSON.parse(verifyResponse.body.text()).user_id;
+  let replyData = {
+    playerID: userId,
+  }
+
+  return JSON.stringify(ah.ReplyData.NewReplyData(replyData, null));
 
   // // 使用Endpoint查找資料要先確保HTTPS Endpoints的Data API有開啟
   // const findEndpoint = ah.GameSetting.AppEndpoint.Dev + `endpoint/data/v1/action/findOne`; // https://asia-south1.gcp.data.mongodb-api.com/app/aurafortest-bikmm/endpoint/data/v1/action/findOne
@@ -74,24 +94,4 @@ exports = async function PlayerTokenVerify(data) {
   //   },
   //   encodeBodyAsJSON: true
   // });
-
-
-
-
-  // 驗證失敗
-  if (!verifyResponse || verifyResponse.statusCode != 200) {
-    let replyData = {
-      playerID: null,
-    }
-    ah.WriteLog.Log(ah.GameSetting.LogType.PlayerVerify, verifyResponse, "玩家token驗證失敗");
-    return JSON.stringify(ah.ReplyData.NewReplyData(replyData, null));
-  }
-
-
-  //驗證成功
-  const userId = JSON.parse(verifyResponse.body.text()).user_id;
-  let replyData = {
-    playerID: userId,
-  }
-  return JSON.stringify(ah.ReplyData.NewReplyData(replyData, null));
 }
