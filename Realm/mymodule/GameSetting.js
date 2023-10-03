@@ -1,4 +1,7 @@
 module.exports = {
+    DBName: Object.freeze({
+        herofishing: "herofishing",
+    }),
     // DB集合
     ColName: Object.freeze({
         player: "player",
@@ -9,17 +12,26 @@ module.exports = {
         gameLog: "gameLog",
         template: "template",
     }),
-    // 環境版本對應ProjectID
-    EnvProject: Object.freeze({
+    // 環境版本對應Endpoint
+    AppEndpoint: Object.freeze({
+        Dev: "https://asia-south1.gcp.data.mongodb-api.com/app/aurafortest-bikmm",// 開發版
+        Release: "???",// 正式版
+    }),
+    // 環境版本對應GroupID
+    EnvGroupID: Object.freeze({
+        Dev: "64e6b478a37b94153abe9042",// 開發版
+        Release: "???",// 正式版
+    }),
+    // 環境版本對應AppID(AppID不是App的ObjectID)
+    EnvAppID: Object.freeze({
         Dev: "aurafortest-bikmm",// 開發版
         Release: "???",// 正式版
     }),
-    // 環境版本對應AppID
-    EnvApp: Object.freeze({
-        Dev: "aurafortest-bikmm",// 開發版
+    // 環境版本對應AppObjID
+    EnvAppObjID: Object.freeze({
+        Dev: "64e6d784c96a30ebafdf3de0",// 開發版
         Release: "???",// 正式版
     }),
-
     // 註冊類型
     AuthType: Object.freeze({
         Guest: "Guest",// 訪客
