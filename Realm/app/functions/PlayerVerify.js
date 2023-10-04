@@ -48,7 +48,7 @@ exports = async function PlayerTokenVerify(data) {
     url: verifyEndpoint,
     headers: {
       'Accept': ['application/json'],
-      'Authorization': [`Bearer ${adminToken}`]  // 這裡假設data.Token是您用來與Admin API工作的access_token
+      'Authorization': [`Bearer ${adminToken}`]
     },
     body: {
       token: data.Token  // client access token
@@ -87,7 +87,7 @@ exports = async function PlayerTokenVerify(data) {
   //   url: findEndpoint,
   //   headers: {
   //     'Accept': ['application/json'],
-  //     'Authorization': [`Bearer ${adminToken}`]  // 這裡假設data.Token是您用來與Admin API工作的access_token
+  //     'Authorization': [`Bearer ${adminToken}`] 
   //   },
   //   body: {
   //     token: data.Token  // client access token

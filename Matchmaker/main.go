@@ -3,17 +3,18 @@ package main
 import (
 	"encoding/json"
 	"flag"
-
-	log "github.com/sirupsen/logrus"
 	logger "matchmaker/logger"
 	"matchmaker/packet"
 	"matchmaker/setting"
 	"net"
 	"os"
 	"time"
+
+	mongo "./../herofishingGoModule/mongo"
+	log "github.com/sirupsen/logrus"
 )
 
-var Env string             // 環境版本
+var Env string                    // 環境版本
 var SelfPodName string            // K8s上所屬的Pod名稱
 var Receptionist RoomReceptionist // 房間接待員
 
@@ -28,17 +29,31 @@ func main() {
 	log.Infof("%s Port: %s", logger.LOG_Main, *port)
 
 	// 設定環境版本
-	Env = *flag.String("Version", "Dev", "Env setting")
-	if ep := os.Getenv("Version"); ep != "" {
+	Env = *flag.String("Env", "Dev", "Env setting")
+	if ep := os.Getenv("Env"); ep != "" {
 		Env = ep
 	}
-	log.Infof("%s EvnVersion: %s", logger.LOG_Main, Env)
+	log.Infof("%s Env: %s", logger.LOG_Main, Env)
 
 	// 設定K8s上所屬的Pod名稱
 	SelfPodName = *flag.String("MY_POD_NAME", "myPodName", "Pod Name")
 	if ep := os.Getenv("MY_POD_NAME"); ep != "" {
 		SelfPodName = ep
 	}
+
+	// 設定API public Key
+	mongoAPIPublicKey := *flag.String("MongoAPIPublicKey", "", "Mongo API public key setting")
+	if ep := os.Getenv("MongoAPIPublicKey"); ep != "" {
+		Env = ep
+	}
+	log.Infof("%s MongoAPIPublicKey: %s", logger.LOG_Main, mongoAPIPublicKey)
+
+	// 設定API private Key
+	mongoAPIPrivateKey := *flag.String("MongoAPIPrivateKey", "", "Mongo API private key setting")
+	if ep := os.Getenv("MongoAPIPrivateKey"); ep != "" {
+		Env = ep
+	}
+	log.Infof("%s MongoAPIPrivateKey: %s", logger.LOG_Main, mongoAPIPrivateKey)
 
 	// 偵聽TCP封包
 	src := ":" + *port
@@ -50,6 +65,12 @@ func main() {
 	log.Infof("%s TCP server start and listening on %s.\n", logger.LOG_Main, src)
 
 	Receptionist.Init()
+	// 初始化MongoDB設定
+	mongo.Init(mongo.InitData{
+		Env:           Env,
+		APIPublicKey:  mongoAPIPublicKey,
+		APIPrivateKey: mongoAPIPrivateKey,
+	})
 
 	for {
 		conn, err := tcpListener.Accept()
@@ -117,15 +138,15 @@ func handleConnectionTCP(conn net.Conn) {
 func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	authContent := packet.AuthCMD{}
 	if ok := authContent.Parse(pack.Content); !ok {
-
-		log.Error("Parse AuthCMD failed")
+		log.Errorf("%s Parse AuthCMD failed", logger.LOG_Main)
 		return
 	}
 
 	// 還沒實作Auth驗證 先直接設定為true
-	auth := true
+	playerID, authErr := mongo.PlayerVerify(authContent.Token)
 	// 驗證失敗
-	if !auth {
+	if authErr != nil || playerID == "" {
+		log.Errorf("%s Player verify failed: %v", logger.LOG_Main, authErr)
 		_ = packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 			CMD:    packet.AUTH_REPLY,
 			PackID: pack.PackID,
@@ -135,7 +156,9 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 			},
 		})
 	}
+
 	// 驗證通過
+	log.Infof("%s Player verify success, playerID: %s", logger.LOG_Main, playerID)
 	player.isAuth = true
 	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 		CMD:    packet.AUTH_REPLY,

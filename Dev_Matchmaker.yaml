@@ -42,12 +42,16 @@ spec:
         env:
         - name: "PORT"
           value: "30390"
-        - name: "Version"
+        - name: "Env"
           value: "Dev"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: "MongoAPIPublicKey"
+          value: "rqjseyja"
+        - name: "MongoAPIPrivateKey"
+          value: "e8cc1224-f04b-46c7-aee0-19309dc499dc"
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
