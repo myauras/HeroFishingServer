@@ -8,10 +8,10 @@ WORKDIR /go/src/matchmaker
 ENV GO111MODULE=on
 
 # 複製 matchmaker 的內容
-COPY . .
+COPY matchmaker/ .
 
-# # 複製 herofishingGoModule 到 /go/src/
-# COPY ../herofishingGoModule /go/src/herofishingGoModule
+# 複製 herofishingGoModule 到 /go/src/herofishingGoModule
+COPY herofishingGoModule/ /go/src/herofishingGoModule/
 
 # 建置 matchmaker
 RUN GOOS=linux GOARCH=amd64 go build -o matchmaker .

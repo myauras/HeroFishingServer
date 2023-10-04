@@ -10,7 +10,8 @@ import (
 	"os"
 	"time"
 
-	mongo "./../herofishingGoModule/mongo"
+	"github.com/AuroScoz/HeroFishingServer/herofishingGoModule/mongo"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,35 +24,34 @@ func main() {
 
 	// 設定Port
 	port := flag.String("port", "32680", "The port to listen to tcp traffic on")
-	if ep := os.Getenv("PORT"); ep != "" {
-		port = &ep
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = &envPort
 	}
 	log.Infof("%s Port: %s", logger.LOG_Main, *port)
 
 	// 設定環境版本
 	Env = *flag.String("Env", "Dev", "Env setting")
-	if ep := os.Getenv("Env"); ep != "" {
-		Env = ep
+	if envEnv := os.Getenv("Env"); envEnv != "" {
+		Env = envEnv
 	}
 	log.Infof("%s Env: %s", logger.LOG_Main, Env)
 
 	// 設定K8s上所屬的Pod名稱
 	SelfPodName = *flag.String("MY_POD_NAME", "myPodName", "Pod Name")
-	if ep := os.Getenv("MY_POD_NAME"); ep != "" {
-		SelfPodName = ep
+	if envSelfPodName := os.Getenv("MY_POD_NAME"); envSelfPodName != "" {
+		SelfPodName = envSelfPodName
 	}
-
 	// 設定API public Key
 	mongoAPIPublicKey := *flag.String("MongoAPIPublicKey", "", "Mongo API public key setting")
-	if ep := os.Getenv("MongoAPIPublicKey"); ep != "" {
-		Env = ep
+	if envMongoAPIPublicKey := os.Getenv("MongoAPIPublicKey"); envMongoAPIPublicKey != "" {
+		mongoAPIPublicKey = envMongoAPIPublicKey
 	}
 	log.Infof("%s MongoAPIPublicKey: %s", logger.LOG_Main, mongoAPIPublicKey)
 
 	// 設定API private Key
 	mongoAPIPrivateKey := *flag.String("MongoAPIPrivateKey", "", "Mongo API private key setting")
-	if ep := os.Getenv("MongoAPIPrivateKey"); ep != "" {
-		Env = ep
+	if envMongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey"); envMongoAPIPrivateKey != "" {
+		mongoAPIPrivateKey = envMongoAPIPrivateKey
 	}
 	log.Infof("%s MongoAPIPrivateKey: %s", logger.LOG_Main, mongoAPIPrivateKey)
 
@@ -66,11 +66,13 @@ func main() {
 
 	Receptionist.Init()
 	// 初始化MongoDB設定
+	log.Infof("%s 初始化mongo開始", logger.LOG_Main)
 	mongo.Init(mongo.InitData{
 		Env:           Env,
 		APIPublicKey:  mongoAPIPublicKey,
 		APIPrivateKey: mongoAPIPrivateKey,
 	})
+	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
 
 	for {
 		conn, err := tcpListener.Accept()

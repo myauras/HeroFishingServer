@@ -1,7 +1,6 @@
 package packet
 
 import (
-	"fmt"
 	logger "matchmaker/logger"
 
 	log "github.com/sirupsen/logrus"
@@ -27,7 +26,7 @@ func (cmd *CreateRoomCMD) Parse(content CMDContent) bool {
 
 	if value, ok := m["DBMapID"].(string); ok {
 		cmd.DBMapID = value
-		
+
 	} else {
 		// 寫LOG
 		log.WithFields(log.Fields{

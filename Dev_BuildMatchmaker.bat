@@ -7,5 +7,5 @@ REM docker build -t gcr.io/aurafortest/herofishing-matchmaker matchmaker/
 REM docker push gcr.io/aurafortest/herofishing-matchmaker
 @echo on
 
-docker build -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker matchmaker/
+docker build -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker .
 docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker

@@ -14,7 +14,5 @@ kubectl apply -f K8s_Role.yaml
 kubectl apply -f K8s_RoleBinding.yaml
 kubectl apply -f Dev_Matchmaker.yaml
 
-@echo off
-REM 以下這行如果本來就有建立防火牆就不需要執行 可以註解掉否則會報錯誤
-@echo on
-gcloud compute firewall-rules create herofishing-matchmaker-firewall --allow tcp:32680 --target-tags herofishing-matchmaker --description "Firewall to allow Herofishing matchmaker TCP traffic"
+@REM 以下這行如果本來就有建立防火牆就不需要執行 可以註解掉否則會報錯誤
+@REM gcloud compute firewall-rules create herofishing-matchmaker-firewall --allow tcp:32680 --target-tags herofishing-matchmaker --description "Firewall to allow Herofishing matchmaker TCP traffic"
