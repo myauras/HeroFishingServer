@@ -81,18 +81,18 @@ func PlayerVerify(token string) (string, error) {
 	}
 	// 驗證玩家token成功
 	var verify Response_Verify
-	log.Infof("%s verifyBodyBytes: %s", logger.LOG_Mongo, verifyBodyBytes)	
+	log.Infof("%s verifyBodyBytes: %s", logger.LOG_Mongo, verifyBodyBytes)
 	err = json.Unmarshal(verifyBodyBytes, &verify)
 	if err != nil {
 		log.Errorf("%s JSON Unmarshal error: %v", logger.LOG_Mongo, err)
 		return "", err
 	}
-	
+
 	if verify.CustomUserData == nil {
 		log.Errorf("%s CustomUserData is nil", logger.LOG_Mongo)
 		return "", fmt.Errorf("CustomUserData is nil")
 	}
-	
+
 	playerID, ok := verify.CustomUserData["_id"].(string)
 	if !ok {
 		log.Errorf("%s Failed to extract playerID from CustomUserData", logger.LOG_Mongo)

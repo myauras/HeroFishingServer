@@ -20,9 +20,9 @@
 apiVersion: "autoscaling.agones.dev/v1"
 kind: FleetAutoscaler
 metadata:
-  name: herofishing-game-server-autoscaler
+  name: herofishing-matchserver-autoscaler
 spec:
-  fleetName: herofishing-game-server
+  fleetName: herofishing-matchserver
   policy:
     type: Buffer
     buffer:

@@ -2,8 +2,9 @@ module matchmaker
 
 go 1.21.0
 
-// replace github.com/AuroScoz/HeroFishingServer/herofishingGoModule => ./../herofishingGoModule // 本地開發使用這個
-replace github.com/AuroScoz/HeroFishingServer/herofishingGoModule => /go/src/herofishingGoModule // Build docker環境用這個
+replace github.com/AuroScoz/HeroFishingServer/herofishingGoModule => ./../herofishingGoModule // 本地開發使用這個
+
+// replace github.com/AuroScoz/HeroFishingServer/herofishingGoModule => /go/src/herofishingGoModule // Build docker環境用這個
 
 require (
 	agones.dev/agones v1.34.0
