@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	logger "github.com/AuroScoz/HeroFishingServer/herofishingGoModule/logger"
+	logger "herofishingGoModule/logger"
 
 	log "github.com/sirupsen/logrus"
 )

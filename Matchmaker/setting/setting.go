@@ -5,12 +5,6 @@ const (
 	DISCONNECT_CHECK_INTERVAL_SECS = 60 // 每X秒做玩家斷線檢測
 )
 
-// 環境版本
-const (
-	ENV_DEV     = "Dev"
-	ENV_RELEASE = "Release"
-)
-
 // 配對類型
 const (
 	MATCH_QUICK = "Quick"

@@ -1,4 +1,4 @@
-module github.com/AuroScoz/HeroFishingServer/herofishingGoModule
+module herofishingGoModule
 
 go 1.21.0
 

@@ -53,7 +53,7 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, map
 			// 找fleet.yaml定義的fleet metadata名稱
 			Required: allocationv1.GameServerSelector{
 				LabelSelector: metav1.LabelSelector{
-					MatchLabels: map[string]string{"agones.dev/fleet": "herofishing-matchserver"}}},
+					MatchLabels: map[string]string{"agones.dev/fleet": "herofishing-matchgame"}}},
 			// 在產生的pod上新增Label
 			MetaPatch: allocationv1.MetaPatch{
 				Labels: myLabels},

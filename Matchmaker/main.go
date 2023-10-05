@@ -10,8 +10,10 @@ import (
 	"os"
 	"time"
 
-	myModule "github.com/AuroScoz/HeroFishingServer/herofishingGoModule"
 	log "github.com/sirupsen/logrus"
+	myModule "herofishingGoModule"
+	"herofishingGoModule/k8s"
+	"herofishingGoModule/mongo"
 )
 
 var Env string                    // 環境版本
@@ -85,7 +87,7 @@ func main() {
 // 初始化MongoDB設定
 func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string) {
 	log.Infof("%s 初始化mongo開始", logger.LOG_Main)
-	myModule.mongo.Init(myModule.mongo.InitData{
+	mongo.Init(mongo.InitData{
 		Env:           Env,
 		APIPublicKey:  mongoAPIPublicKey,
 		APIPrivateKey: mongoAPIPrivateKey,
@@ -95,7 +97,7 @@ func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string) {
 
 // 取Loadbalancer分配給此pod的對外IP並寫入資料庫
 func setExternalIP() {
-	ip, err := myModule.k8s.GetLoadBalancerExternalIP(myModule.setting.NAMESPACE_MATCHERSERVER, myModule.setting.MATCHMAKER)
+	ip, err := k8s.GetLoadBalancerExternalIP(myModule.NAMESPACE_MATCHERSERVER, myModule.MATCHMAKER)
 	if err != nil {
 		log.Errorf("%s GetLoadBalancerExternalIP error: %v.\n", logger.LOG_Main, err)
 	}
@@ -164,7 +166,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	}
 
 	// 還沒實作Auth驗證 先直接設定為true
-	playerID, authErr := myModule.mongo.PlayerVerify(authContent.Token)
+	playerID, authErr := mongo.PlayerVerify(authContent.Token)
 	// 驗證失敗
 	if authErr != nil || playerID == "" {
 		log.Errorf("%s Player verify failed: %v", logger.LOG_Main, authErr)

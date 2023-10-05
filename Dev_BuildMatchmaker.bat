@@ -15,5 +15,17 @@ REM 如果puch image發生錯誤可以跑以下重新登入跟認證流程試試
 
 @echo on
 
+
+REM =======change go.mod for docker setting=======
+powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace '// replace herofishingGoModule => ../herofishingGoModule // for local', 'replace herofishingGoModule => ../herofishingGoModule // for local' } | Set-Content matchmaker\go.mod"
+
+
+REM =======build image=======
 docker build -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker .
+REM =======push image=======
 docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker
+
+REM =======change go.mod back to local setting=======
+powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace 'replace herofishingGoModule => ../herofishingGoModule // for local', '// replace herofishingGoModule => ../herofishingGoModule // for local' } | Set-Content matchmaker\go.mod"
+
+

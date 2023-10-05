@@ -1,0 +1,1 @@
+powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace 'replace herofishingGoModule => ../herofishingGoModule // for local', '// replace herofishingGoModule => ../herofishingGoModule // for local' } | Set-Content matchmaker\go.mod"
