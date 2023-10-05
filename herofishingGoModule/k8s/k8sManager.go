@@ -2,8 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
-
 	logger "herofishingGoModule/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -41,5 +39,5 @@ func GetLoadBalancerExternalIP(servicesNameSpace string, servicesName string) (s
 		}
 	}
 
-	return "", errors.New("External IP not found")
+	return "", nil
 }

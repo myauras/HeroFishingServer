@@ -4,6 +4,16 @@ metadata:
   namespace: default
   name: agones-creater
 rules:
-- apiGroups: ["agones.dev", allocation.agones.dev]
+- apiGroups: ["agones.dev", "allocation.agones.dev"]
   resources: ["gameservers", "gameserverallocations"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: herofishing-matchserver
+  name: service-reader
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]

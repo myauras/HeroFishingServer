@@ -13,7 +13,7 @@ gcloud auth login
 # tag使用game-server (之後建立防火牆規則的目標是這個tag)
 # node用2台就好
 # 機器類型使用e2-standard-4, 這是相對便宜的機器, 機器類型可以參考 https://cloud.google.com/compute/docs/general-purpose-machines
-gcloud container clusters create cluster-gameserver --zone=asia-east1-c --release-channel=regular --tags=game-server --scopes=gke-default --num-nodes=2 --enable-image-streaming --machine-type=e2-standard-4
+gcloud container clusters create cluster-gameserver --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=2 --enable-image-streaming --machine-type=e2-standard-4
 
 # 建立防火牆規則 
 gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 --target-tags game-server --description "Firewall to allow game server udp traffic"

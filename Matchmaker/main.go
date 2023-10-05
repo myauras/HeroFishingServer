@@ -59,6 +59,22 @@ func main() {
 	// 初始化MongoDB設定
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey)
 
+	// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
+	log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
+	for {
+		// 因為pod啟動後Loadbalancer並不會立刻就分配好ip(會有延遲) 所以每5秒取一次 直到取到ip才往下跑
+		time.Sleep(5 * time.Second) // 每5秒取一次ip
+		ip, getIPErr := getExternalIP()
+		if getIPErr != nil {
+			// 取得ip失敗
+			break
+		}
+		if ip != "" {
+			log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
+			break
+		}
+	}
+
 	// 偵聽TCP封包
 	src := ":" + *port
 	tcpListener, err := net.Listen("tcp", src)
@@ -68,13 +84,13 @@ func main() {
 	defer tcpListener.Close()
 	log.Infof("%s TCP server start and listening on %s.\n", logger.LOG_Main, src)
 
-	// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
-	setExternalIP()
-
 	// 初始化配房者
+	log.Infof("%s 初始化配房者.\n", logger.LOG_Main)
 	Receptionist.Init()
+	log.Infof("%s 初始化配房者完成.\n", logger.LOG_Main)
 
 	// tcp連線
+	log.Infof("%s MATCHMAKER啟動完成 .\n", logger.LOG_Main)
 	for {
 		conn, err := tcpListener.Accept()
 		if err != nil {
@@ -95,13 +111,13 @@ func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string) {
 	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
 }
 
-// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
-func setExternalIP() {
+// 取Loadbalancer分配給此pod的對外IP
+func getExternalIP() (string, error) {
 	ip, err := k8s.GetLoadBalancerExternalIP(myModule.NAMESPACE_MATCHERSERVER, myModule.MATCHMAKER)
 	if err != nil {
 		log.Errorf("%s GetLoadBalancerExternalIP error: %v.\n", logger.LOG_Main, err)
 	}
-	log.Infof("%s External IP: %s.\n", logger.LOG_Main, ip)
+	return ip, err
 }
 
 // 處理TCP封包

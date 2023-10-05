@@ -49,9 +49,9 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         - name: "MongoAPIPublicKey"
-          value: "rqjseyja"
-        - name: "MongoAPIPrivateKey"
-          value: "e8cc1224-f04b-46c7-aee0-19309dc499dc"
+          value: "rqjseyja" #之後要搬其他位置放
+        - name: "MongoAPIPrivateKey" 
+          value: "e8cc1224-f04b-46c7-aee0-19309dc499dc" #之後要搬其他位置放
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

@@ -24,7 +24,8 @@ make all
 # 再切到Realm/app all來建置版本, 此步驟是安裝最新版本module並push到app上
 make all
 # 部屬上App後, 可以使用function run來測試function 可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/functions/#std-label-call-function-from-realm-cli
-realm-cli function run --name=InitPlayerData
+realm-cli function run --name=GetServerTime
+realm-cli function run --name=PlayerVerify --args='{"Token":"test","Env":"Dev"}'
 
 
 # ====================其他重要說明文件===================
