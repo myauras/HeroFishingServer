@@ -14,10 +14,15 @@ REM 取得遊戲server的ip與port kubectl get services -n herofishing-matchserv
 @echo on
 
 kubectl delete namespace herofishing-matchserver
+@if ERRORLEVEL 1 exit /b 1
 kubectl create namespace herofishing-matchserver
+@if ERRORLEVEL 1 exit /b 1
 kubectl apply -f K8s_Role.yaml
+@if ERRORLEVEL 1 exit /b 1
 kubectl apply -f K8s_RoleBinding.yaml
+@if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Dev_Matchmaker.yaml
+@if ERRORLEVEL 1 exit /b 1
 
 @REM 建立k8s cluster的防火牆 以下這行如果本來就有建立防火牆就不需要執行 可以註解掉否則會報錯誤
 @REM gcloud compute firewall-rules create herofishing-matchmaker-firewall --allow tcp:32680 --target-tags herofishing --description "Firewall to allow Herofishing matchmaker TCP traffic"

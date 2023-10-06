@@ -13,6 +13,9 @@ COPY matchmaker/ .
 # 複製 herofishingGoModule 到 /go/src/herofishingGoModule
 COPY herofishingGoModule/ /go/src/herofishingGoModule/
 
+# 複製 Keys 到 /go/src/Keys
+COPY Keys/ /go/src/Keys/
+
 # 建置 matchmaker
 RUN GOOS=linux GOARCH=amd64 go build -o matchmaker .
 

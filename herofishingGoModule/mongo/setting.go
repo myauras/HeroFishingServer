@@ -8,6 +8,11 @@ var (
 
 const ()
 
+var EnvDBUri = map[string]string{
+	"Dev":     "mongodb+srv://%s:%s@cluster0.edk0n6b.mongodb.net/?retryWrites=true&w=majority", // 開發版
+	"Release": "???",                                                                           // 正式版
+}
+
 var AppEndpoint = map[string]string{
 	"Dev":     "https://asia-south1.gcp.data.mongodb-api.com/app/aurafortest-bikmm", // 開發版
 	"Release": "???",                                                                // 正式版
@@ -28,15 +33,28 @@ var EnvAppObjID = map[string]string{
 	"Release": "???",                      // 正式版
 }
 
-var DBName = map[string]string{
+var EnvDB = map[string]string{
 	"Dev": "herofishing", // 開發版
 }
-var ColName = map[string]string{
-	"player":        "player",
-	"playerCustom":  "playerCustom",
-	"playerState":   "playerState",
-	"playerHistory": "playerHistory",
-	"gameSetting":   "gameSetting",
-	"gameLog":       "gameLog",
-	"template":      "template",
+
+// Collection名稱列表結構
+type ColNameStruct struct {
+	Player        string
+	PlayerCustom  string
+	PlayerState   string
+	PlayerHistory string
+	GameSetting   string
+	GameLog       string
+	Template      string
+}
+
+// Collection名稱列表
+var ColName = ColNameStruct{
+	Player:        "player",
+	PlayerCustom:  "playerCustom",
+	PlayerState:   "playerState",
+	PlayerHistory: "playerHistory",
+	GameSetting:   "gameSetting",
+	GameLog:       "gameLog",
+	Template:      "template",
 }

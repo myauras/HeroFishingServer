@@ -11,6 +11,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	myModule "herofishingGoModule"
 	"herofishingGoModule/k8s"
 	"herofishingGoModule/mongo"
@@ -21,7 +22,7 @@ var SelfPodName string            // K8s上所屬的Pod名稱
 var Receptionist RoomReceptionist // 房間接待員
 
 func main() {
-	log.Infof("%s ==============MATCHMAKER START==============", logger.LOG_Main)
+	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
 
 	// 設定Port
 	port := flag.String("port", "32680", "The port to listen to tcp traffic on")
@@ -42,22 +43,20 @@ func main() {
 	if envSelfPodName := os.Getenv("MY_POD_NAME"); envSelfPodName != "" {
 		SelfPodName = envSelfPodName
 	}
-	// 設定API public Key
-	mongoAPIPublicKey := *flag.String("MongoAPIPublicKey", "", "Mongo API public key setting")
-	if envMongoAPIPublicKey := os.Getenv("MongoAPIPublicKey"); envMongoAPIPublicKey != "" {
-		mongoAPIPublicKey = envMongoAPIPublicKey
-	}
+	// 取得API public Key
+	mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
 	log.Infof("%s MongoAPIPublicKey: %s", logger.LOG_Main, mongoAPIPublicKey)
 
-	// 設定API private Key
-	mongoAPIPrivateKey := *flag.String("MongoAPIPrivateKey", "", "Mongo API private key setting")
-	if envMongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey"); envMongoAPIPrivateKey != "" {
-		mongoAPIPrivateKey = envMongoAPIPrivateKey
-	}
+	// 取得API private Key
+	mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
 	log.Infof("%s MongoAPIPrivateKey: %s", logger.LOG_Main, mongoAPIPrivateKey)
 
+	// 取得MongoDB帳密
+	mongoUser := os.Getenv("MongoUser")
+	mongoPW := os.Getenv("MongoPW")
+
 	// 初始化MongoDB設定
-	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey)
+	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
 	// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
 	log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
@@ -71,6 +70,9 @@ func main() {
 		}
 		if ip != "" {
 			log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
+			log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
+			setExternalID(ip) // 寫入對外ID到DB中
+			log.Infof("%s 寫入對外ID到DB完成.\n", logger.LOG_Main)
 			break
 		}
 	}
@@ -90,7 +92,7 @@ func main() {
 	log.Infof("%s 初始化配房者完成.\n", logger.LOG_Main)
 
 	// tcp連線
-	log.Infof("%s MATCHMAKER啟動完成 .\n", logger.LOG_Main)
+	log.Infof("%s ==============MATCHMAKER啟動完成============== .\n", logger.LOG_Main)
 	for {
 		conn, err := tcpListener.Accept()
 		if err != nil {
@@ -101,14 +103,28 @@ func main() {
 }
 
 // 初始化MongoDB設定
-func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string) {
+func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string, pw string) {
 	log.Infof("%s 初始化mongo開始", logger.LOG_Main)
 	mongo.Init(mongo.InitData{
 		Env:           Env,
 		APIPublicKey:  mongoAPIPublicKey,
 		APIPrivateKey: mongoAPIPrivateKey,
-	})
+	}, user, pw)
 	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
+}
+
+// 寫入對外ID到DB中
+func setExternalID(ip string) {
+	// 設定要更新的資料
+	data := bson.D{
+		{Key: "matchmakerIP", Value: ip},
+	}
+	// 更新資料
+	_, err := mongo.SetDocByID(mongo.ColName.GameSetting, "GameState", data)
+	if err != nil {
+		log.Errorf("%s SetExternalID失敗: %v", logger.LOG_Main, err)
+		return
+	}
 }
 
 // 取Loadbalancer分配給此pod的對外IP

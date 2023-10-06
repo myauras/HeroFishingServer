@@ -1,53 +1,58 @@
 package mongo
 
+import (
+	"context"
+	"fmt"
+	logger "herofishingGoModule/logger"
+	"time"
+
+	log "github.com/sirupsen/logrus"
+	mongoDriver "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+var (
+	DB     *mongoDriver.Database
+	Client *mongoDriver.Client
+)
+
 type InitData struct {
 	Env           string
 	APIPublicKey  string
 	APIPrivateKey string
 }
 
-func Init(data InitData) {
+func Init(data InitData, user string, pw string) {
 	Env = data.Env
 	APIPublicKey = data.APIPublicKey
 	APIPrivateKey = data.APIPrivateKey
+	connToMongoDB(user, pw) // 連線MongoDB
 }
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"go.mongodb.org/mongo-driver/bson"
-// 	"go.mongodb.org/mongo-driver/mongo"
-// 	"go.mongodb.org/mongo-driver/mongo/options"
-// 	"log"
-// 	"time"
-// )
+// 連線MongoDB
+func connToMongoDB(user string, pw string) error {
+	if Client != nil {
+		return fmt.Errorf("MongoDB client已經被建立, 不可重複建立")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	serverAPIOpt := options.ServerAPI(options.ServerAPIVersion1)
+	uri := fmt.Sprintf(EnvDBUri[Env], user, pw)
+	clientOpt := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPIOpt)
+	Client, err := mongoDriver.Connect(ctx, clientOpt)
+	if err != nil {
+		log.Errorf("%s 連線Mongo DB失敗: %v", logger.LOG_Mongo, err)
+		return err
+	}
+	DB = Client.Database(EnvDB[Env])
+	return nil
+}
 
-// func Init() {
-
-// 	// 連線MongoDB
-// 	connStr := "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509&retryWrites=true&w=majority"
-// 	clientOpt := options.Client().ApplyURI(connStr)
-// 	// 建立MongoDB client
-// 	client, err := mongo.NewClient(clientOpt)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	// 設定context以及連接到MongoDB
-// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-// 	defer cancel()
-// 	err = client.Connect(ctx)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer client.Disconnect(ctx)
-
-// 	// 呼叫Atlas function
-// 	// 假設有一個叫做 "myFunction" 的function
-// 	database := client.Database("your_database_name")
-// 	result, err := database.RunCommand(ctx, bson.D{{"eval", "myFunction()"}}).DecodeBytes()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	fmt.Println(result.String())
-// }
+// 斷開與MongoDB的連線
+func DisconnectFromMongoDB() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if Client != nil {
+		Client.Disconnect(ctx)
+	}
+}

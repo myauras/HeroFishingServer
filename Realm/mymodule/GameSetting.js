@@ -1,6 +1,7 @@
 module.exports = {
-    DBName: Object.freeze({
-        herofishing: "herofishing",
+    EnvDB: Object.freeze({
+        Dev: "herofishing",// 開發版
+        Release: "???",// 正式版
     }),
     // DB集合
     ColName: Object.freeze({
