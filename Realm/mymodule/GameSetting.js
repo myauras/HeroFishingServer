@@ -3,6 +3,11 @@ module.exports = {
         Dev: "herofishing",// 開發版
         Release: "???",// 正式版
     }),
+    // 遊戲資料Json表
+    JsonName: Object.freeze({
+        GameSetting: "GameSetting",
+        Hero: "Hero",
+    }),
     // DB集合
     ColName: Object.freeze({
         player: "player",

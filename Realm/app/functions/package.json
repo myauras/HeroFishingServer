@@ -9,6 +9,7 @@
   "author": "scoz",
   "license": "ISC",
   "dependencies": {
-    "aurafortest-herofishing": "^1.0.64"
+    "@google-cloud/pubsub": "^4.0.6",
+    "aurafortest-herofishing": "^1.0.72"
   }
 }

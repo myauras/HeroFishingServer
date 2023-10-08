@@ -1,11 +1,14 @@
 {
   "name": "aurafortest-herofishing",
-  "version": "1.0.64",
+  "version": "1.0.75",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "scoz",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/pubsub": "^4.0.6"
+  }
 }

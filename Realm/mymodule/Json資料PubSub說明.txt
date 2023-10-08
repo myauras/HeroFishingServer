@@ -1,0 +1,14 @@
+# 使用Cloud Pub/Sub讓golang server取Json資料，以下是Pub/Sub使用方法與說明
+
+# 使用方法:
+# 1. 要安裝npm install @google-cloud/pubsub
+# 2. gcp身分驗證 gcloud auth application-default login
+# 3. gcloud pubsub topics create [topic名稱]
+# 4. 發布模組時(make all)會順帶發布 如果只要單純publish使用指令來發布 node publish.js(一般不會這樣做, 不然atlas function與go server那邊取的json資料會不同步)
+
+# 說明:
+# Cloud Pub/Sub 是一個分布式消息佇列服務，它允許不同的應用程序在 Google Cloud 中進行異步通信。當使用 Cloud Pub/Sub 時，消息的傳遞是通過網路進行的
+# 分布式架構：Cloud Pub/Sub 部署在 Google Cloud Platform 中的多個數據中心，具有高度可用性和耐用性。這意味著即使某個數據中心出現故障，消息仍然可以被傳遞到其他數據中心，從而降低了延遲和數據丟失的風險。
+# 自動擴展：Cloud Pub/Sub 可以根據消息流量的變化自動擴展，以處理大量消息。這意味著在高負載時，它可以動態調整資源，以確保消息的及時處理，並在不需要時節省資源。
+# 快速且低延遲：Cloud Pub/Sub 設計用於實現低延遲的消息傳遞。當消息發送到主題（Topic）時，它可以幾乎立即分發給所有訂閱該主題的用戶或應用程序。
+# 雖然消息的傳遞涉及網路通信，但Cloud Pub/Sub通常能夠以極低的延遲將消息分發到訂閱方。它的效率和低延遲是因為Google Cloud Platform 的高度網路優化和分佈式架構。

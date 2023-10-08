@@ -7,7 +7,7 @@ const topicName = 'herofishing-json-topic';
 
 // 通用的發布函數
 async function publishJsonData(jsonFileName) {
-  const jsonData = require(`./${jsonFileName}.json`);
+  const jsonData = require(`./JsonData/${jsonFileName}.json`);
   const dataBuffer = Buffer.from(JSON.stringify(jsonData));
 
   const messageId = await pubsub.topic(topicName).publishMessage({
