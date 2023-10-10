@@ -1,16 +1,39 @@
-FROM golang:1.15.13 as builder
-WORKDIR /go/src/matchgame
+# 使用 Go 的官方 1.15.13 版本來建置購執行檔
+FROM golang:1.16.0 as builder
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o server .
+# 設置工作目錄
+WORKDIR /src/matchgame
 
-FROM alpine:3.11
+# 設置 Go 模組環境變數
+ENV GO111MODULE=on
 
-RUN adduser -D -u 1000 server
-COPY --from=builder /go/src/game/server /home/server/server
-# COPY key_no_upload /home/server/key_no_upload
-RUN chown -R server /home/server && \
-    chmod o+x /home/server/server
+# 複製 matchgame 的內容
+COPY matchgame/ .
+
+# 複製 herofishingGoModule 到 /src/herofishingGoModule
+COPY herofishingGoModule/ /src/herofishingGoModule/
+# 建置 matchgame
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o matchgame .
+
+
+# 使用 alpine版本建置server image
+FROM golang:alpine
+
+# 建立一個server user
+RUN adduser -D -u 1000 serverUser
+# 將建置環境的執行檔複製到server環境中
+COPY --from=builder /src/matchgame/matchgame /home/matchgame/
+# 複製 Keys 到 /home/Keys
+COPY Keys/ /home/Keys/
+
+RUN chown -R serverUser /home/matchgame/matchgame && \
+    chmod o+x /home/matchgame/matchgame
 
 USER 1000
-ENTRYPOINT ["/home/server/server"]
+
+# 設置執行指令
+ENTRYPOINT ["/home/matchgame/matchgame"]
+
+
+
+

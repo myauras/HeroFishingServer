@@ -3,7 +3,7 @@ package packet
 import (
 	"encoding/json"
 
-	logger "matchmaker/logger"
+	logger "matchgame/logger"
 
 	log "github.com/sirupsen/logrus"
 )

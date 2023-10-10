@@ -1,7 +1,7 @@
 package packet
 
 import (
-	logger "matchmaker/logger"
+	logger "matchgame/logger"
 
 	log "github.com/sirupsen/logrus"
 )

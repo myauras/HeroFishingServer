@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	myModule "herofishingGoModule"
 	"herofishingGoModule/k8s"
-	"herofishingGoModule/mongo"
+	mongo "herofishingGoModule/mongo"
 )
 
 var Env string                    // 環境版本
@@ -23,7 +23,6 @@ var Receptionist RoomReceptionist // 房間接待員
 
 func main() {
 	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
-
 	// 設定Port
 	port := flag.String("port", "32680", "The port to listen to tcp traffic on")
 	if envPort := os.Getenv("PORT"); envPort != "" {

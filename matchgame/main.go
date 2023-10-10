@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	myModule "herofishingGoModule"
+	// myModule "herofishingGoModule"
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
