@@ -176,7 +176,8 @@ func (r *room) AddPlayer(player *roomPlayer) bool {
 	return true
 }
 
-func (r *room) CreateGame() (bool, error) {
+// 建立遊戲
+func (r *room) CreateGame() error {
 	var createGameOK bool
 	var err error
 
@@ -189,7 +190,7 @@ func (r *room) CreateGame() (bool, error) {
 			"room": r,
 		}).Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
 		err = fmt.Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
-		return createGameOK, err
+		return err
 	}
 
 	log.WithFields(log.Fields{
@@ -229,7 +230,7 @@ func (r *room) CreateGame() (bool, error) {
 		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_ROOM)
 	}
 
-	return createGameOK, err
+	return err
 }
 
 // 以創房者的id來產生房名

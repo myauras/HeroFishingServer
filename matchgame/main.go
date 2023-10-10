@@ -6,21 +6,21 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	serverSDK "agones.dev/agones/pkg/sdk"
+	"agones.dev/agones/pkg/util/signals"
+	sdk "agones.dev/agones/sdks/go"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	myModule "herofishingGoModule"
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
 	"os"
 	"strings"
 	"time"
-
-	serverSDK "agones.dev/agones/pkg/sdk"
-	"agones.dev/agones/pkg/util/signals"
-	sdk "agones.dev/agones/sdks/go"
 )
 
 // 環境版本
@@ -30,7 +30,7 @@ const (
 )
 
 var connectionTokens []string // 連線驗證Token
-var Env string         // 環境版本
+var Env string                // 環境版本
 
 func main() {
 	go signalListen()

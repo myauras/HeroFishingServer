@@ -268,7 +268,26 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			return
 		}
 		// 建立遊戲房
-		player.room.CreateGame()
+		err := player.room.CreateGame()
+		if err != nil {
+			return
+		}
+		gs := player.room.gameServer
+		packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
+			CMD:    packet.CREATEROOM_REPLY,
+			PackID: pack.PackID,
+			Content: &packet.CreateRoomCMD_Reply{
+				PlayerIDs:      player.room.getPlayerIDs(),
+				MapID:          player.room.mapID,
+				GameServerIP:   gs.Status.Address,
+				GameServerPort: gs.Status.Ports[0].Port,
+				GameServerName: gs.ObjectMeta.Name,
+			},
+		})
+		if packErr != nil {
+			return
+		}
+
 	default:
 
 		log.WithFields(log.Fields{
