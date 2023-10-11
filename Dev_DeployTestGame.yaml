@@ -1,0 +1,20 @@
+apiVersion: "agones.dev/v1"
+kind: GameServer
+metadata:
+  name: test-matchgame
+  namespace: test-gameserver
+spec:
+  ports:
+  - name: default
+    containerPort: 7654
+    protocol: TCPUDP
+  template:
+    spec:
+      containers:
+      - name: test-matchgame
+        image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-game:latest
+        env:
+        - name: "PORT"
+          value: "7654"
+        - name: "Version"
+          value: "Dev"

@@ -1,5 +1,5 @@
-# 使用 Go 的官方 1.15.13 版本來建置購執行檔
-FROM golang:1.16.0 as builder
+# 使用Go特定版本來建置購執行檔
+FROM golang:1.21.0 as builder
 
 # 設置工作目錄
 WORKDIR /src/matchgame
@@ -12,6 +12,10 @@ COPY matchgame/ .
 
 # 複製 herofishingGoModule 到 /src/herofishingGoModule
 COPY herofishingGoModule/ /src/herofishingGoModule/
+
+# 下載建置需要的模組
+RUN go mod tidy
+RUN go mod download
 # 建置 matchgame
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o matchgame .
 

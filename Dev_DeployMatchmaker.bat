@@ -17,9 +17,9 @@ kubectl delete namespace herofishing-matchserver
 @if ERRORLEVEL 1 exit /b 1
 kubectl create namespace herofishing-matchserver
 @if ERRORLEVEL 1 exit /b 1
-kubectl apply -f K8s_Role.yaml
+kubectl apply -f Role.yaml
 @if ERRORLEVEL 1 exit /b 1
-kubectl apply -f K8s_RoleBinding.yaml
+kubectl apply -f Matchmaker_RoleBinding.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Dev_Matchmaker.yaml
 @if ERRORLEVEL 1 exit /b 1

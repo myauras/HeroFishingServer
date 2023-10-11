@@ -24,7 +24,7 @@ gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 
 # 使用helm安裝agones, 參考官方文件: https://agones.dev/site/docs/installation/install-agones/helm/
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
-helm install agones-release --namespace agones-system --create-namespace agones/agones
+helm install my-release --namespace agones-system --create-namespace agones/agones
 # 可以使用以下語法來查看部屬結果
 helm list -n agones-system # 使用命名空間查看helm部屬的內容
 kubectl get services -n agones-system # 使用命名空間查看k8s上的服務(agones-controller-service & agones-allocator-service就是agones服務)

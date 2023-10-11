@@ -17,6 +17,8 @@ COPY herofishingGoModule/ /home/herofishingGoModule/
 COPY Keys/ /home/
 
 # 建置 matchmaker
+RUN go mod tidy
+RUN go mod download
 RUN GOOS=linux GOARCH=amd64 go build -o matchmaker .
 
 # 設置執行指令

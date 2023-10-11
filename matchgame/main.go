@@ -33,8 +33,8 @@ var connectionTokens []string // 連線驗證Token
 var Env string                // 環境版本
 
 func main() {
+	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
 	go signalListen()
-
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
 	if ep := os.Getenv("PORT"); ep != "" {
 		port = &ep
@@ -43,12 +43,11 @@ func main() {
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
 	}
-
 	agonesSDK, err := sdk.NewSDK()
+
 	if err != nil {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
-
 	roomChan := make(chan *game.Room)
 
 	roomInit := false

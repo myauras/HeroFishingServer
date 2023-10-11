@@ -1,7 +1,3 @@
-docker build -t gcr.io/majampachinko-develop/majampachinko-game-server MajamPachinkoGame/
-docker push gcr.io/majampachinko-develop/majampachinko-game-server
-
-
 @echo off
 REM 可在powershell中執行.\批次檔名稱.bat
 REM Build Image並推上google artifact registry, google放image的地方)
