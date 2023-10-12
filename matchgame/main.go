@@ -33,7 +33,8 @@ var connectionTokens []string // 連線驗證Token
 var Env string                // 環境版本
 
 func main() {
-	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
+	log.SetOutput(os.Stdout) //設定log輸出方式
+	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
 	if ep := os.Getenv("PORT"); ep != "" {
@@ -62,7 +63,6 @@ func main() {
 				shutdownServer(agonesSDK)
 			}
 		}()
-
 		if !roomInit && gs.ObjectMeta.Labels["RoomName"] != "" {
 			log.Infof("%s Start room init!", logger.LOG_Main)
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
@@ -113,12 +113,12 @@ func main() {
 
 	// Agones伺服器健康檢查
 	go agonesHealthPin(agonesSDK, stopChan)
-
+	log.Infof("%s Set server as ready", logger.LOG_Main)
 	// 將此遊戲房伺服器狀態標示為Ready
 	if err := agonesSDK.Ready(); err != nil {
 		log.Fatalf("Could not send ready message")
 	}
-
+	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 	// 等拿到房間資料後才開啟socket連線
 	room := <-roomChan
 	log.Infof("%s Got room data", logger.LOG_Main)

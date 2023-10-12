@@ -16,14 +16,14 @@ spec:
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-game:latest
+            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.5
             resources:
               requests:
                 memory: "32Mi"
                 cpu: "10m"
               limits:
                 memory: "64Mi"
-                cpu: "20m"
+                cpu: "80m"
             env:
             - name: "PORT"
               value: "7654"

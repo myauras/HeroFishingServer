@@ -6,7 +6,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: test-gameserver
+  namespace: herofishing-gameserver
 roleRef:
   kind: Role
   name: agones-creater
@@ -18,11 +18,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: service-reader-binding
-  namespace: test-gameserver
+  namespace: herofishing-gameserver
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: test-gameserver
+  namespace: herofishing-gameserver
 roleRef:
   kind: Role
   name: service-reader
