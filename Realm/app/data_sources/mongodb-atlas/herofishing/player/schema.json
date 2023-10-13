@@ -26,6 +26,9 @@
         },
         "point": {
             "bsonType": "long"
+        },
+        "test": {
+            "bsonType": "string"
         }
     },
     "required": [
