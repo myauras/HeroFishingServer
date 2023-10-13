@@ -1,6 +1,16 @@
 [
     {
+        "name": "PlayerVerify",
+        "private": false,
+        "run_as_system": true
+    },
+    {
         "name": "Signin",
+        "private": false,
+        "run_as_system": true
+    },
+    {
+        "name": "SubTest",
         "private": false,
         "run_as_system": true
     },
@@ -21,16 +31,6 @@
     },
     {
         "name": "OnUserCreation",
-        "private": false,
-        "run_as_system": true
-    },
-    {
-        "name": "PlayerVerify",
-        "private": false,
-        "run_as_system": true
-    },
-    {
-        "name": "SubTest",
         "private": false,
         "run_as_system": true
     }
