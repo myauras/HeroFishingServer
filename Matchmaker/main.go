@@ -231,12 +231,21 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr string) {
 	createRoomCMD := packet.CreateRoomCMD{}
 	if ok := createRoomCMD.Parse(pack.Content); !ok {
-
-		log.Error("Parse CreateRoomCMD failed")
+		log.Infof("%s Parse CreateRoomCMD failed", logger.LOG_Main)
 		return
 	}
-	//還沒實作DB資料
+
+	var dbMap mongo.DBMap
+	err := mongo.GetDocByID(mongo.ColName.Map, createRoomCMD.DBMapID, &dbMap)
+	if err != nil {
+		log.Errorf("%s Failed to get dbmap doc: %v", logger.LOG_Main, err)
+		return
+	}
+
+	log.Infof("%s dbMap: %+v", logger.LOG_Main, dbMap)
+
 	player.id = createRoomCMD.CreaterID
+	player.mapID = dbMap.ID
 
 	canCreate := true
 	if !canCreate {
@@ -252,13 +261,10 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	}
 
 	// 根據DB地圖設定來開遊戲房
-	var dbMap dbMapData
-
-	switch dbMap.matchType {
-	case setting.MATCH_QUICK: // 快速配對
+	switch dbMap.MatchType {
+	case myModule.MatchType.Quick: // 快速配對	
 		player.room = Receptionist.JoinRoom(dbMap, player)
 		if player.room == nil {
-
 			log.WithFields(log.Fields{
 				"dbMap":  dbMap,
 				"player": player,
@@ -291,7 +297,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	default:
 
 		log.WithFields(log.Fields{
-			"dbMap.matchType": dbMap.matchType,
+			"dbMap.matchType": dbMap.MatchType,
 			"remoteAddr":      remoteAddr,
 		}).Errorf("%s Undefined match type", logger.LOG_Main)
 

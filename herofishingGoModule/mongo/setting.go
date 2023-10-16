@@ -37,24 +37,47 @@ var EnvDB = map[string]string{
 	"Dev": "herofishing", // 開發版
 }
 
+const (
+	MATCH_QUICK = "Quick"
+)
+
 // Collection名稱列表結構
 type ColNameStruct struct {
+	// 玩家資料
 	Player        string
 	PlayerCustom  string
 	PlayerState   string
 	PlayerHistory string
-	GameSetting   string
-	GameLog       string
-	Template      string
+
+	// 遊戲設定
+	GameSetting string
+	GameLog     string
+	Template    string
+	Map         string
 }
 
 // Collection名稱列表
 var ColName = ColNameStruct{
+
+	// 玩家資料
 	Player:        "player",
 	PlayerCustom:  "playerCustom",
 	PlayerState:   "playerState",
 	PlayerHistory: "playerHistory",
-	GameSetting:   "gameSetting",
-	GameLog:       "gameLog",
-	Template:      "template",
+
+	// 遊戲設定
+	GameSetting: "gameSetting",
+	GameLog:     "gameLog",
+	Template:    "template",
+	Map:         "map",
+}
+
+// DB地圖資料
+type DBMap struct {
+	ID           string `bson:"_id"`
+	MatchType    string `bson:"matchType"`
+	JsonMapID    string `bson:"jsonMapID"`
+	Bet          int32  `bson:"bet"`
+	BetThreshold int64  `bson:"betThreshold"`
+	Enable       bool   `bson:"enable"`
 }

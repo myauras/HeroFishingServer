@@ -5,11 +5,6 @@ const (
 	DISCONNECT_CHECK_INTERVAL_SECS = 60 // 每X秒做玩家斷線檢測
 )
 
-// 配對類型
-const (
-	MATCH_QUICK = "Quick"
-)
-
 // 房間參數
 const (
 	RETRY_CREATE_GAMESERVER_TIMES = 2 // 開房失敗時重試X次

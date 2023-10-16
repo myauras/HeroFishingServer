@@ -11,13 +11,8 @@ REM 取得遊戲server的ip與port kubectl get services -n herofishing-matchserv
 @REM 先安裝gke工具 gcloud components install gke-gcloud-auth-plugin
 @REM gcloud container clusters get-credentials YOUR_CLUSTER_NAME --zone YOUR_ZONE
 
-
 @echo on
 
-kubectl delete namespace herofishing-matchserver
-@if ERRORLEVEL 1 exit /b 1
-kubectl create namespace herofishing-matchserver
-@if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Role.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Matchmaker_RoleBinding.yaml

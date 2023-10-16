@@ -1,18 +1,18 @@
 package main
 
 import (
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	logger "matchmaker/logger"
 	"matchmaker/setting"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
-
-	logger "matchmaker/logger"
 
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
+	mongo "herofishingGoModule/mongo"
 )
 
 type RoomReceptionist struct {
@@ -43,11 +43,6 @@ type ConnectionTCP struct {
 	Conn    net.Conn      // TCP連線
 	Encoder *json.Encoder // 連線編碼
 	Decoder *json.Decoder // 連線解碼
-}
-
-type dbMapData struct {
-	mapID     string `bson:"id"`
-	matchType string `bson:"matchType"`
 }
 
 func (rr *RoomReceptionist) Init() {
@@ -96,10 +91,10 @@ func (r *RoomReceptionist) getUsher(mapID string) *Usher {
 }
 
 // 加入房間-快速房
-func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
+func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room {
 
 	// 取得房間接待員
-	usher := r.getUsher(dbMap.mapID)
+	usher := r.getUsher(dbMap.ID)
 
 	// 找等候中的房間
 	for i, _ := range usher.rooms {
@@ -114,26 +109,31 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 
 		log.WithFields(log.Fields{
 			"playerID":  player.id,
-			"dbMapID":   dbMap.mapID,
+			"dbMapID":   dbMap.ID,
 			"roomIdx":   roomIdx,
 			"room":      room,
 			"dbMapData": dbMap,
 		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
+
+		log.Infof("%s 加入房間= %+v", logger.LOG_Main, room)
 		return room
 	}
 
+	log.Infof("%s 找不到可加入的房間, 創建一個新房間: %+v", logger.LOG_Main, dbMap)
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
-		mapID:      dbMap.mapID,
-		matchType:  dbMap.matchType,
+		mapID:      dbMap.ID,
+		matchType:  dbMap.MatchType,
 		maxPlayer:  setting.MAX_PLAYER,
 		players:    nil,
 		creater:    nil,
 		createTime: &newCreateTime,
 	}
 	// 設定玩家所在地圖
-	player.mapID = dbMap.mapID
+	player.mapID = dbMap.ID
+	// 設定玩家為開房者
+	newRoom.creater = player
 	// 開房者加入此新房
 	newRoom.AddPlayer(player)
 	// 將新房加到房間清單中
@@ -143,7 +143,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap dbMapData, player *roomPlayer) *room {
 
 	log.WithFields(log.Fields{
 		"playerID":   player.id,
-		"waitStr":    dbMap.mapID,
+		"dbMapID":    dbMap.ID,
 		"roomIdx":    roomIdx,
 		"room":       newRoom,
 		"dbRoomData": dbMap,
@@ -208,6 +208,7 @@ func (r *room) CreateGame() error {
 			createGameOK = true
 			break
 		}
+		log.Errorf("%s CreateGameServer第%v次失敗: %v", logger.LOG_Main, i, err)
 		<-timer.C
 	}
 	timer.Stop()
@@ -215,14 +216,12 @@ func (r *room) CreateGame() error {
 	// 寫入建立遊戲房結果Log
 	if createGameOK {
 		if retryTimes > 0 {
-
 			log.WithFields(log.Fields{
 				"retryTimes": retryTimes,
 				"error:":     err.Error(),
 			}).Infof("%s Create gameServer with retry: \n", logger.LOG_ROOM)
 		}
 	} else {
-
 		log.WithFields(log.Fields{
 			"retryTimes": setting.RETRY_CREATE_GAMESERVER_TIMES,
 			"error:":     err.Error(),
@@ -233,20 +232,18 @@ func (r *room) CreateGame() error {
 	return err
 }
 
+var counter int64 // 房間名命名計數器
 // 以創房者的id來產生房名
 func (r *room) generateRoomName() (string, bool) {
-	ok := false
 	var roomName string
 	if r.creater == nil {
-
-		log.Errorf("%s Generating room name failed, creater is nil", logger.LOG_ROOM)
+		log.Println("Generating room name failed, creater is nil")
 		return roomName, false
 	}
-	md5Data := []byte(r.creater.id + time.Now().String())
-	roomName = fmt.Sprintf("%x", md5.Sum(md5Data))
-	roomName += "_" + time.Now().Format(time.RFC3339) //結尾加入 _時間 做為房間名
-
-	return roomName, ok
+	newCounterValue := atomic.AddInt64(&counter, 1)
+	// Generate room name
+	roomName = fmt.Sprintf("%s_%d_%s", r.creater.id, newCounterValue, time.Now().Format("20060102T150405"))
+	return roomName, true
 }
 func (r *room) getPlayerIDs() []string {
 	ids := []string{}

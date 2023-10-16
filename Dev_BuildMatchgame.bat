@@ -18,11 +18,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchgame\g
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======build image=======
-docker build --no-cache -f matchgame/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.5 .
+docker build --no-cache -f matchgame/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.6 .
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======push image=======
-docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.5
+docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.6
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======change go.mod back to local setting=======

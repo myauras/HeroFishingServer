@@ -15,3 +15,14 @@ const (
 	ENV_DEV     = "Dev"
 	ENV_RELEASE = "Release"
 )
+
+// 配對類型結構
+type MatchTypeStruct struct {
+	Quick string // 快速配對
+	Test  string // 測試房
+}
+// 配對類型
+var MatchType = MatchTypeStruct{
+	Quick: "Quick", // 快速配對
+	Test:  "Test",  // 測試房
+}

@@ -1,5 +1,20 @@
 [
     {
+        "name": "GetServerTime",
+        "private": false,
+        "run_as_system": true
+    },
+    {
+        "name": "InitPlayerData",
+        "private": false,
+        "run_as_system": true
+    },
+    {
+        "name": "OnUserCreation",
+        "private": false,
+        "run_as_system": true
+    },
+    {
         "name": "PlayerVerify",
         "private": false,
         "run_as_system": true
@@ -16,21 +31,6 @@
     },
     {
         "name": "UpdateOnlineTime",
-        "private": false,
-        "run_as_system": true
-    },
-    {
-        "name": "GetServerTime",
-        "private": false,
-        "run_as_system": true
-    },
-    {
-        "name": "InitPlayerData",
-        "private": false,
-        "run_as_system": true
-    },
-    {
-        "name": "OnUserCreation",
         "private": false,
         "run_as_system": true
     }
