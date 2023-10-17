@@ -8,6 +8,6 @@ spec:
   policy:
     type: Buffer
     buffer:
-      bufferSize: 2 #預熱最少2個gameserver(pod)數量
-      minReplicas: 2 #這是自動縮放的下限。也就是說，無論負載多低，Fleet都會維護至少5個GameServer Pods
+      bufferSize: 1 #預熱最少X個gameserver(pod)數量
+      minReplicas: 1 #這是自動縮放的下限。也就是說，無論負載多低，Fleet都會維護至少X個GameServer Pods
       maxReplicas: 10 #這是自動縮放的上限。即使負載增加，自動擴展的gameserver(pod)也不會超過這個數量

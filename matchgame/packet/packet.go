@@ -37,8 +37,7 @@ func ReadPack(decoder *json.Decoder) (Pack, error) {
 	// 	"error":   packet.ErrMsg,
 	// }).Infof("%s Read: %s", logger.LOG_Pack, packet.CMD)
 	if err != nil {
-		if err.Error() == "EOF" {
-			//discoonect
+		if err.Error() == "EOF" { // 已經斷線
 		} else {
 			// 寫LOG
 			log.WithFields(log.Fields{

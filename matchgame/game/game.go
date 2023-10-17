@@ -7,9 +7,9 @@ import (
 
 const CHAN_BUFFER = 4
 
-var Env string          // 環境版本
-var room Room                  // 房間
-var UPDATE_INTERVAL_MS float64 // 每X毫秒更新一次
+var Env string                       // 環境版本
+var room Room                        // 房間
+var UPDATE_INTERVAL_MS float64 = 200 // 每X毫秒更新一次
 
 type DBMap struct {
 	ID     string // DB文件ID

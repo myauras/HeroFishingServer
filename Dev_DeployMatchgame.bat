@@ -3,10 +3,6 @@
 
 call Dev_SwitchProject.bat
 @if ERRORLEVEL 1 exit /b 1
-kubectl apply -f Role.yaml
-@if ERRORLEVEL 1 exit /b 1
-kubectl apply -f Matchgame_RoleBinding.yaml
-@if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Dev_fleet.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Dev_fleetautoscaler.yaml

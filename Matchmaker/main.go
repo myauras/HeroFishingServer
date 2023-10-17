@@ -262,7 +262,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 	// 根據DB地圖設定來開遊戲房
 	switch dbMap.MatchType {
-	case myModule.MatchType.Quick: // 快速配對	
+	case myModule.MatchType.Quick: // 快速配對
 		player.room = Receptionist.JoinRoom(dbMap, player)
 		if player.room == nil {
 			log.WithFields(log.Fields{
@@ -310,6 +310,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 // 斷線玩家偵測
 func disconnectCheck(p *roomPlayer) {
+	time.Sleep(setting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second) // 等待後開始跑斷線檢測迴圈
 	timer := time.NewTicker(setting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second)
 	for {
 		<-timer.C

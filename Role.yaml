@@ -1,13 +1,14 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  namespace: herofishing-gameserver
-  name: agones-creater
+  name: gameserver-control
 rules:
-- apiGroups: ["agones.dev", "allocation.agones.dev"]
-  resources: ["gameservers", "gameserverallocations"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["", "agones.dev", "allocation.agones.dev"]
+  resources: ["pods", "gameserverallocations", "gameservers"]
+  verbs: ["get", "list", "create"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
