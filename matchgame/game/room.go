@@ -2,6 +2,8 @@ package game
 
 import (
 	"errors"
+	log "github.com/sirupsen/logrus"
+	mongo "herofishingGoModule/mongo"
 	logger "matchgame/logger"
 	"matchgame/packet"
 	"net"
@@ -10,8 +12,6 @@ import (
 	"runtime/pprof"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const PLAYER_NUMBER int = 4 //房間最大玩家數量
@@ -27,34 +27,70 @@ const (
 const MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
 
 type Room struct {
-	RoomName  string    // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	gameState GameState // 遊戲狀態
-
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引代表玩家座位
-	// 2. 座位無關順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
-	players [PLAYER_NUMBER]Player // 玩家陣列
-
-	DBmap                  DBMap     // DB地圖設定
-	ServerIP               string    // ServerIP
-	ServerPort             int       // ServerPort
-	PassSecs               float64   // 遊戲開始X秒
-	MaxAllowDisconnectSecs float64   // 最長允許玩家斷線秒數
-	ErrorLogs              []string  // ErrorLogs
-	lastChangeStateTime    time.Time // 上次更新房間狀態時間
+	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
+	players                [PLAYER_NUMBER]Player // 玩家陣列
+	RoomName               string                // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	gameState              GameState             // 遊戲狀態
+	DBMatchgame            *mongo.DBMatchgame    // DB遊戲房資料
+	DBmap                  *mongo.DBMap          // DB地圖設定
+	PassSecs               float64               // 遊戲開始X秒
+	MaxAllowDisconnectSecs float64               // 最長允許玩家斷線秒數
+	ErrorLogs              []string              // ErrorLogs
+	lastChangeStateTime    time.Time             // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
 }
 
-// 初始化房間
-func (r *Room) Init(roomName string, dbMap DBMap) {
+const CHAN_BUFFER = 4
+
+var Env string                       // 環境版本
+var room Room                        // 房間
+var UPDATE_INTERVAL_MS float64 = 200 // 每X毫秒更新一次
+
+func InitGameRoom(dbMapID string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
+	if room.RoomName != "" {
+		return
+	}
+
+	if UPDATE_INTERVAL_MS <= 0 {
+		log.Errorf("%s Error Setting UDP Update interval", logger.LOG_Room)
+		UPDATE_INTERVAL_MS = 200
+	}
+
+	// 依據dbMapID從DB中取dbMap設定
+	var dbMap mongo.DBMap
+	err := mongo.GetDocByID(mongo.ColName.Map, dbMapID, &dbMap)
+	if err != nil {
+		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤", logger.LOG_Room)
+	}
+
+	// 設定dbMatchgame資料
+	var dbMatchgame mongo.DBMatchgame
+	dbMatchgame.ID = roomName
+	dbMatchgame.CreatedAt = time.Now()
+	dbMatchgame.DBMapID = dbMapID
+	dbMatchgame.IP = ip
+	dbMatchgame.Port = port
+	dbMatchgame.NodeName = nodeName
+	dbMatchgame.PodName = podName
+	dbMatchgame.MatchmakerPodName = matchmakerPodName
 
 	// 初始化房間設定
-	r.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
-	r.PassSecs = 0
+	room.RoomName = roomName
+	room.gameState = Init
+	room.DBmap = &dbMap
+	room.DBMatchgame = &dbMatchgame
+	room.PassSecs = 0
+	room.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
 
-	// 初始化DB中的地圖設定
-	r.RoomName = roomName
-	r.DBmap = dbMap
+	// 這裡之後要加房間初始化Log到DB
+
+	log.Infof("%s Init room", logger.LOG_Room)
+	roomChan <- &room
+}
+func (r *Room) WriteGameErrorLog(log string) {
+	r.ErrorLogs = append(r.ErrorLogs, log)
 }
 
 // 玩家加入房間 成功時回傳true

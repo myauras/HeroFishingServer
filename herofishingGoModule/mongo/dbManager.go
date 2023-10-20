@@ -41,3 +41,23 @@ func SetDocByID(col string, id string, updateData bson.D) (*mongoDriver.UpdateRe
 
 	return result, nil
 }
+
+// 新增文件
+func AddDocByBsonD(col string, addData bson.D) (*mongoDriver.InsertOneResult, error) {
+
+	result, err := DB.Collection(col).InsertOne(context.TODO(), addData)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// 新增文件
+func AddDocByStruct(col string, addData interface{}) (*mongoDriver.InsertOneResult, error) {
+	result, err := DB.Collection(col).InsertOne(context.TODO(), addData)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

@@ -241,7 +241,6 @@ func (r *room) generateRoomName() (string, bool) {
 		return roomName, false
 	}
 	newCounterValue := atomic.AddInt64(&counter, 1)
-	// Generate room name
 	roomName = fmt.Sprintf("%s_%d_%s", r.creater.id, newCounterValue, time.Now().Format("20060102T150405"))
 	return roomName, true
 }

@@ -6,21 +6,22 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	serverSDK "agones.dev/agones/pkg/sdk"
-	"agones.dev/agones/pkg/util/signals"
-	sdk "agones.dev/agones/sdks/go"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
-	// myModule "herofishingGoModule"
+	mongo "herofishingGoModule/mongo"
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
 	"os"
 	"strings"
 	"time"
+
+	serverSDK "agones.dev/agones/pkg/sdk"
+	"agones.dev/agones/pkg/util/signals"
+	sdk "agones.dev/agones/sdks/go"
 )
 
 // 環境版本
@@ -54,7 +55,7 @@ func main() {
 	roomInit := false
 	var matchmakerPodName string
 	var dbMapID string
-	// var gsLoadDone *serverSDK.GameServer
+	var myGameServer *serverSDK.GameServer
 	var playerIDs [setting.PLAYER_NUMBER]string
 	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		defer func() {
@@ -83,16 +84,17 @@ func main() {
 			// 	return
 			// }
 			roomInit = true
-			// gsLoadDone = gs
+			myGameServer = gs
 			roomName := gs.ObjectMeta.Labels["RoomName"]
-			serverName := gs.ObjectMeta.Name
+			podName := gs.ObjectMeta.Name
 			log.Infof("%s ==============InitGameRoom==============", logger.LOG_Main)
 			log.Infof("%s MatchmakerPodName: %s", logger.LOG_Main, matchmakerPodName)
-			log.Infof("%s ServerName: %s", logger.LOG_Main, serverName)
+			log.Infof("%s PodName: %s", logger.LOG_Main, podName)
 			log.Infof("%s RoomName: %s", logger.LOG_Main, roomName)
 			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, pIDs)
-
-			game.InitGameRoom(serverName, dbMapID, roomName, roomChan)
+			nodeName := "test"
+			matchmakerPodName := "test"
+			game.InitGameRoom(dbMapID, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
 			log.Infof("%s Init Game Room Success", logger.LOG_Main)
 		} else {
 			if matchmakerPodName != "" && gs.ObjectMeta.Labels["MatchmakerPodName"] != "" && matchmakerPodName != gs.ObjectMeta.Labels["MatchmakerPodName"] {
@@ -128,7 +130,8 @@ func main() {
 	log.Infof("%s Open TCP Connection", logger.LOG_Main)
 	go openConnectTCP(agonesSDK, stopChan, ":"+*port, room)
 	// go OpenConnectUDP(agonesSDK, stop, ":"+*port, room)
-	// FirebaseFunction.CreateGameRoomByRoomName(gsLoadDone.Status.Address, gsLoadDone.Status.Ports[0].Port, gsLoadDone.ObjectMeta.Labels["roomName"], playerIDs, dbMapID, gsLoadDone.ObjectMeta.Name)
+	// 寫入DBMatchgame
+	writeMatchgameToDB(*room.DBMatchgame)
 
 	// 開始遊戲房主循環
 	room.StartRun(stopChan, endGameChan)
@@ -149,6 +152,13 @@ func main() {
 	<-stopChan
 
 	shutdownServer(agonesSDK) // 關閉Server
+}
+func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
+	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, matchgame)
+	if err != nil {
+		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Main, err)
+		return
+	}
 }
 
 // 偵測SIGTERM/SIGKILL的終止訊號，偵測到就刪除遊戲房資料並寫log
