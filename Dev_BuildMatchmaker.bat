@@ -10,7 +10,7 @@ REM 如果puch image發生錯誤可以跑以下重新登入跟認證流程試試
 
 @echo on
 
-REM =======check docker is running=======
+REM =======Check docker is running=======
 @echo off
 tasklist /FI "IMAGENAME eq Docker Desktop.exe" 2>NUL | find /I /N "Docker Desktop.exe">NUL
 if "%ERRORLEVEL%"=="0" (
@@ -21,21 +21,21 @@ if "%ERRORLEVEL%"=="0" (
 )
 @echo on
 
-REM =======change go.mod for docker setting=======
+REM =======Change go.mod for docker setting=======
 powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace 'replace herofishingGoModule => ../herofishingGoModule // for local', '// replace herofishingGoModule => ../herofishingGoModule // for local' } | Set-Content matchmaker\go.mod"
 @if ERRORLEVEL 1 exit /b 1
 powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace '// replace herofishingGoModule => /home/herofishingGoModule // for docker', 'replace herofishingGoModule => /home/herofishingGoModule // for docker' } | Set-Content matchmaker\go.mod"
 @if ERRORLEVEL 1 exit /b 1
 
-REM =======build image=======
-docker build --no-cache -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.14 .
+REM =======Build image=======
+docker build --no-cache -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.17 .
 @if ERRORLEVEL 1 exit /b 1
 
-REM =======push image=======
-docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.14
+REM =======Push image=======
+docker push asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.17
 @if ERRORLEVEL 1 exit /b 1
 
-REM =======change go.mod back to local setting=======
+REM =======Change go.mod back to local setting=======
 powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace '// replace herofishingGoModule => ../herofishingGoModule // for local', 'replace herofishingGoModule => ../herofishingGoModule // for local' } | Set-Content matchmaker\go.mod"
 @if ERRORLEVEL 1 exit /b 1
 powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\go.mod) | ForEach-Object { $_ -replace 'replace herofishingGoModule => /home/herofishingGoModule // for docker', '// replace herofishingGoModule => /home/herofishingGoModule // for docker' } | Set-Content matchmaker\go.mod"

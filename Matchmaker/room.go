@@ -25,13 +25,14 @@ type Usher struct {
 	lastJoinRoomIdx int     // 上一次加房索引，記錄此值避免每次找房間都是從第一間開始找
 }
 type room struct {
-	gameServer *agonesv1.GameServer
-	dbMapID    string        // DB地圖ID
-	matchType  string        // 配對類型
-	maxPlayer  int           //最大玩家數
-	players    []*roomPlayer //房間內的玩家
-	creater    *roomPlayer   //開房者
-	createTime *time.Time    //開房時間
+	gameServer    *agonesv1.GameServer
+	dbMapID       string        // DB地圖ID
+	dbMatchgameID string        // 由Matchmaker產生，格視為[玩家ID]_[累加數字]_[日期時間]
+	matchType     string        // 配對類型
+	maxPlayer     int           //最大玩家數
+	players       []*roomPlayer //房間內的玩家
+	creater       *roomPlayer   //開房者
+	createTime    *time.Time    //開房時間
 }
 type roomPlayer struct {
 	id      string        // 玩家ID
@@ -81,12 +82,12 @@ func (p *roomPlayer) LeaveRoom() {
 	p.room = nil
 }
 
-func (r *RoomReceptionist) getUsher(mapID string) *Usher {
-	usher, ok := r.quickRoomUshers[mapID]
+func (r *RoomReceptionist) getUsher(dbMapID string) *Usher {
+	usher, ok := r.quickRoomUshers[dbMapID]
 	if !ok {
 		newUsher := Usher{}
-		r.quickRoomUshers[mapID] = &newUsher
-		usher = r.quickRoomUshers[mapID]
+		r.quickRoomUshers[dbMapID] = &newUsher
+		usher = r.quickRoomUshers[dbMapID]
 	}
 	return usher
 }
@@ -194,6 +195,7 @@ func (r *room) CreateGame() error {
 		return err
 	}
 
+	r.dbMatchgameID = roomName
 	log.WithFields(log.Fields{
 		"room":     r,
 		"roomName": roomName,

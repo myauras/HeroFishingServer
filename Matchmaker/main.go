@@ -254,8 +254,8 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			CMD:    packet.CREATEROOM_REPLY,
 			PackID: pack.PackID,
 			Content: &packet.CreateRoomCMD_Reply{
-				GameServerIP:   "",
-				GameServerPort: -1,
+				IP:   "",
+				Port: -1,
 			},
 			ErrMsg: "創建房間失敗原因",
 		})
@@ -274,7 +274,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			sendCreateRoomCMD_Reply(*player, pack, "Join quick match room failed")
 			return
 		}
-		// 建立遊戲房
+		// 建立遊戲(Matchgame Server)
 		err := player.room.CreateGame()
 		if err != nil {
 			return
@@ -284,11 +284,13 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			CMD:    packet.CREATEROOM_REPLY,
 			PackID: pack.PackID,
 			Content: &packet.CreateRoomCMD_Reply{
-				PlayerIDs:      player.room.getPlayerIDs(),
-				DBMapID:        player.room.dbMapID,
-				GameServerIP:   gs.Status.Address,
-				GameServerPort: gs.Status.Ports[0].Port,
-				GameServerName: gs.ObjectMeta.Name,
+				CreaterID:     player.room.creater.id,
+				PlayerIDs:     player.room.getPlayerIDs(),
+				DBMapID:       player.room.dbMapID,
+				DBMatchgameID: player.room.dbMatchgameID,
+				IP:            gs.Status.Address,
+				Port:          gs.Status.Ports[0].Port,
+				PodName:       gs.ObjectMeta.Name,
 			},
 		})
 		if packErr != nil {
