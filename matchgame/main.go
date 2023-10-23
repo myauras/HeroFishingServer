@@ -30,8 +30,8 @@ const (
 	ENV_RELEASE = "Release"
 )
 
-var connectionTokens []string // 連線驗證Token
-var Env string                // 環境版本
+var connnTokens []string // 連線驗證Token
+var Env string           // 環境版本
 
 func main() {
 	log.SetOutput(os.Stdout) //設定log輸出方式
@@ -46,10 +46,16 @@ func main() {
 		Env = ep
 	}
 	agonesSDK, err := sdk.NewSDK()
-
 	if err != nil {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
+	// 初始化MongoDB設定
+	mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
+	mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
+	mongoUser := os.Getenv("MongoUser")
+	mongoPW := os.Getenv("MongoPW")
+	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
+
 	roomChan := make(chan *game.Room)
 
 	roomInit := false
@@ -60,12 +66,12 @@ func main() {
 	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
+				log.Errorf("%s 遊戲崩潰: %v.\n", logger.LOG_Main, err)
 				shutdownServer(agonesSDK)
 			}
 		}()
 		if !roomInit && gs.ObjectMeta.Labels["RoomName"] != "" {
-			log.Infof("%s Start room init!", logger.LOG_Main)
+			log.Infof("%s 開始初始化遊戲房!", logger.LOG_Main)
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
 			var pIDs [setting.PLAYER_NUMBER]string
 			for i, v := range pIDs {
@@ -73,7 +79,7 @@ func main() {
 				playerIDs[i] = v
 			}
 
-			dbMapID = gs.ObjectMeta.Labels["MapID"]
+			dbMapID = gs.ObjectMeta.Labels["DBMapID"]
 			// roomGameDataSnap, ok := FirebaseFunction.GetRoomGameData(dbMapID)
 			// if !ok {
 			// 	return
@@ -87,13 +93,20 @@ func main() {
 			myGameServer = gs
 			roomName := gs.ObjectMeta.Labels["RoomName"]
 			podName := gs.ObjectMeta.Name
-			log.Infof("%s ==============InitGameRoom==============", logger.LOG_Main)
-			log.Infof("%s MatchmakerPodName: %s", logger.LOG_Main, matchmakerPodName)
-			log.Infof("%s PodName: %s", logger.LOG_Main, podName)
-			log.Infof("%s RoomName: %s", logger.LOG_Main, roomName)
-			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, pIDs)
+
 			nodeName := "test"
 			matchmakerPodName := "test"
+			log.Infof("%s ==============InitGameRoom==============", logger.LOG_Main)
+			log.Infof("%s podName: %v", logger.LOG_Main, podName)
+			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
+			log.Infof("%s MatchmakerPodName: %s", logger.LOG_Main, matchmakerPodName)
+			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, pIDs)
+			log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
+			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
+			log.Infof("%s Address: %s", logger.LOG_Main, myGameServer.Status.Address)
+			log.Infof("%s Port: %v", logger.LOG_Main, myGameServer.Status.Ports[0].Port)
+			log.Infof("%s ==============Info Finished==============", logger.LOG_Main)
+
 			game.InitGameRoom(dbMapID, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
 			log.Infof("%s Init Game Room Success", logger.LOG_Main)
 		} else {
@@ -161,6 +174,17 @@ func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
 	}
 }
 
+// 初始化MongoDB設定
+func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string, pw string) {
+	log.Infof("%s 初始化mongo開始", logger.LOG_Main)
+	mongo.Init(mongo.InitData{
+		Env:           Env,
+		APIPublicKey:  mongoAPIPublicKey,
+		APIPrivateKey: mongoAPIPrivateKey,
+	}, user, pw)
+	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
+}
+
 // 偵測SIGTERM/SIGKILL的終止訊號，偵測到就刪除遊戲房資料並寫log
 func signalListen() {
 	ctx, _ := signals.NewSigKillContext()
@@ -217,7 +241,7 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, address string, room *game.R
 		txt := strings.TrimSpace(string(b[:n]))
 		// log.Infof("%s Received packet from %v: %v", logger.LOG_Main, sender.String(), txt)
 		hasToken := false
-		for _, t := range connectionTokens {
+		for _, t := range connnTokens {
 			log.Infof("%s Connection Tokens : %s", logger.LOG_Main, t)
 			if t == txt {
 				hasToken = true
@@ -230,7 +254,7 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, address string, room *game.R
 	}
 }
 
-// 處理TCP連線封包
+// 處理TCP連線封包，目前只處理加房驗證，之後遊戲內通訊改由UDP處理
 func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 	remoteAddr := conn.RemoteAddr().String()
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
@@ -287,26 +311,41 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 				return
 			}
 
-			// 通過驗證後才處理後續
+			// 像mongodb atlas驗證token並取得playerID 有通過驗證後才處理後續
+			playerID, authErr := mongo.PlayerVerify(authContent.Token)
+			// 驗證失敗
+			if authErr != nil || playerID == "" {
+				log.Errorf("%s Player verify failed: %v", logger.LOG_Main, authErr)
+				_ = packet.SendPack(encoder, &packet.Pack{
+					CMD:    packet.AUTH_REPLY,
+					PackID: pack.PackID,
+					ErrMsg: "Auth toekn驗證失敗",
+					Content: &packet.AuthCMD_Reply{
+						IsAuth: false,
+					},
+				})
+			}
+
+			// 通過驗證後回送驗證結果與連線toekn
 			isAuth = true
-			secretKey := generateSecureToken(32)
+			newConnToken := generateSecureToken(32)
 			err = packet.SendPack(encoder, &packet.Pack{
 				CMD:    packet.AUTH_REPLY,
 				PackID: pack.PackID,
 				Content: &packet.AuthCMD_Reply{
 					IsAuth:   true,
-					TokenKey: secretKey,
+					TokenKey: newConnToken,
 				},
 			})
 			if err != nil {
 				return
 			}
-			defer removeConnectionToken(secretKey)
-			connectionTokens = append(connectionTokens, secretKey)
+			defer removeConnectionToken(newConnToken)
+			connnTokens = append(connnTokens, newConnToken)
 
 			// 將玩家加入遊戲房
 			player := game.Player{
-				ID: "驗證後要取玩家DB中的ID",
+				ID: playerID,
 				ConnTCP: game.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,
@@ -405,7 +444,7 @@ func generateSecureToken(length int) string {
 // 移除連線驗證Token
 func removeConnectionToken(token string) {
 	index := -1
-	for i, v := range connectionTokens {
+	for i, v := range connnTokens {
 		if v == token {
 			index = i
 			break
@@ -414,6 +453,6 @@ func removeConnectionToken(token string) {
 	if index < 0 {
 		return
 	}
-	after := append(connectionTokens[:index], connectionTokens[index+1:]...)
-	connectionTokens = after
+	after := append(connnTokens[:index], connnTokens[index+1:]...)
+	connnTokens = after
 }

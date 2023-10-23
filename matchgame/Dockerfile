@@ -2,7 +2,7 @@
 FROM golang:1.21.0 as builder
 
 # 設置工作目錄
-WORKDIR /src/matchgame
+WORKDIR /home/matchgame
 
 # 設置 Go 模組環境變數
 ENV GO111MODULE=on
@@ -10,8 +10,8 @@ ENV GO111MODULE=on
 # 複製 matchgame 的內容
 COPY matchgame/ .
 
-# 複製 herofishingGoModule 到 /src/herofishingGoModule
-COPY herofishingGoModule/ /src/herofishingGoModule/
+# 複製 herofishingGoModule 到 /home/herofishingGoModule
+COPY herofishingGoModule/ /home/herofishingGoModule/
 
 # 下載建置需要的模組
 RUN go mod tidy
@@ -26,7 +26,7 @@ FROM golang:alpine
 # 建立一個server user
 RUN adduser -D -u 1000 serverUser
 # 將建置環境的執行檔複製到server環境中
-COPY --from=builder /src/matchgame/matchgame /home/matchgame/
+COPY --from=builder /home/matchgame/matchgame /home/matchgame/
 # 複製 Keys 到 /home/Keys
 COPY Keys/ /home/Keys/
 

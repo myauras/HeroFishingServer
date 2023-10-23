@@ -59,11 +59,13 @@ func InitGameRoom(dbMapID string, roomName string, ip string, port int32, podNam
 	}
 
 	// 依據dbMapID從DB中取dbMap設定
+	log.Infof("%s 取DBMap資料", logger.LOG_Room)
 	var dbMap mongo.DBMap
 	err := mongo.GetDocByID(mongo.ColName.Map, dbMapID, &dbMap)
 	if err != nil {
 		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤", logger.LOG_Room)
 	}
+	log.Infof("%s 取DBMap資料成功 DBMapID: %s", logger.LOG_Room, dbMapID)
 
 	// 設定dbMatchgame資料
 	var dbMatchgame mongo.DBMatchgame

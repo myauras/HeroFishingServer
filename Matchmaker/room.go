@@ -10,9 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	mongo "herofishingGoModule/mongo"
+
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
-	mongo "herofishingGoModule/mongo"
 )
 
 type RoomReceptionist struct {
@@ -25,7 +26,7 @@ type Usher struct {
 }
 type room struct {
 	gameServer *agonesv1.GameServer
-	mapID      string        // 地圖ID
+	dbMapID    string        // DB地圖ID
 	matchType  string        // 配對類型
 	maxPlayer  int           //最大玩家數
 	players    []*roomPlayer //房間內的玩家
@@ -36,7 +37,7 @@ type roomPlayer struct {
 	id      string        // 玩家ID
 	isAuth  bool          // 是否經過帳戶驗證了
 	connTCP ConnectionTCP // TCP連線
-	mapID   string        // 地圖ID
+	dbMapID string        // 地圖ID
 	room    *room         // 房間資料
 }
 type ConnectionTCP struct {
@@ -123,7 +124,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
-		mapID:      dbMap.ID,
+		dbMapID:    dbMap.ID,
 		matchType:  dbMap.MatchType,
 		maxPlayer:  setting.MAX_PLAYER,
 		players:    nil,
@@ -131,7 +132,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 		createTime: &newCreateTime,
 	}
 	// 設定玩家所在地圖
-	player.mapID = dbMap.ID
+	player.dbMapID = dbMap.ID
 	// 設定玩家為開房者
 	newRoom.creater = player
 	// 開房者加入此新房
@@ -203,7 +204,7 @@ func (r *room) CreateGame() error {
 	timer := time.NewTicker(setting.RETRY_INTERVAL_SECONDS * time.Second)
 	for i := 0; i < setting.RETRY_CREATE_GAMESERVER_TIMES; i++ {
 		retryTimes = i
-		r.gameServer, err = CreateGameServer(roomName, r.getPlayerIDs(), r.creater.id, r.mapID, SelfPodName)
+		r.gameServer, err = CreateGameServer(roomName, r.getPlayerIDs(), r.creater.id, r.dbMapID, SelfPodName)
 		if err == nil {
 			createGameOK = true
 			break

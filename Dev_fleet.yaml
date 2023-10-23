@@ -16,7 +16,7 @@ spec:
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.7
+            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.12
             resources:
               requests:
                 memory: "32Mi"
@@ -29,6 +29,14 @@ spec:
               value: "7654"
             - name: "Version"
               value: "Dev"
+            - name: "MongoAPIPublicKey"
+              value: "rqjseyja" #之後要搬其他位置放
+            - name: "MongoAPIPrivateKey" 
+              value: "e8cc1224-f04b-46c7-aee0-19309dc499dc" #之後要搬其他位置放
+            - name: "MongoUser"
+              value: "tester"
+            - name: "MongoPW"
+              value: "test123"
             # 以下不需要暫時註解
             # - name: "FirebaseProjectID"
             #   value: "majampachinko-develop"

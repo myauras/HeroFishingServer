@@ -25,7 +25,7 @@ gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
 helm install my-release agones/agones --set "gameservers.namespaces={herofishing-gameserver}" --namespace agones-system --create-namespace
-# 如果要新增server命名空間跑這個(game server有刪掉命名空間的話要重新執行upgrade否則會發生"agones-sdk" not found的錯誤)
+# 如果要新增server命名空間跑這個(game server有刪掉命名空間的話要重新執行upgrade否則 matchgame server在deploy時會發生"agones-sdk" not found的錯誤)
 helm upgrade my-release agones/agones --reuse-values --set "gameservers.namespaces={herofishing-gameserver,新增的命名空間}" --namespace agones-system
 
 

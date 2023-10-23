@@ -10,11 +10,12 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 	myModule "herofishingGoModule"
 	"herofishingGoModule/k8s"
 	mongo "herofishingGoModule/mongo"
+
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var Env string                    // 環境版本
@@ -150,8 +151,8 @@ func handleConnectionTCP(conn net.Conn) {
 			Encoder: json.NewEncoder(conn),
 			Decoder: json.NewDecoder(conn),
 		},
-		mapID: "",
-		room:  nil,
+		dbMapID: "",
+		room:    nil,
 	}
 
 	go disconnectCheck(&player)
@@ -197,7 +198,7 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 		return
 	}
 
-	// 還沒實作Auth驗證 先直接設定為true
+	// 像mongodb atlas驗證token並取得playerID
 	playerID, authErr := mongo.PlayerVerify(authContent.Token)
 	// 驗證失敗
 	if authErr != nil || playerID == "" {
@@ -245,7 +246,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	log.Infof("%s dbMap: %+v", logger.LOG_Main, dbMap)
 
 	player.id = createRoomCMD.CreaterID
-	player.mapID = dbMap.ID
+	player.dbMapID = dbMap.ID
 
 	canCreate := true
 	if !canCreate {
@@ -284,7 +285,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			PackID: pack.PackID,
 			Content: &packet.CreateRoomCMD_Reply{
 				PlayerIDs:      player.room.getPlayerIDs(),
-				MapID:          player.room.mapID,
+				DBMapID:        player.room.dbMapID,
 				GameServerIP:   gs.Status.Address,
 				GameServerPort: gs.Status.Ports[0].Port,
 				GameServerName: gs.ObjectMeta.Name,

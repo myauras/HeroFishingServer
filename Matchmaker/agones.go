@@ -17,7 +17,7 @@ const (
 	gameserversNamespace = "herofishing-gameserver"
 )
 
-func CreateGameServer(roomName string, playerIDs []string, createrID string, mapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
+func CreateGameServer(roomName string, playerIDs []string, createrID string, dbMapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
 	// 取目前pod所在k8s cluster的config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -37,7 +37,7 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, map
 		"RoomName":          roomName,
 		"CreaterID":         createrID,
 		"MatchmakerPodName": matchmakerPodName,
-		"MapID":             mapID,
+		"DBMapID":             dbMapID,
 	}
 
 	for i := 0; i < len(playerIDs); i++ {
