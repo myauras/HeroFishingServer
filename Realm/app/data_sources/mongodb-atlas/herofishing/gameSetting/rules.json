@@ -7,16 +7,6 @@
             "apply_when": {
                 "%%user.custom_data.role": "Player"
             },
-            "document_filters": {
-                "write": true,
-                "read": true
-            },
-            "fields": {
-                "deviceUID": {
-                    "write": true,
-                    "read": true
-                }
-            },
             "insert": false,
             "delete": false,
             "search": true,
