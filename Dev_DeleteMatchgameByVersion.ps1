@@ -1,22 +1,31 @@
-# 指定要刪除pod的image版本與pod所在命名空間
-$target_version = "0.1.6"
+# 指定要刪除pod的label版本與pod所在命名空間
+$target_version = "0.1.22"
 $namespace = "herofishing-gameserver"
 
-# 獲取所有 pod 名稱
-$pods = & kubectl get pods --namespace=$namespace --selector=your-label-selector -o jsonpath="{.items[*].metadata.name}"
+# 取得所有pod名稱
+$pods = & kubectl get pods --namespace=$namespace --selector=imgVersion=$target_version -o jsonpath="{.items[*].metadata.name}"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "An error occurred while fetching pods."
+    exit 1
+}
 Write-Host "Got Pods: $pods"
-$pods = $pods -split " "  # 分割多個 pod 名稱為陣列
 
-# 遍歷每個 pod
+# 如果沒有取到pod就退出
+if (-not $pods) {
+    Write-Host "No Pods found matching the criteria."
+    exit 0
+}
+
+$pods = $pods -split " "  #建立pod陣列
+
+# 遍歷並移除pods
 foreach ($pod in $pods) {
-    # 獲取 pod 的 image 版本
-    $version = & kubectl get pod $pod --namespace=$namespace -o=jsonpath='{.spec.containers[*].image}'
-    Write-Host "Pod: $pod, Version: $version"
+    Write-Host "Ready to remove Pod: $pod"
     
-    # 檢查 image 版本是否匹配目標版本
-    if ($version -like "*$target_version*") {
-        Write-Host "Version match! Ready to remove Pod: $pod"
-        # 刪除該 pod
-        & kubectl delete pod $pod --namespace=$namespace
+    # 刪除該pod
+    & kubectl delete pod $pod --namespace=$namespace | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "An error occurred while deleting the pod."
+        exit 1
     }
 }
