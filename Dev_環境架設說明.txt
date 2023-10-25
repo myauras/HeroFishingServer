@@ -45,3 +45,9 @@ gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.co
 gcloud artifacts repositories create myproject --repository-format=docker --location=asia-east1 --description="myproject的image儲存庫" --async
 # 配置Docker客戶端使用Google Cloud身份進行認證，這樣就可以推送和拉取image，而不會遇到權限問題
 gcloud auth configure-docker asia-east1-docker.pkg.dev
+
+# 使用k8s secret建立mongo需要的敏感資料並在建置yaml檔案中取
+kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
+kubectl create secret generic mongodb-secret -n herofishing-matchserver --from-literal=MongoAPIPublicKey=rqjseyja --from-literal=MongoAPIPrivateKey=e8cc1224-f04b-46c7-aee0-19309dc499dc --from-literal=MongoUser=tester --from-literal=MongoPW=test123
+# 刪除secret方法
+kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]

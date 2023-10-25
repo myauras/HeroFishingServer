@@ -35,14 +35,27 @@ spec:
               value: "7654"
             - name: "Version"
               value: "Dev"
-            - name: "MongoAPIPublicKey"
-              value: "rqjseyja" #之後要搬其他位置放
-            - name: "MongoAPIPrivateKey" 
-              value: "e8cc1224-f04b-46c7-aee0-19309dc499dc" #之後要搬其他位置放
-            - name: "MongoUser"
-              value: "tester"
-            - name: "MongoPW"
-              value: "test123"
+            # mongodb相關
+            - name: MongoAPIPublicKey
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MongoAPIPublicKey
+            - name: MongoAPIPrivateKey
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MongoAPIPrivateKey
+            - name: MongoUser
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MongoUser
+            - name: MongoPW
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MongoPW
             # 以下不需要暫時註解
             # - name: "FirebaseProjectID"
             #   value: "majampachinko-develop"

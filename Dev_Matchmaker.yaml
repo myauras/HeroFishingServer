@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.25
+        image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchmaker:0.1.26
         resources:
           requests:
             memory: "1024Mi"
@@ -47,15 +47,28 @@ spec:
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
-              fieldPath: metadata.name
-        - name: "MongoAPIPublicKey"
-          value: "rqjseyja" #之後要搬其他位置放
-        - name: "MongoAPIPrivateKey" 
-          value: "e8cc1224-f04b-46c7-aee0-19309dc499dc" #之後要搬其他位置放
-        - name: "MongoUser"
-          value: "tester"
-        - name: "MongoPW"
-          value: "test123"
+              fieldPath: metadata.name              
+        # mongodb相關
+        - name: MongoAPIPublicKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPublicKey
+        - name: MongoAPIPrivateKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPrivateKey
+        - name: MongoUser
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoUser
+        - name: MongoPW
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoPW
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
