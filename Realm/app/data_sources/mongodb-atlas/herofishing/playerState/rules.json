@@ -8,8 +8,18 @@
                 "%%user.custom_data.role": "Player"
             },
             "document_filters": {
-                "write": {},
-                "read": {}
+                "write": true,
+                "read": true
+            },
+            "fields": {
+                "inMatchgameID": {
+                    "write": true,
+                    "read": true
+                },
+                "lastUpdateAt": {
+                    "write": true,
+                    "read": true
+                }
             },
             "insert": false,
             "delete": false,

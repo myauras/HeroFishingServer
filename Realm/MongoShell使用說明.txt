@@ -6,4 +6,18 @@ mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&auth
 # 4. 測試mongoShell可以修改MongoShellTest.js搭配以下指令來執行
 mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\mongodb_X509-cert-6644120643259731564.pem" -f D:\HeroFishingServer\Realm\MongoShellTest.js
 
+# ====================常用指令===================
 
+
+# 連接到MongoDB cluster
+mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\mongodb_X509-cert-6644120643259731564.pem"
+# 列出所有db
+show databases
+# 選擇使用的DB
+use herofishing
+# 取得目前DBName方法
+db.getName()
+# 取得目前DB所有collections
+show collections
+# collection清空
+db.collection名稱.deleteMany({})

@@ -3,7 +3,7 @@
 # 自動進版matchmaker
 autoVersioning-Matchmaker:
 	@echo "==============AutoVersioning-Matchmaker=============="
-	.\Dev_AutoVersioning-Matchmaker.bat
+	.\Dev_AutoVersioning-Matchmaker.ps1
 	@echo "==============AutoVersioning-Matchmaker Finished=============="
 
 # 建構matchmaker
@@ -22,7 +22,7 @@ deployMatchmaker:
 # 自動進版matchmaker
 autoVersioning-Matchgame:
 	@echo "==============AutoVersioning-Matchgame=============="
-	.\Dev_AutoVersioning-Matchgame.bat
+	.\Dev_AutoVersioning-Matchgame.ps1
 	@echo "==============AutoVersioning-Matchgame Finished=============="
 
 # 建構matchgame

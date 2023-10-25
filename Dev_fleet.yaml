@@ -6,6 +6,9 @@ metadata:
 spec:
   replicas: 1
   template:
+    metadata:
+      labels:
+        imgVersion: "0.1.19" # 加版本標籤, 未來方便針對某個版本進行移除, 版本必須要跟image版本一致避免搞混
     spec:
       ports:
       - name: default
@@ -16,7 +19,7 @@ spec:
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.12
+            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.19
             resources:
               requests:
                 memory: "32Mi"

@@ -19,13 +19,11 @@ exports = async function OnUserCreation(user) {
   let writePlayerCustomData = {
     // 帳戶判斷綁定的是哪一份文件是依據, 用欄位id來綁定, 帳號登入會自動找playerCustom裡id符合帳戶id的文件作為custom data
     _id: user.id,
-    // 紀錄建立時間
-    createAt: new Date(),
     // 腳色(一般玩家註冊帳戶的腳色都是Player, 用於控制讀寫DB的權限)
     role: role,
   };
   // 寫入Custom User Data資料
-  let playerCustomDoc = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.gameSetting, writePlayerCustomData);
+  let playerCustomDoc = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.playerCustom, writePlayerCustomData);
   if (!playerCustomDoc) {
     let error = `[OnUserCreation] 寫入Custom User Data文件失敗, 帳戶id為: ${user.id}`;
     console.log(error);

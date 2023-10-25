@@ -280,6 +280,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			return
 		}
 		gs := player.room.gameServer
+		log.Infof("%s dbMatchgameID: %s", logger.LOG_Main, player.room.dbMatchgameID)
 		packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
 			CMD:    packet.CREATEROOM_REPLY,
 			PackID: pack.PackID,

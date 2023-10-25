@@ -6,6 +6,9 @@
         "createdAt": {
             "bsonType": "date"
         },
+        "inMatchgameID": {
+            "bsonType": "string"
+        },
         "lastUpdateAt": {
             "bsonType": "date"
         }
@@ -13,7 +16,8 @@
     "required": [
         "_id",
         "createdAt",
-        "lastUpdateAt"
+        "lastUpdateAt",
+        "inMatchgameID"
     ],
     "title": "playerState"
 }

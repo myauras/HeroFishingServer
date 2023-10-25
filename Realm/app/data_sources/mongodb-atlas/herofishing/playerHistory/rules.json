@@ -8,8 +8,8 @@
                 "%%user.custom_data.role": "Player"
             },
             "document_filters": {
-                "write": {},
-                "read": {}
+                "write": true,
+                "read": true
             },
             "insert": false,
             "delete": false,
