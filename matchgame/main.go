@@ -1,10 +1,10 @@
 package main
 
 import (
-	logger "matchgame/logger"
-	setting "matchgame/setting"
-
 	log "github.com/sirupsen/logrus"
+	"herofishingGoModule/setting"
+	logger "matchgame/logger"
+	matchgameSetting "matchgame/setting"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	mongo "herofishingGoModule/mongo"
+
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
@@ -49,12 +50,6 @@ func main() {
 	if err != nil {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
-	// 初始化MongoDB設定
-	mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
-	mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
-	mongoUser := os.Getenv("MongoUser")
-	mongoPW := os.Getenv("MongoPW")
-	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
 	roomChan := make(chan *game.Room)
 
@@ -64,6 +59,7 @@ func main() {
 	var myGameServer *serverSDK.GameServer
 	var playerIDs [setting.PLAYER_NUMBER]string
 	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
+		log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
 		defer func() {
 			if err := recover(); err != nil {
 				log.Errorf("%s 遊戲崩潰: %v.\n", logger.LOG_Main, err)
@@ -75,20 +71,20 @@ func main() {
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
 			var pIDs [setting.PLAYER_NUMBER]string
 			for i, v := range pIDs {
-				v = gs.ObjectMeta.Labels[fmt.Sprintf("player%d", i)]
+				key := fmt.Sprintf("Player%d", i)
+				log.Infof("%s key=%s", logger.LOG_Main, key)
+				v = gs.ObjectMeta.Labels[key]
 				playerIDs[i] = v
 			}
 
+			// 初始化MongoDB設定
+			mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
+			mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
+			mongoUser := os.Getenv("MongoUser")
+			mongoPW := os.Getenv("MongoPW")
+			initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
+
 			dbMapID = gs.ObjectMeta.Labels["DBMapID"]
-			// roomGameDataSnap, ok := FirebaseFunction.GetRoomGameData(dbMapID)
-			// if !ok {
-			// 	return
-			// }
-			// var gameSetting mainGame.GameSetting
-			// err = roomGameDataSnap.DataTo(&gameSetting)
-			// if err != nil {
-			// 	return
-			// }
 			roomInit = true
 			myGameServer = gs
 			roomName := gs.ObjectMeta.Labels["RoomName"]
@@ -100,14 +96,14 @@ func main() {
 			log.Infof("%s podName: %v", logger.LOG_Main, podName)
 			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
 			log.Infof("%s MatchmakerPodName: %s", logger.LOG_Main, matchmakerPodName)
-			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, pIDs)
+			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
 			log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
 			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
 			log.Infof("%s Address: %s", logger.LOG_Main, myGameServer.Status.Address)
 			log.Infof("%s Port: %v", logger.LOG_Main, myGameServer.Status.Ports[0].Port)
 			log.Infof("%s ==============Info Finished==============", logger.LOG_Main)
 
-			game.InitGameRoom(dbMapID, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
+			game.InitGameRoom(dbMapID, playerIDs, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
 			log.Infof("%s Init Game Room Success", logger.LOG_Main)
 		} else {
 			if matchmakerPodName != "" && gs.ObjectMeta.Labels["MatchmakerPodName"] != "" && matchmakerPodName != gs.ObjectMeta.Labels["MatchmakerPodName"] {
@@ -128,12 +124,15 @@ func main() {
 
 	// Agones伺服器健康檢查
 	go agonesHealthPin(agonesSDK, stopChan)
-	log.Infof("%s Set server as ready", logger.LOG_Main)
+
 	// 將此遊戲房伺服器狀態標示為Ready
 	if err := agonesSDK.Ready(); err != nil {
 		log.Fatalf("Could not send ready message")
+		return
+	} else {
+		log.Infof("%s Set server as ready", logger.LOG_Main)
 	}
-	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
+
 	// 等拿到房間資料後才開啟socket連線
 	room := <-roomChan
 	log.Infof("%s Got room data", logger.LOG_Main)
@@ -148,6 +147,8 @@ func main() {
 
 	// 開始遊戲房主循環
 	room.StartRun(stopChan, endGameChan)
+
+	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 
 	select {
 	case <-stopChan:
@@ -167,11 +168,13 @@ func main() {
 	shutdownServer(agonesSDK) // 關閉Server
 }
 func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
+	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Main)
 	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, matchgame)
 	if err != nil {
 		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Main, err)
 		return
 	}
+	log.Infof("%s 寫入Matchgame到DB完成", logger.LOG_Main)
 }
 
 // 初始化MongoDB設定
@@ -287,7 +290,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			log.Infof("%s UnAuth command", logger.LOG_Main)
 			return
 		}
-
+		log.Infof("%s pack.CMD: %s", logger.LOG_Main, pack.CMD)
 		if pack.CMD == packet.AUTH {
 
 			authContent := packet.AuthCMD{}
@@ -366,7 +369,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 
 // 處理UDP連線封包
 func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr, room *game.Room) {
-	timer := time.NewTicker(setting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
+	timer := time.NewTicker(matchgameSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
 	for {
 		select {
 		case <-stop:
@@ -418,7 +421,7 @@ func delayShutdownServer(delay time.Duration, sdk *sdk.SDK, stop chan struct{}) 
 
 // 伺服器健康狀態檢測
 func agonesHealthPin(agonesSDK *sdk.SDK, stop <-chan struct{}) {
-	tick := time.Tick(setting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
+	tick := time.Tick(matchgameSetting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
 	for {
 		if err := agonesSDK.Health(); err != nil {
 			log.Errorf("%s Could not send health ping: %v", logger.LOG_Main, err)

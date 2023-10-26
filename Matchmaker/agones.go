@@ -37,11 +37,14 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 		"RoomName":          roomName,
 		"CreaterID":         createrID,
 		"MatchmakerPodName": matchmakerPodName,
-		"DBMapID":             dbMapID,
+		"DBMapID":           dbMapID,
 	}
 
 	for i := 0; i < len(playerIDs); i++ {
-		myLabels[fmt.Sprintf("player%d", i)] = playerIDs[i]
+		key := fmt.Sprintf("Player%d", i)
+		myLabels[key] = playerIDs[i]
+		log.Infof("%s key=%s", logger.LOG_Main, key)
+		log.Infof("%s %s:%s", logger.LOG_Agones, key, playerIDs[i])
 	}
 
 	for key, value := range myLabels {
@@ -75,6 +78,6 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 		return nil, err
 	}
 
-	log.Infof("%s New game servers name: %s    address: %s\n", logger.LOG_Agones, newGS.ObjectMeta.Name, newGS.Status.Address)
+	log.Infof("%s New game servers name: %s    address: %s   port: %v", logger.LOG_Agones, newGS.ObjectMeta.Name, newGS.Status.Address, newGS.Status.Ports[0].Port)
 	return newGS, err
 }

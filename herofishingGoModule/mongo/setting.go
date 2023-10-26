@@ -1,6 +1,9 @@
 package mongo
 
-import "time"
+import (
+	"herofishingGoModule/setting"
+	"time"
+)
 
 var (
 	Env           = "Dev"                                  // 環境版本，初始化時會設定
@@ -98,10 +101,10 @@ type DBMatchgame struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引代表玩家座位
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
-	PlayerIDs         []string `bson:"playerIDs"`
-	IP                string   `bson:"ip"`
-	Port              int32    `bson:"port"`
-	NodeName          string   `bson:"nodeName"`
-	PodName           string   `bson:"podName"`
-	MatchmakerPodName string   `bson:"matchmakerPodName"`
+	PlayerIDs         [setting.PLAYER_NUMBER]string `bson:"playerIDs"`
+	IP                string                        `bson:"ip"`
+	Port              int32                         `bson:"port"`
+	NodeName          string                        `bson:"nodeName"`
+	PodName           string                        `bson:"podName"`
+	MatchmakerPodName string                        `bson:"matchmakerPodName"`
 }

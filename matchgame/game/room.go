@@ -4,6 +4,7 @@ import (
 	"errors"
 	log "github.com/sirupsen/logrus"
 	mongo "herofishingGoModule/mongo"
+	"herofishingGoModule/setting"
 	logger "matchgame/logger"
 	"matchgame/packet"
 	"net"
@@ -13,8 +14,6 @@ import (
 	"sync"
 	"time"
 )
-
-const PLAYER_NUMBER int = 4 //房間最大玩家數量
 
 type GameState int // 目前遊戲狀態列舉
 
@@ -30,15 +29,15 @@ type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引代表玩家座位
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
-	players                [PLAYER_NUMBER]Player // 玩家陣列
-	RoomName               string                // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	gameState              GameState             // 遊戲狀態
-	DBMatchgame            *mongo.DBMatchgame    // DB遊戲房資料
-	DBmap                  *mongo.DBMap          // DB地圖設定
-	PassSecs               float64               // 遊戲開始X秒
-	MaxAllowDisconnectSecs float64               // 最長允許玩家斷線秒數
-	ErrorLogs              []string              // ErrorLogs
-	lastChangeStateTime    time.Time             // 上次更新房間狀態時間
+	players                [setting.PLAYER_NUMBER]Player // 玩家陣列
+	RoomName               string                        // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	gameState              GameState                     // 遊戲狀態
+	DBMatchgame            *mongo.DBMatchgame            // DB遊戲房資料
+	DBmap                  *mongo.DBMap                  // DB地圖設定
+	PassSecs               float64                       // 遊戲開始X秒
+	MaxAllowDisconnectSecs float64                       // 最長允許玩家斷線秒數
+	ErrorLogs              []string                      // ErrorLogs
+	lastChangeStateTime    time.Time                     // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
 }
 
@@ -48,7 +47,7 @@ var Env string                       // 環境版本
 var room Room                        // 房間
 var UPDATE_INTERVAL_MS float64 = 200 // 每X毫秒更新一次
 
-func InitGameRoom(dbMapID string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
+func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
 	if room.RoomName != "" {
 		return
 	}
@@ -72,6 +71,7 @@ func InitGameRoom(dbMapID string, roomName string, ip string, port int32, podNam
 	dbMatchgame.ID = roomName
 	dbMatchgame.CreatedAt = time.Now()
 	dbMatchgame.DBMapID = dbMapID
+	dbMatchgame.PlayerIDs = playerIDs
 	dbMatchgame.IP = ip
 	dbMatchgame.Port = port
 	dbMatchgame.NodeName = nodeName
@@ -246,8 +246,8 @@ func (r *Room) sendPacketToPlayer(pIndex int, pack *packet.Pack) {
 }
 
 // 取得遊戲房中所有玩家狀態
-func (r *Room) GetPlayerStatus() [PLAYER_NUMBER]PlayerStatus {
-	playerStatuss := [PLAYER_NUMBER]PlayerStatus{}
+func (r *Room) GetPlayerStatus() [setting.PLAYER_NUMBER]PlayerStatus {
+	playerStatuss := [setting.PLAYER_NUMBER]PlayerStatus{}
 	for i, v := range r.players {
 		playerStatuss[i] = *v.Status
 	}

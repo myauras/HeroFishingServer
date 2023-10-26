@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"herofishingGoModule/setting"
 	logger "matchmaker/logger"
 	"matchmaker/packet"
-	"matchmaker/setting"
+	matchmakerSetting "matchmaker/setting"
 	"net"
 	"os"
 	"time"
 
-	myModule "herofishingGoModule"
 	"herofishingGoModule/k8s"
 	mongo "herofishingGoModule/mongo"
 
@@ -130,7 +130,7 @@ func setExternalID(ip string) {
 
 // 取Loadbalancer分配給此pod的對外IP
 func getExternalIP() (string, error) {
-	ip, err := k8s.GetLoadBalancerExternalIP(myModule.NAMESPACE_MATCHERSERVER, myModule.MATCHMAKER)
+	ip, err := k8s.GetLoadBalancerExternalIP(setting.NAMESPACE_MATCHERSERVER, setting.MATCHMAKER)
 	if err != nil {
 		log.Errorf("%s GetLoadBalancerExternalIP error: %v.\n", logger.LOG_Main, err)
 	}
@@ -263,7 +263,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 	// 根據DB地圖設定來開遊戲房
 	switch dbMap.MatchType {
-	case myModule.MatchType.Quick: // 快速配對
+	case setting.MatchType.Quick: // 快速配對
 		player.room = Receptionist.JoinRoom(dbMap, player)
 		if player.room == nil {
 			log.WithFields(log.Fields{
@@ -314,8 +314,8 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 // 斷線玩家偵測
 func disconnectCheck(p *roomPlayer) {
-	time.Sleep(setting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second) // 等待後開始跑斷線檢測迴圈
-	timer := time.NewTicker(setting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second)
+	time.Sleep(matchmakerSetting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second) // 等待後開始跑斷線檢測迴圈
+	timer := time.NewTicker(matchmakerSetting.DISCONNECT_CHECK_INTERVAL_SECS * time.Second)
 	for {
 		<-timer.C
 		if p.room == nil || p.id == "" {

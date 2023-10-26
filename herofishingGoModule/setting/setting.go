@@ -1,4 +1,4 @@
-package herofishinggomodule
+package setting
 
 const (
 	// 命名空間
@@ -8,6 +8,9 @@ const (
 	// 服務名稱
 	MATCHMAKER = "herofishing-matchmaker" // 配對伺服器名稱
 	MATCHGAME  = "herofishing-matchgame"  // 遊戲房名稱
+
+	// 遊戲房舍定
+	PLAYER_NUMBER = 4 // 遊戲房最多X位玩家
 )
 
 // 環境版本
@@ -21,6 +24,7 @@ type MatchTypeStruct struct {
 	Quick string // 快速配對
 	Test  string // 測試房
 }
+
 // 配對類型
 var MatchType = MatchTypeStruct{
 	Quick: "Quick", // 快速配對
