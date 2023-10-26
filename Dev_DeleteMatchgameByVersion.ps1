@@ -2,6 +2,8 @@
 $target_version = "0.1.22"
 $namespace = "herofishing-gameserver"
 
+$removedPodsCount = 0 # 移除pod數量
+
 # 取得所有pod名稱
 $pods = & kubectl get pods --namespace=$namespace --selector=imgVersion=$target_version -o jsonpath="{.items[*].metadata.name}"
 if ($LASTEXITCODE -ne 0) {
@@ -23,9 +25,16 @@ foreach ($pod in $pods) {
     Write-Host "Ready to remove Pod: $pod"
     
     # 刪除該pod
-    & kubectl delete pod $pod --namespace=$namespace | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "An error occurred while deleting the pod."
-        exit 1
-    }
+    # & kubectl delete pod $pod --namespace=$namespace | Out-Null
+    # if ($LASTEXITCODE -ne 0) {
+    #     Write-Host "An error occurred while deleting the pod."
+    #     exit 1
+    # }
+
+
+    # 非同步刪除該 pod
+    Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "delete pod $pod --namespace=$namespace"
+
+    $removedPodsCount++
 }
+Write-Host "$removedPodsCount Pods have been Removed"

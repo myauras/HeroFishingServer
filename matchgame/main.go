@@ -333,8 +333,8 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 				CMD:    packet.AUTH_REPLY,
 				PackID: pack.PackID,
 				Content: &packet.AuthCMD_Reply{
-					IsAuth:   true,
-					TokenKey: newConnToken,
+					IsAuth:    true,
+					ConnToken: newConnToken,
 				},
 			})
 			if err != nil {
