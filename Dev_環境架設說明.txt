@@ -13,10 +13,7 @@ gcloud auth login
 # tag使用game-server (之後建立防火牆規則的目標是這個tag)
 # node用2台就好
 # 機器類型使用e2-standard-4, 這是相對便宜的機器, 機器類型可以參考 https://cloud.google.com/compute/docs/general-purpose-machines
-gcloud container clusters create cluster-gameserver --zone=asia-east1-c --release-channel=regular --tags=myproject --scopes=gke-default --num-nodes=2 --enable-image-streaming --machine-type=e2-standard-4
-
-# 建立防火牆規則 
-gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 --target-tags game-server --description "Firewall to allow game server udp traffic"
+gcloud container clusters create cluster-gameserver --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=2 --enable-image-streaming --machine-type=e2-standard-4
 
 # 官方建議新建一個Agones專用的node pool, 避免跟遊戲server的機器共用, 但是Dev環境可以不用這麼做，所以註解掉，如果有需要可以使用註解的內容
 # gcloud container node-pools create agones-system --cluster=cluster-gameserver --zone=asia-east1-c --node-taints agones.dev/agones-system=true:NoExecute --node-labels agones.dev/agones-system=true --num-nodes=1 --machine-type=e2-standard-4
@@ -25,9 +22,11 @@ gcloud compute firewall-rules create game-server-firewall --allow udp:7000-8000 
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
 helm install my-release agones/agones --set "gameservers.namespaces={herofishing-gameserver}" --namespace agones-system --create-namespace
+# 如果要指定agones分配game server pod的port範圍使用以下指令
+helm install my-release agones/agones --set gameservers.namespaces[0]=herofishing-gameserver,agones.controller.minPort=5000,agones.controller.maxPort=8000 --namespace agones-system --create-namespace
+
 # 如果要新增server命名空間跑這個(game server有刪掉命名空間的話要重新執行upgrade否則 matchgame server在deploy時會發生"agones-sdk" not found的錯誤)
 helm upgrade my-release agones/agones --reuse-values --set "gameservers.namespaces={herofishing-gameserver,新增的命名空間}" --namespace agones-system
-
 
 # 可以使用以下語法來查看部屬結果
 helm list -n agones-system # 使用命名空間查看helm部屬的內容

@@ -19,7 +19,11 @@ deployMatchmaker:
 	@echo "==============Matchmaker Deploy Finished=============="
 
 
-# 自動進版matchmaker
+# 建構+部屬matchmaker
+matchmaker: autoVersioning-Matchmaker buildMatchmaker deployMatchmaker
+
+
+# 自動進版matchgame
 autoVersioning-Matchgame:
 	@echo "==============AutoVersioning-Matchgame=============="	
 	powershell -ExecutionPolicy Bypass -File .\Dev_AutoVersioning-Matchgame.ps1
@@ -27,18 +31,22 @@ autoVersioning-Matchgame:
 
 # 建構matchgame
 buildMatchgame:
-	@echo "==============Start Building Matchmaker=============="
+	@echo "==============Start Building Matchgame=============="
 	.\Dev_BuildMatchgame.bat
-	@echo "==============Matchmaker Build Finished=============="
+	@echo "==============Matchgame Build Finished=============="
 
 # 部屬matchgame
 deployMatchgame:
-	@echo "==============Start Deploy Matchmaker=============="
+	@echo "==============Start Deploy Matchgame=============="
 	.\Dev_DeployMatchgame.bat
-	@echo "==============Matchmaker Deploy Finished=============="
+	@echo "==============Matchgame Deploy Finished=============="
 
-# 建構+部屬matchmaker
-matchmaker: autoVersioning-Matchmaker buildMatchmaker deployMatchmaker
+# 移除matchgame舊版本pods
+deleveMatchgameOldPods:
+	@echo "==============Start Delete Old Matchgame Pods=============="
+	powershell -ExecutionPolicy Bypass -File .\Dev_DeleteAllMatchgameAndKeepByVersion.ps1
+	@echo "==============Matchgame Delete Finished=============="
 
-# 建構+部屬matchmaker
+
+# 建構+部屬matchgame
 matchgame: autoVersioning-Matchgame buildMatchgame deployMatchgame

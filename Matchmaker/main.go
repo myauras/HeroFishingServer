@@ -85,7 +85,7 @@ func main() {
 		log.Errorf("%s Listen error %s.\n", logger.LOG_Main, err.Error())
 	}
 	defer tcpListener.Close()
-	log.Infof("%s TCP server start and listening on %s.\n", logger.LOG_Main, src)
+	log.Infof("%s TCP server start and listening on %s", logger.LOG_Main, src)
 
 	// 初始化配房者
 	log.Infof("%s 初始化配房者.\n", logger.LOG_Main)

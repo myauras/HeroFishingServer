@@ -4,3 +4,16 @@ kubectl delete pod herofishing-matchgame-bbhbg-w8n82 -n herofishing-gameserver
 kubectl describe pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver
 # 查看pod的label資訊
 kubectl get pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver -o=jsonpath='{.metadata.labels}'
+# 查看防火牆設定
+gcloud compute firewall-rules list --project=aurafortest
+# 新增火牆
+gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"
+# 刪除火牆
+gcloud compute firewall-rules delete herofishing-firewall-udp --project=aurafortest
+# 查看node tag
+gcloud compute instances describe gke-cluster-gameserver-default-pool-fbb15252-std9 --zone=asia-east1-c --format='get(tags)'
+# 新增node tag
+gcloud compute instances add-tags gke-cluster-gameserver-default-pool-fbb15252-std9 --zone=asia-east1-c --tags=herofishing
+# 移除node tag
+gcloud compute instances remove-tags gke-cluster-gameserver-default-pool-fbb15252-std9 --asia-east1-c --tags==herofishing
+

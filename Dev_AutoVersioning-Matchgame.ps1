@@ -48,3 +48,18 @@ if ($match.Success) {
 } else {
     Write-Host 'No matching herofishing-matchgame version found in Dev_BuildMatchgame.bat'
 }
+
+# 更新 Dev_DeleteAllMatchgameAndKeepByVersion.ps1 文件的要保留版本
+$content = [System.IO.File]::ReadAllText('Dev_DeleteAllMatchgameAndKeepByVersion.ps1', $utf8WithoutBom)
+$pattern = 'keepVersion = "(\d+\.\d+\.)(\d+)"'
+$match = [regex]::Match($content, $pattern)
+
+if ($match.Success) {
+    $oldVersion = $match.Groups[0].Value
+    $newVersion = '{0}{1}' -f $match.Groups[1].Value, ([int]$match.Groups[2].Value + 1)
+    $content = $content -replace [regex]::Escape($oldVersion), "keepVersion = `"$newVersion`""
+    [System.IO.File]::WriteAllText('Dev_DeleteAllMatchgameAndKeepByVersion.ps1', $content, $utf8WithoutBom)
+    Write-Host "Successfully matched and modified the keepVersion in Dev_DeleteAllMatchgameAndKeepByVersion.ps1 to: $newVersion"
+} else {
+    Write-Host 'Dev_DeleteAllMatchgameAndKeepByVersion.ps1 unmatch'
+}

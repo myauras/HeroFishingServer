@@ -38,10 +38,10 @@ func main() {
 	log.SetOutput(os.Stdout) //設定log輸出方式
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
-	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
-	if ep := os.Getenv("PORT"); ep != "" {
-		port = &ep
-	}
+	// port := flag.String("port", "7654", "The port to listen to tcp traffic on")
+	// if ep := os.Getenv("PORT"); ep != "" {
+	// 	port = &ep
+	// }
 	Env = *flag.String("Version", "Dev", "version setting")
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
@@ -66,13 +66,13 @@ func main() {
 				shutdownServer(agonesSDK)
 			}
 		}()
+
 		if !roomInit && gs.ObjectMeta.Labels["RoomName"] != "" {
 			log.Infof("%s 開始初始化遊戲房!", logger.LOG_Main)
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
 			var pIDs [setting.PLAYER_NUMBER]string
 			for i, v := range pIDs {
 				key := fmt.Sprintf("Player%d", i)
-				log.Infof("%s key=%s", logger.LOG_Main, key)
 				v = gs.ObjectMeta.Labels[key]
 				playerIDs[i] = v
 			}
@@ -119,19 +119,19 @@ func main() {
 		}
 	})
 
+	// 將此遊戲房伺服器狀態標示為Ready(要標示為ready才會被Agones Allocation服務分配到)
+	if err := agonesSDK.Ready(); err != nil {
+		log.Fatalf("Could not send ready message")
+		return
+	} else {
+		log.Infof("%s Matchgame準備就緒 可被Agones Allocation服務分配", logger.LOG_Main)
+	}
+
 	stopChan := make(chan struct{})
 	endGameChan := make(chan struct{})
 
 	// Agones伺服器健康檢查
 	go agonesHealthPin(agonesSDK, stopChan)
-
-	// 將此遊戲房伺服器狀態標示為Ready
-	if err := agonesSDK.Ready(); err != nil {
-		log.Fatalf("Could not send ready message")
-		return
-	} else {
-		log.Infof("%s Set server as ready", logger.LOG_Main)
-	}
 
 	// 等拿到房間資料後才開啟socket連線
 	room := <-roomChan
@@ -140,7 +140,8 @@ func main() {
 
 	// 開啟連線
 	log.Infof("%s Open TCP Connection", logger.LOG_Main)
-	go openConnectTCP(agonesSDK, stopChan, ":"+*port, room)
+	src := fmt.Sprintf(":%d", room.DBMatchgame.Port)
+	go openConnectTCP(agonesSDK, stopChan, src, room)
 	// go OpenConnectUDP(agonesSDK, stop, ":"+*port, room)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
@@ -198,18 +199,20 @@ func signalListen() {
 }
 
 // 開啟TCP連線
-func openConnectTCP(s *sdk.SDK, stop chan struct{}, address string, room *game.Room) {
+func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectTCP error: %v.\n", logger.LOG_Main, err)
 			stop <- struct{}{}
 		}
 	}()
-	tcpListener, err := net.Listen("tcp", address)
+	log.Infof("%s src= %s", logger.LOG_Main, src)
+	tcpListener, err := net.Listen("tcp", src)
 	if err != nil {
-		log.Errorf("%s Could not start tcp server: %v.\n", logger.LOG_Main, err)
+		log.Errorf("%s Listen error: %v.\n", logger.LOG_Main, err)
 	}
-	defer tcpListener.Close() // nolint: errcheck
+	defer tcpListener.Close()
+	log.Infof("%s TCP server start and listening on %s", logger.LOG_Main, src)
 
 	for {
 		conn, err := tcpListener.Accept()

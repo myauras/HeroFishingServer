@@ -1,0 +1,2 @@
+# 測試連線
+Test-NetConnection -ComputerName 34.80.139.12 -Port 7358

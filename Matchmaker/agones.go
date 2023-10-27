@@ -43,8 +43,6 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 	for i := 0; i < len(playerIDs); i++ {
 		key := fmt.Sprintf("Player%d", i)
 		myLabels[key] = playerIDs[i]
-		log.Infof("%s key=%s", logger.LOG_Main, key)
-		log.Infof("%s %s:%s", logger.LOG_Agones, key, playerIDs[i])
 	}
 
 	for key, value := range myLabels {
@@ -54,7 +52,12 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 	// 分配game server
 	allocacteInterface := agonesClient.AllocationV1().GameServerAllocations(gameserversNamespace)
 	// 定義規範- 找game server(pod)並新增標籤
+	gsAllocationName := fmt.Sprintf("%s_allocation", matchmakerPodName)
 	gsAllocation := &allocationv1.GameServerAllocation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gsAllocationName,     // 資源的唯一名稱
+			Namespace: gameserversNamespace, // 通常是 "default" 或你自己定義的
+		},
 		Spec: allocationv1.GameServerAllocationSpec{
 			// 找fleet.yaml定義的fleet metadata名稱
 			Required: allocationv1.GameServerSelector{
@@ -66,18 +69,28 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 		},
 	}
 	// 使用規範來建立game server(pod)並新增標籤
+	//log.Infof("%s Preparing to create game server with labels: %+v", logger.LOG_Agones, gsAllocation.Spec.MetaPatch.Labels)
+	log.Infof("gsAllocation: %+v", gsAllocation)
+
 	GameServerAllocation, err := allocacteInterface.Create(context.Background(), gsAllocation, metav1.CreateOptions{})
 	if err != nil {
 		log.Errorf("%s 建立game server失敗: %v", logger.LOG_Agones, err)
 		return nil, err
+	} else {
+		log.Infof("%s 建立game server成功", logger.LOG_Agones)
 	}
 
-	newGS, err := agonesClient.AgonesV1().GameServers(gameserversNamespace).Get(context.Background(), GameServerAllocation.Name, metav1.GetOptions{})
+	log.Infof("%s Allocation State: %v", logger.LOG_Agones, GameServerAllocation.Status.State)
+	newGSName := GameServerAllocation.Status.GameServerName
+	log.Infof("%s newGSName: %v", logger.LOG_Agones, newGSName)
+	newGS, err := agonesClient.AgonesV1().GameServers(gameserversNamespace).Get(context.Background(), newGSName, metav1.GetOptions{})
 	if err != nil {
 		log.Errorf("%s 取得game server失敗: %v", logger.LOG_Agones, err)
 		return nil, err
+	} else {
+		log.Infof("%s 取得game server成功", logger.LOG_Agones)
 	}
-
 	log.Infof("%s New game servers name: %s    address: %s   port: %v", logger.LOG_Agones, newGS.ObjectMeta.Name, newGS.Status.Address, newGS.Status.Ports[0].Port)
 	return newGS, err
+
 }

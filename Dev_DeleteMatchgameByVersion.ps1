@@ -1,5 +1,5 @@
 # 指定要刪除pod的label版本與pod所在命名空間
-$target_version = "0.1.22"
+$target_version = "0.1.28"
 $namespace = "herofishing-gameserver"
 
 $removedPodsCount = 0 # 移除pod數量
@@ -33,7 +33,7 @@ foreach ($pod in $pods) {
 
 
     # 非同步刪除該 pod
-    Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "delete pod $pod --namespace=$namespace"
+    Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "delete pod $pod --namespace=$namespace" -RedirectStandardOutput "NUL"
 
     $removedPodsCount++
 }
