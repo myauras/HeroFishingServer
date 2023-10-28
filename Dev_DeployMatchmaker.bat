@@ -12,7 +12,7 @@ REM 取得遊戲server的ip與port kubectl get services -n herofishing-matchserv
 @REM gcloud container clusters get-credentials YOUR_CLUSTER_NAME --zone YOUR_ZONE
 
 @echo on
-
+call Dev_SwitchProject.bat
 kubectl apply -f Role.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f RoleBinding.yaml

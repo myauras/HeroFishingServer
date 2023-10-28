@@ -24,7 +24,7 @@ spec:
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/aurafortest/herofishing/herofishing-matchgame:0.1.41
+            image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchgame:0.1.41
             resources:
               requests:
                 memory: "32Mi"

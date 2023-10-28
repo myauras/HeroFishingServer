@@ -1,3 +1,9 @@
+# 顯示gcp project
+gcloud projects list
+# 顯示目前使用中的專案
+gcloud config get-value project
+# 修改節點數量
+gcloud container clusters resize cluster-herofishing  --num-nodes=1 --zone=asia-east1-c
 # 移除特定pod
 kubectl delete pod herofishing-matchgame-bbhbg-w8n82 -n herofishing-gameserver
 # 查看pod資訊
@@ -5,15 +11,15 @@ kubectl describe pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver
 # 查看pod的label資訊
 kubectl get pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver -o=jsonpath='{.metadata.labels}'
 # 查看防火牆設定
-gcloud compute firewall-rules list --project=aurafortest
+gcloud compute firewall-rules list --project=herofishing-dev
 # 新增火牆
 gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"
 # 刪除火牆
-gcloud compute firewall-rules delete herofishing-firewall-udp --project=aurafortest
+gcloud compute firewall-rules delete herofishing-firewall-udp --project=herofishing-dev
 # 查看node tag
-gcloud compute instances describe gke-cluster-gameserver-default-pool-fbb15252-std9 --zone=asia-east1-c --format='get(tags)'
+gcloud compute instances describe gke-cluster-herofishing-default-pool-fbb15252-std9 --zone=asia-east1-c --format='get(tags)'
 # 新增node tag
-gcloud compute instances add-tags gke-cluster-gameserver-default-pool-fbb15252-std9 --zone=asia-east1-c --tags=herofishing
+gcloud compute instances add-tags gke-cluster-herofishing-default-pool-fbb15252-std9 --zone=asia-east1-c --tags=herofishing
 # 移除node tag
-gcloud compute instances remove-tags gke-cluster-gameserver-default-pool-fbb15252-std9 --asia-east1-c --tags==herofishing
+gcloud compute instances remove-tags gke-cluster-herofishing-default-pool-fbb15252-std9 --asia-east1-c --tags==herofishing
 

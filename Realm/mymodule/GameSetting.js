@@ -20,17 +20,17 @@ module.exports = {
     }),
     // 環境版本對應Endpoint
     AppEndpoint: Object.freeze({
-        Dev: "https://asia-south1.gcp.data.mongodb-api.com/app/aurafortest-bikmm",// 開發版
+        Dev: "https://asia-south1.gcp.data.mongodb-api.com/app/app-herofishing-pvxuj",// 開發版
         Release: "???",// 正式版
     }),
-    // 環境版本對應GroupID
+    // EnvironmentID就是ProjectID(在atlas app service左上方有垂直三個點那點Project Settings)
     EnvGroupID: Object.freeze({
-        Dev: "64e6b478a37b94153abe9042",// 開發版
+        Dev: "653cd1ccb544ec4945f8df83",// 開發版
         Release: "???",// 正式版
     }),
     // 環境版本對應AppID(AppID不是App的ObjectID)
     EnvAppID: Object.freeze({
-        Dev: "aurafortest-bikmm",// 開發版
+        Dev: "app-herofishing-pvxuj",// 開發版
         Release: "???",// 正式版
     }),
     // 環境版本對應AppObjID
