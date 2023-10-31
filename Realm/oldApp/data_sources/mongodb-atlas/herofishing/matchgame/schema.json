@@ -1,0 +1,32 @@
+{
+    "properties": {
+        "_id": {
+            "bsonType": "string"
+        },
+        "createdAt": {
+            "bsonType": "date"
+        },
+        "dbMapID": {
+            "bsonType": "string"
+        },
+        "ip": {
+            "bsonType": "string"
+        },
+        "playerIDs": {
+            "bsonType": "array",
+            "items": {
+                "bsonType": "string"
+            }
+        },
+        "port": {
+            "bsonType": "int"
+        }
+    },
+    "required": [
+        "_id",
+        "createdAt",
+        "dbMapID",
+        "ip",
+        "port"
+    ]
+}

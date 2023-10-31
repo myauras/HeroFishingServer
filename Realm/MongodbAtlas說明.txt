@@ -1,0 +1,13 @@
+# ====================MonbodbAtlas說明===================
+# 以系統管理員權限開啟powershell並執行以下語法(要先裝choco)
+choco install mongodb-atlas
+# 從開powershell後可以輸入atlas查看命令列表
+atlas
+# 查看版本
+atlas --version
+# 更新版本
+choco upgrade mongodb-atlas
+# 登入atlas project
+atlas auth login
+# 查看專案清單
+atlas projects list

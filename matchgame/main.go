@@ -38,10 +38,10 @@ func main() {
 	log.SetOutput(os.Stdout) //設定log輸出方式
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
-	// port := flag.String("port", "7654", "The port to listen to tcp traffic on")
-	// if ep := os.Getenv("PORT"); ep != "" {
-	// 	port = &ep
-	// }
+	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
+	if ep := os.Getenv("PORT"); ep != "" {
+		port = &ep
+	}
 	Env = *flag.String("Version", "Dev", "version setting")
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
@@ -59,7 +59,7 @@ func main() {
 	var myGameServer *serverSDK.GameServer
 	var playerIDs [setting.PLAYER_NUMBER]string
 	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
-		log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
+		// log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
 		defer func() {
 			if err := recover(); err != nil {
 				log.Errorf("%s 遊戲崩潰: %v.\n", logger.LOG_Main, err)
@@ -109,7 +109,7 @@ func main() {
 			if matchmakerPodName != "" && gs.ObjectMeta.Labels["MatchmakerPodName"] != "" && matchmakerPodName != gs.ObjectMeta.Labels["MatchmakerPodName"] {
 				log.Errorf("%s Agones has allocate error in parelle", logger.LOG_Main)
 
-				// 要改成atlas function版本
+				// 要改成mongodb寫log版本
 				// FirebaseFunction.WriteErrorLog(map[string]interface{}{
 				// 	"ErrorID":    "ALLOCATE ERROR",
 				// 	"Message":    "Agones has allocate error in parelle.",
@@ -140,9 +140,10 @@ func main() {
 
 	// 開啟連線
 	log.Infof("%s Open TCP Connection", logger.LOG_Main)
-	src := fmt.Sprintf(":%d", room.DBMatchgame.Port)
+
+	src := ":" + *port
 	go openConnectTCP(agonesSDK, stopChan, src, room)
-	// go OpenConnectUDP(agonesSDK, stop, ":"+*port, room)
+	go OpenConnectUDP(agonesSDK, stopChan, src, room)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
 
@@ -206,7 +207,6 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room)
 			stop <- struct{}{}
 		}
 	}()
-	log.Infof("%s src= %s", logger.LOG_Main, src)
 	tcpListener, err := net.Listen("tcp", src)
 	if err != nil {
 		log.Errorf("%s Listen error: %v.\n", logger.LOG_Main, err)
@@ -225,18 +225,20 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room)
 }
 
 // 開啟UDP連線
-func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, address string, room *game.Room) {
+func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectUDP error: %v.\n", logger.LOG_Main, err)
 			stop <- struct{}{}
 		}
 	}()
-	conn, err := net.ListenPacket("udp", address)
+	conn, err := net.ListenPacket("udp", src)
 	if err != nil {
 		log.Errorf("%s Could not start udp server: %v.\n", logger.LOG_Main, err)
 	}
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
+	log.Infof("%s UDP server start and listening on %s", logger.LOG_Main, src)
+
 	for {
 		b := make([]byte, 1024)
 		n, sender, err := conn.ReadFrom(b)

@@ -1,0 +1,72 @@
+{
+    "properties": {
+        "_id": {
+            "bsonType": "string"
+        },
+        "content": {
+            "bsonType": "string"
+        },
+        "createdAt": {
+            "bsonType": "date"
+        },
+        "customerServiceURL": {
+            "bsonType": "string"
+        },
+        "enable": {
+            "bsonType": "bool"
+        },
+        "endAt": {
+            "bsonType": "date"
+        },
+        "envVersion": {
+            "bsonType": "string"
+        },
+        "gameVersion": {
+            "bsonType": "string"
+        },
+        "index": {
+            "bsonType": "int"
+        },
+        "maintain": {
+            "bsonType": "bool"
+        },
+        "maintainEndAt": {
+            "bsonType": "date"
+        },
+        "maintainExemptPlayerIDs": {
+            "bsonType": "array",
+            "items": {
+                "bsonType": "string"
+            }
+        },
+        "matchmakerEnable": {
+            "bsonType": "bool"
+        },
+        "matchmakerIP": {
+            "bsonType": "string"
+        },
+        "matchmakerPort": {
+            "bsonType": "int"
+        },
+        "minimumGameVersion": {
+            "bsonType": "string"
+        },
+        "onlineCheckSec": {
+            "bsonType": "int"
+        },
+        "startAt": {
+            "bsonType": "date"
+        },
+        "storeURL_Apple": {
+            "bsonType": "string"
+        },
+        "storeURL_Google": {
+            "bsonType": "string"
+        }
+    },
+    "required": [
+        "_id",
+        "createdAt"
+    ],
+    "title": "gameSetting"
+}

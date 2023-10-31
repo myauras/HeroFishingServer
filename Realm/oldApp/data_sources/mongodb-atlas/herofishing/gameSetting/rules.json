@@ -1,0 +1,36 @@
+{
+    "collection": "gameSetting",
+    "database": "herofishing",
+    "roles": [
+        {
+            "name": "Player",
+            "apply_when": {
+                "%%user.custom_data.role": "Player"
+            },
+            "document_filters": {
+                "write": true,
+                "read": true
+            },
+            "insert": false,
+            "delete": false,
+            "search": true,
+            "additional_fields": {
+                "write": false,
+                "read": true
+            }
+        },
+        {
+            "name": "Unknown",
+            "apply_when": {},
+            "document_filters": {
+                "write": false,
+                "read": false
+            },
+            "read": false,
+            "write": false,
+            "insert": false,
+            "delete": false,
+            "search": false
+        }
+    ]
+}

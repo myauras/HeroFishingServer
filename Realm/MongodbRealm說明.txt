@@ -1,11 +1,13 @@
 # ====================Realm專案說明===================
 # 安裝Realm CLI環境
 npm install -g mongodb-realm-cli
+# 更新cli version
+npm upgrade -g mongodb-realm-cli
 # 登入Realm AIPKey放在 Keys資料夾內
-realm-cli login
-# 使用realm-cli pull 拉取Realm上資料
-# 更多指令可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/cli/realm-cli-pull/
+realm-cli login --api-key="<my api key>" --private-api-key="<my private api key>"
+# 使用realm-cli pull/push 拉取/推送Realm專案 更多指令可參考官方文件: https://www.mongodb.com/docs/atlas/app-services/cli/realm-cli-pull/
 realm-cli pull
+realm-cli push
 
 
 

@@ -30,7 +30,6 @@ func main() {
 	if envPort := os.Getenv("PORT"); envPort != "" {
 		port = &envPort
 	}
-	log.Infof("%s Port: %s", logger.LOG_Main, *port)
 
 	// 設定環境版本
 	Env = *flag.String("Env", "Dev", "Env setting")
@@ -55,6 +54,8 @@ func main() {
 	// 取得MongoDB帳密
 	mongoUser := os.Getenv("MongoUser")
 	mongoPW := os.Getenv("MongoPW")
+	log.Infof("%s MongoUser: %s", logger.LOG_Main, mongoUser)
+	log.Infof("%s mongoPW: %s", logger.LOG_Main, mongoPW)
 
 	// 初始化MongoDB設定
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
@@ -73,7 +74,6 @@ func main() {
 			log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
 			log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
 			setExternalID(ip) // 寫入對外ID到DB中
-			log.Infof("%s 寫入對外ID到DB完成.\n", logger.LOG_Main)
 			break
 		}
 	}

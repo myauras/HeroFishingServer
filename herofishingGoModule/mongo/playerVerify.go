@@ -60,6 +60,8 @@ func PlayerVerify(token string) (string, error) {
 
 	// 驗證玩家token
 	verifyEndpoint := fmt.Sprintf(`https://realm.mongodb.com/api/admin/v3.0/groups/%s/apps/%s/users/verify_token`, EnvGroupID[Env], EnvAppObjID[Env])
+	log.Infof("%s verifyEndpoint: %s", logger.LOG_Mongo, verifyEndpoint)
+	log.Infof("%s token: %s", logger.LOG_Mongo, token)
 
 	verifyBody := map[string]string{
 		"token": token,

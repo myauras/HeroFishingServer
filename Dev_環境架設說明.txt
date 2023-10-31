@@ -4,9 +4,8 @@
 # 初始化gcloud, 安裝k8s元件, 設定專案, 登入
 gcloud init 
 gcloud components install kubectl
-gcloud config set project YOUR_PROJECT_ID
 gcloud auth login
-
+gcloud config set project YOUR_PROJECT_ID
 
 # 建立cluster
 # Dev版使用zone就可以, 區域可以參考: https://cloud.google.com/compute/docs/regions-zones/#available
@@ -55,5 +54,9 @@ kubectl create secret generic secretName --from-literal=key1=value1 --from-liter
 # 以下為範例 matchserver跟gameserver都要建立
 kubectl create secret generic mongodb-secret -n herofishing-matchserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 kubectl create secret generic mongodb-secret -n herofishing-gameserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
+# 查看secret方法
+kubectl get secrets -n herofishing-matchserver
 # 刪除secret方法
 kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]
+
+

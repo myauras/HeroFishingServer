@@ -42,11 +42,11 @@ deployMatchgame:
 	@echo "==============Matchgame Deploy Finished=============="
 
 # 移除matchgame舊版本pods
-deleveMatchgameOldPods:
+deleteMatchgameOldPods:
 	@echo "==============Start Delete Old Matchgame Pods=============="
 	powershell -ExecutionPolicy Bypass -File .\Dev_DeleteAllMatchgameAndKeepByVersion.ps1
 	@echo "==============Matchgame Delete Finished=============="
 
 
 # 建構+部屬matchgame
-matchgame: autoVersioning-Matchgame buildMatchgame deployMatchgame
+matchgame: autoVersioning-Matchgame buildMatchgame deployMatchgame deleteMatchgameOldPods

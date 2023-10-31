@@ -2,7 +2,7 @@
     "name": "mongodb-atlas",
     "type": "mongodb-atlas",
     "config": {
-        "clusterName": "Cluster0",
+        "clusterName": "cluster-herofishing",
         "readPreference": "primary",
         "wireProtocolEnabled": false
     },

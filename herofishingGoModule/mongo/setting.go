@@ -14,8 +14,8 @@ var (
 const ()
 
 var EnvDBUri = map[string]string{
-	"Dev":     "mongodb+srv://%s:%s@cluster0.edk0n6b.mongodb.net/?retryWrites=true&w=majority", // 開發版
-	"Release": "???",                                                                           // 正式版
+	"Dev":     "mongodb+srv://%s:%s@cluster-herofishing.8yp6fou.mongodb.net/?retryWrites=true&w=majority", // 開發版
+	"Release": "???",                                                                                      // 正式版
 }
 
 var AppEndpoint = map[string]string{
@@ -23,19 +23,26 @@ var AppEndpoint = map[string]string{
 	"Release": "???",                                                                    // 正式版
 }
 
-// EnvironmentID就是ProjectID(在atlas app service左上方有垂直三個點那點Project Settings)
+// GroupID就是ProjectID(在atlas app service左上方有垂直三個點那點Project Settings)
+// 也可以在開啟Atlas Services時 網址會顯示ProjectID
+// 在https://realm.mongodb.com/groups/653cd1ccb544ec4945f8df83/apps/653cd937e285e8ddc4d6ac57/dashboard中
+// https://realm.mongodb.com/groups/[GroupID]/apps/[App ObjectID]/dashboard
 var EnvGroupID = map[string]string{
 	"Dev":     "653cd1ccb544ec4945f8df83", // 開發版
 	"Release": "???",                      // 正式版
 }
 
+// AppID
 var EnvAppID = map[string]string{
 	"Dev":     "app-herofishing-pvxuj", // 開發版
 	"Release": "???",                   // 正式版
 }
 
+// App ObjectID跟AppID不一樣, 開啟Atlas Services時 網址會顯示App ObjectID
+// https://realm.mongodb.com/groups/653cd1ccb544ec4945f8df83/apps/653cd937e285e8ddc4d6ac57/dashboard
+// https://realm.mongodb.com/groups/[GroupID]/apps/[App ObjectID]/dashboard
 var EnvAppObjID = map[string]string{
-	"Dev":     "64e6d784c96a30ebafdf3de0", // 開發版
+	"Dev":     "653cd937e285e8ddc4d6ac57", // 開發版
 	"Release": "???",                      // 正式版
 }
 

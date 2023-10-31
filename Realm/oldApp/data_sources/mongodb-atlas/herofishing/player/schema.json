@@ -1,0 +1,46 @@
+{
+    "properties": {
+        "_id": {
+            "bsonType": "string"
+        },
+        "authType": {
+            "bsonType": "string"
+        },
+        "ban": {
+            "bsonType": "bool"
+        },
+        "createdAt": {
+            "bsonType": "date"
+        },
+        "deviceUID": {
+            "bsonType": "string"
+        },
+        "lastSigninAt": {
+            "bsonType": "date"
+        },
+        "lastSignoutAt": {
+            "bsonType": "date"
+        },
+        "onlineState": {
+            "bsonType": "string"
+        },
+        "point": {
+            "bsonType": "long"
+        },
+        "test": {
+            "bsonType": "string"
+        }
+    },
+    "required": [
+        "_id",
+        "authType",
+        "ban",
+        "createdAt",
+        "deviceUID",
+        "lastSigninAt",
+        "lastSignoutAt",
+        "onlineState",
+        "point"
+    ],
+    "title": "player"
+}

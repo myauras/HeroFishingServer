@@ -1,0 +1,15 @@
+{
+    "properties": {
+        "_id": {
+            "bsonType": "objectId"
+        },
+        "createdAt": {
+            "bsonType": "date"
+        }
+    },
+    "required": [
+        "_id",
+        "createdAt"
+    ],
+    "title": "playerHistory"
+}

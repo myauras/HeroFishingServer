@@ -1,7 +1,15 @@
+# 登入
+gcloud auth login
+# 查看登入的帳戶
+gcloud auth list
 # 顯示gcp project
 gcloud projects list
+# 設定專案
+gcloud config set project 專案ID
 # 顯示目前使用中的專案
 gcloud config get-value project
+# 初始化k8s
+gcloud container clusters get-credentials <cluster-name> --zone <zone-name> --project <project-name>
 # 修改節點數量
 gcloud container clusters resize cluster-herofishing  --num-nodes=1 --zone=asia-east1-c
 # 移除特定pod
@@ -16,7 +24,9 @@ gcloud compute firewall-rules list --project=herofishing-dev
 gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"
 # 刪除火牆
 gcloud compute firewall-rules delete herofishing-firewall-udp --project=herofishing-dev
-# 查看node tag
+# 查詢某tag的nodes
+gcloud compute instances list --filter="tags.items:herofishing"
+# 查看node的tag
 gcloud compute instances describe gke-cluster-herofishing-default-pool-fbb15252-std9 --zone=asia-east1-c --format='get(tags)'
 # 新增node tag
 gcloud compute instances add-tags gke-cluster-herofishing-default-pool-fbb15252-std9 --zone=asia-east1-c --tags=herofishing

@@ -1,7 +1,7 @@
 {
     "app_id": "app-herofishing-pvxuj",
     "config_version": 20210101,
-    "name": "aurafortest",
+    "name": "app-herofishing",
     "location": "IN-MB",
     "provider_region": "gcp-asia-south1",
     "deployment_model": "LOCAL"

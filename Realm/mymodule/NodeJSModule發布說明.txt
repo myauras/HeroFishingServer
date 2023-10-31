@@ -1,0 +1,6 @@
+# 先登入npm
+npm login
+# powershell切到mymodule資料夾底下使用npm publish發布寫好的module
+npm publish
+# 因為版本每次都其他服務要更新(加npm版號, pub/sub等), 所以正式流程盡量都使用Makefile來更新版本 切到mymodule資料夾底下make all
+make all

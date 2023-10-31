@@ -1,6 +1,6 @@
 {
-  "name": "aurafortest-herofishing",
-  "version": "1.0.75",
+  "name": "aura-herofishing",
+  "version": "1.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {

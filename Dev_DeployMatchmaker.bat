@@ -10,7 +10,6 @@ REM 取得遊戲server的ip與port kubectl get services -n herofishing-matchserv
 @REM 要使用以下指令來連接k8s與gke
 @REM 先安裝gke工具 gcloud components install gke-gcloud-auth-plugin
 @REM gcloud container clusters get-credentials YOUR_CLUSTER_NAME --zone YOUR_ZONE
-
 @echo on
 call Dev_SwitchProject.bat
 kubectl apply -f Role.yaml
