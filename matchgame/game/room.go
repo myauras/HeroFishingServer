@@ -103,8 +103,9 @@ func (r *Room) PlayerJoin(player Player) bool {
 			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.ID)
 			return false
 		}
-		if index != -1 && v.ID == "" { // 有座位是空的就把座位索引存起來
+		if index == -1 && v.ID == "" { // 有座位是空的就把座位索引存起來
 			index = i
+			break
 		}
 	}
 

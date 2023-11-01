@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	Env           = "Dev" // 環境版本，初始化時會設定
-	APIPublicKey  = ""    // Realm的APIKey，初始化時會設定
-	APIPrivateKey = ""    // Realm的APIKey，初始化時會設定
+	Env           = "Dev" // 目前的環境版本，初始化時會設定
+	APIPublicKey  = ""    // 目前的Realm的APIKey，初始化時會設定
+	APIPrivateKey = ""    // 目前的Realm的APIKey，初始化時會設定
 )
 
 const ()

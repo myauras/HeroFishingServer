@@ -89,13 +89,10 @@ func main() {
 			myGameServer = gs
 			roomName := gs.ObjectMeta.Labels["RoomName"]
 			podName := gs.ObjectMeta.Name
-
-			nodeName := "test"
-			matchmakerPodName := "test"
+			nodeName := os.Getenv("NodeName")
 			log.Infof("%s ==============InitGameRoom==============", logger.LOG_Main)
 			log.Infof("%s podName: %v", logger.LOG_Main, podName)
 			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
-			log.Infof("%s MatchmakerPodName: %s", logger.LOG_Main, matchmakerPodName)
 			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
 			log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
 			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)

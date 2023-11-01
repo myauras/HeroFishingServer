@@ -4,7 +4,7 @@
 # 1. 要安裝npm install @google-cloud/pubsub
 # 2. gcp身分驗證 gcloud auth application-default login
 # 3. gcloud pubsub topics create [topic名稱]
-# 4. 發布模組時(make all)會順帶發布 如果只要單純publish使用指令來發布 node publish.js(一般不會這樣做, 不然atlas function與go server那邊取的json資料會不同步)
+# 4. 發布模組時(make all)會順帶發布 如果只要單純publish使用指令來發布 node publish.js
 
 # 說明:
 # Cloud Pub/Sub 是一個分布式消息佇列服務，它允許不同的應用程序在 Google Cloud 中進行異步通信。當使用 Cloud Pub/Sub 時，消息的傳遞是通過網路進行的

@@ -13,6 +13,11 @@ const (
 	PLAYER_NUMBER = 4 // 遊戲房最多X位玩家
 )
 
+var EnvGCPProject = map[string]string{
+	"Dev":     "herofishing-dev",     // 開發版
+	"Release": "herofishing-release", // 正式版
+}
+
 // 環境版本
 const (
 	ENV_DEV     = "Dev"

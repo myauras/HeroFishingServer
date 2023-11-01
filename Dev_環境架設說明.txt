@@ -59,4 +59,5 @@ kubectl get secrets -n herofishing-matchserver
 # 刪除secret方法
 kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]
 
-
+kubectl describe pod <your-pod-name>
+kubectl describe svc <your-service-name>
