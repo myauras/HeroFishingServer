@@ -3,6 +3,7 @@ module herofishingGoModule
 go 1.21.0
 
 require (
+	cloud.google.com/go/storage v1.30.1
 	github.com/sirupsen/logrus v1.9.3
 	go.mongodb.org/mongo-driver v1.12.1
 	k8s.io/apimachinery v0.28.2
@@ -14,7 +15,6 @@ require (
 	cloud.google.com/go/compute v1.23.2 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.4 // indirect
-	cloud.google.com/go/pubsub v1.33.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -53,6 +53,7 @@ require (
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.149.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405 // indirect

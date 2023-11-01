@@ -2,6 +2,10 @@
 gcloud auth login
 # 查看登入的帳戶
 gcloud auth list
+# 設定應用程式認證
+gcloud auth application-default login
+# 移除應用程式認證
+gcloud auth application-default revoke
 # 顯示gcp project
 gcloud projects list
 # 設定專案
@@ -32,4 +36,9 @@ gcloud compute instances describe gke-cluster-herofishing-default-pool-fbb15252-
 gcloud compute instances add-tags gke-cluster-herofishing-default-pool-fbb15252-std9 --zone=asia-east1-c --tags=herofishing
 # 移除node tag
 gcloud compute instances remove-tags gke-cluster-herofishing-default-pool-fbb15252-std9 --asia-east1-c --tags==herofishing
+# 查看Storage項目
+gsutil ls
+gsutil ls gs://herofishing_gamejson_dev/
+
+
 

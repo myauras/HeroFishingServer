@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"herofishingGoModule/logger"
+
+	"github.com/google/martian/v3/log"
 )
 
 // jsonDic的結構為jsonDic[jsonName][ID]
@@ -63,6 +66,7 @@ func GetHeroByID(id string) (HeroStruct, error) {
 
 // 傳入Json將並轉為對應struct資料並存入jsonDic中, jsonDic的結構為jsonDic[jsonName][ID]
 func SetJsonDic(jsonName string, jsonData []byte) error {
+
 	var unmarshaler JsonUnmarshaler
 	switch jsonName {
 	case JsonName.GameSetting:
@@ -72,9 +76,9 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 	default:
 		return errors.New("未定義的jsonName")
 	}
-
 	items, err := unmarshaler.UnmarshalJSONData(jsonData)
 	if err != nil {
+		log.Errorf("%s Unmarshal失敗: %v", logger.LOG_GameJson, err)
 		return err
 	}
 	jsonDic[jsonName] = items

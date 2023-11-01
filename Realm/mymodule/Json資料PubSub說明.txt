@@ -2,7 +2,7 @@
 
 # 使用方法:
 # 1. 要安裝npm install @google-cloud/pubsub
-# 2. gcp身分驗證 gcloud auth application-default login
+# 2. gcp應用程式身分驗證 gcloud auth application-default login
 # 3. gcloud pubsub topics create [topic名稱]
 # 4. 發布模組時(make all)會順帶發布 如果只要單純publish使用指令來發布 node publish.js
 
