@@ -11,13 +11,22 @@ import (
 
 // MonsterSpawner JSON
 type MonsterSpawnerJsonData struct {
-	ID                      string `json:"ID"`
-	SpawnType               string `json:"SpawnType"`
-	TypeValue               string `json:"TypeValue"`
-	MonsterIDs              string `json:"MonsterIDs"`
-	MonsterSpawnIntervalSec string `json:"MonsterSpawnIntervalSec"`
-	Routes                  string `json:"Routes"`
+	ID                      string    `json:"ID"`
+	SpawnType               SpawnType `json:"SpawnType"`
+	TypeValue               string    `json:"TypeValue"`
+	MonsterIDs              string    `json:"MonsterIDs"`
+	MonsterSpawnIntervalSec string    `json:"MonsterSpawnIntervalSec"`
+	Routes                  string    `json:"Routes"`
 }
+
+type SpawnType string
+
+const (
+	RandomGroup SpawnType = "RandomGroup"
+	RandomItem  SpawnType = "RandomItem"
+	Minion      SpawnType = "Minion"
+	Boss        SpawnType = "Boss"
+)
 
 func (jsonData MonsterSpawnerJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
 	var wrapper map[string][]MonsterSpawnerJsonData
@@ -70,14 +79,33 @@ func GetMonsterSpawnerByID(id string) (MonsterSpawnerJsonData, error) {
 }
 
 // 取得隨機生怪秒數
-func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (float64, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnIntervalSec)
+func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
+	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnIntervalSec, ",")
 	if len(ids) != 2 {
 		return 0, err
 	}
-	rand, err := utility.RandomFloatBetweenInts(ids[0], ids[1])
+	rand, err := utility.RandomIntBetweenInts(ids[0], ids[1])
 	if err != nil {
 		log.Errorf("%s GetRandSpawnSec錯誤: %v", logger.LOG_GameJson)
 	}
 	return rand, nil
+}
+
+// 取得生怪IDs
+func (jsonData MonsterSpawnerJsonData) GetMonsterIDs() ([]int, error) {
+	ids, err := utility.StrToIntSlice(jsonData.MonsterIDs, ",")
+	return ids, err
+}
+
+// 取得隨機路徑ID
+func (jsonData MonsterSpawnerJsonData) GetRandRoutID() (int, error) {
+	ids, err := utility.StrToIntSlice(jsonData.Routes, ",")
+	if err != nil {
+		return 0, err
+	}
+	id, err := utility.GetRandomTFromSlice(ids)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }

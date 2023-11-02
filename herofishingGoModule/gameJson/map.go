@@ -67,6 +67,6 @@ func GetMapByID(id string) (MapJsonData, error) {
 
 // 取得此地圖的生怪IDs
 func (jsonData MapJsonData) GetMonsterSpawnerIDs() ([]int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnerIDs)
+	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnerIDs, ",")
 	return ids, err
 }
