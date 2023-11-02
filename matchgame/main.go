@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
-
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
@@ -50,6 +50,8 @@ func main() {
 	if err != nil {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
+
+	InitGameJson() // 初始化遊戲Json資料
 
 	roomChan := make(chan *game.Room)
 
@@ -165,6 +167,22 @@ func main() {
 	<-stopChan
 
 	shutdownServer(agonesSDK) // 關閉Server
+}
+
+// 初始化遊戲Json資料
+func InitGameJson() {
+	log.Infof("%s 開始初始化GameJson", logger.LOG_Main)
+	err := gameJson.Init(Env)
+	if err != nil {
+		log.Infof("%s 初始化GameJson失敗: %v", logger.LOG_Main, err)
+		return
+	}
+	// hero1, err := gameJson.GetHeroByID("1")
+	// if err != nil {
+	// 	fmt.Printf("取資料錯誤: %v", err)
+	// }
+	// fmt.Printf(hero1.RoleCategory)
+	log.Infof("%s 初始化GameJson完成", logger.LOG_Main)
 }
 func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
 	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Main)

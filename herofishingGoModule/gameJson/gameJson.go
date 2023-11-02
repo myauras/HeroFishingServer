@@ -2,8 +2,6 @@ package gameJson
 
 import (
 	"context"
-	"fmt"
-	"herofishingGoModule/logger"
 	"herofishingGoModule/setting"
 	"io/ioutil"
 	"strings"
@@ -11,6 +9,10 @@ import (
 	"cloud.google.com/go/storage"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	"errors"
+	"fmt"
+	"herofishingGoModule/logger"
 )
 
 // 初始化JsonMap
@@ -69,5 +71,63 @@ func Init(env string) error {
 		}
 	}
 
+	return nil
+}
+
+// jsonDic的結構為jsonDic[jsonName][ID]
+var jsonDic = make(map[string]map[string]interface{})
+
+type JsonNameStruct struct {
+	GameSetting    string
+	Hero           string
+	HeroEXP        string
+	Map            string
+	Monster        string
+	MonsterSpawner string
+	Route          string
+}
+
+// Json名稱列表
+var JsonName = JsonNameStruct{
+	GameSetting:    "GameSetting",
+	Hero:           "Hero",
+	HeroEXP:        "HeroEXP",
+	Map:            "Map",
+	Monster:        "Monster",
+	MonsterSpawner: "MonsterSpawner",
+	Route:          "Route",
+}
+
+// 傳入Json名稱取得對應JsonMap資料
+func getJsonDataByName(name string) (map[string]interface{}, error) {
+	data, exists := jsonDic[name]
+	if !exists {
+		return nil, fmt.Errorf("jsonDic中未找到 %s 的資料", name)
+	}
+	return data, nil
+}
+
+type JsonUnmarshaler interface {
+	UnmarshalJSONData(jsonName string, sonData []byte) (map[string]interface{}, error)
+}
+
+// 傳入Json將並轉為對應struct資料並存入jsonDic中, jsonDic的結構為jsonDic[jsonName][ID]
+func SetJsonDic(jsonName string, jsonData []byte) error {
+
+	var unmarshaler JsonUnmarshaler
+	switch jsonName {
+	case JsonName.GameSetting:
+		unmarshaler = GameSettingJsonData{}
+	case JsonName.Hero:
+		unmarshaler = HeroJsonData{}
+	default:
+		return errors.New("未定義的jsonName")
+	}
+	items, err := unmarshaler.UnmarshalJSONData(jsonName, jsonData)
+	if err != nil {
+		log.Errorf("%s Unmarshal失敗: %v", logger.LOG_GameJson, err)
+		return err
+	}
+	jsonDic[jsonName] = items
 	return nil
 }
