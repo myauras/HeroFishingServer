@@ -12,7 +12,7 @@ type GameSettingJsonData struct {
 	Value string `json:"Value"`
 }
 
-func (g GameSettingJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
+func (jsonData GameSettingJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
 	var wrapper map[string][]GameSettingJsonData
 	if err := json.Unmarshal(jsonBytes, &wrapper); err != nil {
 		return nil, err

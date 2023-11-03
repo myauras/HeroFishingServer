@@ -1,0 +1,10 @@
+{"Map":[
+	{	"ID":"1",	"Ref":"map1",	"Multiplier":"1",	"MonsterSpawnerIDs":"10004"},
+	{	"ID":"2",	"Ref":"map1",	"Multiplier":"5",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"3",	"Ref":"map1",	"Multiplier":"10",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"4",	"Ref":"map1",	"Multiplier":"30",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"5",	"Ref":"map1",	"Multiplier":"50",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"6",	"Ref":"map1",	"Multiplier":"100",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"7",	"Ref":"map1",	"Multiplier":"200",	"MonsterSpawnerIDs":"10004,10,1001"},
+	{	"ID":"8",	"Ref":"map1",	"Multiplier":"300",	"MonsterSpawnerIDs":"10004,10,1001"}
+]}

@@ -9,10 +9,10 @@ import (
 
 // Map JSON
 type MapJsonData struct {
-	ID                string `json:"ID"`
-	Ref               string `json:"Ref"`
-	Multiplier        int    `json:"Multiplier"`
-	MonsterSpawnerIDs string `json:"MonsterSpawnerIDs"`
+	ID                string  `json:"ID"`
+	Ref               string  `json:"Ref"`
+	Multiplier        string `json:"Multiplier"`
+	MonsterSpawnerIDs string  `json:"MonsterSpawnerIDs"`
 }
 
 func (jsonData MapJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {

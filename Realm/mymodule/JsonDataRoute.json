@@ -1,0 +1,14 @@
+{"Route":[
+	{	"ID":"1",	"SpawnPos":"9,0,0",	"TargetPos":"-9,0,0"},
+	{	"ID":"2",	"SpawnPos":"9,0,1",	"TargetPos":"-9,0,-3"},
+	{	"ID":"3",	"SpawnPos":"9,0,-2",	"TargetPos":"-9,0,3"},
+	{	"ID":"4",	"SpawnPos":"-9,0,4",	"TargetPos":"9,0,-3"},
+	{	"ID":"5",	"SpawnPos":"2,0,6",	"TargetPos":"-2,0,-6"},
+	{	"ID":"6",	"SpawnPos":"-3,0,6",	"TargetPos":"3,0,-6"},
+	{	"ID":"7",	"SpawnPos":"-2,0,-6",	"TargetPos":"4,0,6"},
+	{	"ID":"8",	"SpawnPos":"2,0,-6",	"TargetPos":"-4,0,6"},
+	{	"ID":"1001",	"SpawnPos":"2,0,2",	"TargetPos":"2,0,2"},
+	{	"ID":"1002",	"SpawnPos":"2,0,-2",	"TargetPos":"2,0,-2"},
+	{	"ID":"1003",	"SpawnPos":"-2,0,2",	"TargetPos":"-2,0,2"},
+	{	"ID":"1004",	"SpawnPos":"-2,0,-2",	"TargetPos":"-2,0,-2"}
+]}

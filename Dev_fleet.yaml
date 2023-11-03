@@ -9,7 +9,7 @@ spec:
     metadata:
       labels:
         type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-        imgVersion: "0.1.48" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+        imgVersion: "0.1.57" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       ports:
       - name: default
@@ -20,11 +20,11 @@ spec:
         metadata:
           labels:
             type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-            imgVersion: "0.1.48" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
+            imgVersion: "0.1.57" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchgame:0.1.48
+            image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchgame:0.1.57
             resources:
               requests:
                 memory: "32Mi"
@@ -62,12 +62,3 @@ spec:
                 secretKeyRef:
                   name: mongodb-secret
                   key: MongoPW
-            # 以下不需要暫時註解
-            # - name: "FirebaseProjectID"
-            #   value: "majampachinko-develop"
-            # - name: "FirebaseProjectKey"
-            #   value: "/home/server/key_no_upload/majampachinko-develop-firebase-adminsdk-sx0fi-7d50eeb054.json"
-            # - name: "HttpEndRoundURL"
-            #   value: "https://asia-east1-majampachinko-develop.cloudfunctions.net/MaJamEndRound"
-            # - name: "HttpEndGameURL"
-            #   value: "https://asia-east1-majampachinko-develop.cloudfunctions.net/MaJamEndGame"

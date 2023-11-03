@@ -95,7 +95,7 @@ var ColName = ColNameStruct{
 type DBMap struct {
 	ID           string `bson:"_id"`
 	MatchType    string `bson:"matchType"`
-	JsonMapID    string `bson:"jsonMapID"`
+	JsonMapID    int32  `bson:"jsonMapID"`
 	Bet          int32  `bson:"bet"`
 	BetThreshold int64  `bson:"betThreshold"`
 	Enable       bool   `bson:"enable"`

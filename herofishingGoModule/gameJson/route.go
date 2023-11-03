@@ -12,7 +12,7 @@ type RouteJsonData struct {
 	TargetPos string `json:"TargetPos"`
 }
 
-func (g RouteJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
+func (jsonData RouteJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
 	var wrapper map[string][]RouteJsonData
 	if err := json.Unmarshal(jsonBytes, &wrapper); err != nil {
 		return nil, err

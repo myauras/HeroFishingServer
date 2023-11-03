@@ -3,7 +3,7 @@ package gameJson
 import (
 	"context"
 	"herofishingGoModule/setting"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -41,9 +41,9 @@ func Init(env string) error {
 	query := &storage.Query{Prefix: prefix}
 
 	// 執行查詢
-	it := bucket.Objects(ctx, query)
+	item := bucket.Objects(ctx, query)
 	for {
-		attrs, err := it.Next()
+		attrs, err := item.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -60,7 +60,7 @@ func Init(env string) error {
 			}
 			defer reader.Close()
 
-			data, err := ioutil.ReadAll(reader)
+			data, err := io.ReadAll(reader)
 			if err != nil {
 				return fmt.Errorf("%s Failed to read data: %v", logger.LOG_GameJson, err)
 			}
@@ -85,6 +85,9 @@ type JsonNameStruct struct {
 	Monster        string
 	MonsterSpawner string
 	Route          string
+	BuffSkill      string
+	Drop           string
+	Rank           string
 }
 
 // Json名稱列表
@@ -96,6 +99,9 @@ var JsonName = JsonNameStruct{
 	Monster:        "Monster",
 	MonsterSpawner: "MonsterSpawner",
 	Route:          "Route",
+	BuffSkill:      "BuffSkill",
+	Drop:           "Drop",
+	Rank:           "Rank",
 }
 
 // 傳入Json名稱取得對應JsonMap資料
@@ -120,6 +126,22 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		unmarshaler = GameSettingJsonData{}
 	case JsonName.Hero:
 		unmarshaler = HeroJsonData{}
+	case JsonName.HeroEXP:
+		unmarshaler = HeroEXPJsonData{}
+	case JsonName.Map:
+		unmarshaler = MapJsonData{}
+	case JsonName.Monster:
+		unmarshaler = MonsterJsonData{}
+	case JsonName.MonsterSpawner:
+		unmarshaler = MonsterSpawnerJsonData{}
+	case JsonName.Route:
+		unmarshaler = RouteJsonData{}
+	case JsonName.BuffSkill:
+		unmarshaler = BuffSkillJsonData{}
+	case JsonName.Drop:
+		unmarshaler = DropJsonData{}
+	case JsonName.Rank:
+		unmarshaler = RankJsonData{}
 	default:
 		return errors.New("未定義的jsonName")
 	}
@@ -129,5 +151,6 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		return err
 	}
 	jsonDic[jsonName] = items
+	log.Infof("%s 讀取Json資料成功: %s", logger.LOG_GameJson, jsonName)
 	return nil
 }

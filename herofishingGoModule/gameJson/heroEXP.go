@@ -9,7 +9,7 @@ import (
 // HeroEXP JSON
 type HeroEXPJsonData struct {
 	ID  string `json:"ID"`
-	EXP int    `json:"EXP"`
+	EXP string    `json:"EXP"`
 }
 
 func (jsonData HeroEXPJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {

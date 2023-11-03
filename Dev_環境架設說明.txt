@@ -7,21 +7,33 @@ gcloud components install kubectl
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 
-# 建立cluster
+# =========建立cluster步驟=========
 # Dev版使用zone就可以, 區域可以參考: https://cloud.google.com/compute/docs/regions-zones/#available
 # Channel選擇官方推薦的regular
 # tag使用game-server (之後建立防火牆規則的目標是這個tag)
 # node用2台就好
 # 機器類型使用e2-standard-4, 這是相對便宜的機器, 機器類型可以參考 https://cloud.google.com/compute/docs/general-purpose-machines
-gcloud container clusters create cluster-herofishing --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=1 --enable-image-streaming --machine-type=e2-standard-4
-
+# --workload-pool是啟用Workload Identity(用於讓k8s下的pod能使用GCP的服務), 使用方式為--workload-pool PROJECT_ID.svc.id.goog
+gcloud container clusters create cluster-herofishing --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=1 --enable-image-streaming --machine-type=e2-standard-4 --workload-pool=herofishing-dev.svc.id.goog
 # 官方建議新建一個Agones專用的node pool, 避免跟遊戲server的機器共用, 但是Dev環境可以不用這麼做，所以註解掉，如果有需要可以使用註解的內容
 # gcloud container node-pools create agones-system --cluster=cluster-herofishing --zone=asia-east1-c --node-taints agones.dev/agones-system=true:NoExecute --node-labels agones.dev/agones-system=true --num-nodes=1 --machine-type=e2-standard-4
-
+gcloud container clusters update cluster-herofishing --zone=asia-east1-c --workload-pool=herofishing-dev.svc.id.goog
 # 新增命名空間matchmaker(配房伺服器) 與 matchgame(遊戲伺服器)
 kubectl create namespace herofishing-matchserver
 kubectl create namespace herofishing-gameserver
 
+# =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
+# 為命名空間添加Annotation(註解), 註解是key-value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcs-editor@herofishing-dev.iam.gserviceaccount.com
+kubectl annotate namespace herofishing-matchserver "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
+kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
+# 為 herofishing-matchserver 命名空間的 default 服務帳戶綁定 IAM 策略
+gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-matchserver/default]"
+# 為 herofishing-gameserver 命名空間的 default 服務帳戶綁定 IAM 策略
+gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-gameserver/default]"
+
+
+
+# =========安裝Agones步驟=========
 # 使用helm安裝agones, 參考官方文件: https://agones.dev/site/docs/installation/install-agones/helm/
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
@@ -29,7 +41,6 @@ helm repo update
 helm install helm-release-herofishing agones/agones --set gameservers.namespaces[0]=herofishing-gameserver,agones.controller.minPort=6000,agones.controller.maxPort=8000 --namespace agones-system --create-namespace
 # 如果有新增server命名空間要跑這個(game server有刪掉命名空間的話要重新執行upgrade否則 matchgame server在deploy時會發生"agones-sdk" not found的錯誤)
 helm upgrade helm-release-herofishing agones/agones --reuse-values --set "gameservers.namespaces={herofishing-gameserver,新增的命名空間}" --namespace agones-system
-
 # 可以使用以下語法來查看部屬結果
 helm list -n agones-system # 使用命名空間查看helm部屬的內容
 kubectl get services -n agones-system # 使用命名空間查看k8s上的服務(agones-controller-service & agones-allocator-service就是agones服務)
@@ -37,7 +48,7 @@ kubectl get pods -n agones-system -o wide # 取得k8s的pods來確認部屬與�
 # 如果要移除agones使用以下語法
 helm uninstall helm-release-herofishing --namespace=agones-system
 
-    
+# =========啟用Artifacts服務=========  
 # 要能push docker image要先啟用artifact registry服務
 gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.com
 # 要能push docker image要先建立儲存庫, 參考文件: https://cloud.google.com/artifact-registry/docs/repositories/create-repos#docker
@@ -49,6 +60,8 @@ gcloud artifacts operations describe [repo id] --location=asia-east1
 # 配置Docker客戶端使用Google Cloud身份進行認證，這樣就可以推送和拉取image，而不會遇到權限問題
 gcloud auth configure-docker asia-east1-docker.pkg.dev
 
+
+# =========建立Secret步驟=========
 # 使用k8s secret建立mongo需要的敏感資料並在建置yaml檔案中取
 kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
 # 以下為範例 matchserver跟gameserver都要建立
@@ -58,6 +71,3 @@ kubectl create secret generic mongodb-secret -n herofishing-gameserver --from-li
 kubectl get secrets -n herofishing-matchserver
 # 刪除secret方法
 kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]
-
-kubectl describe pod <your-pod-name>
-kubectl describe svc <your-service-name>

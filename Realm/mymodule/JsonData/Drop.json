@@ -1,0 +1,15 @@
+{"Drop":[
+	{	"ID":"1",	"Ref":"drop1",	"GainRTP":"30",	"EffectType":"ReplaceAttack",	"EffectValue1":"1"},
+	{	"ID":"2",	"Ref":"drop2",	"EffectType":"FullSkillEnergy"},
+	{	"ID":"3",	"Ref":"drop3",	"EffectType":"HeroLevelUP",	"EffectValue1":"1"},
+	{	"ID":"4",	"Ref":"drop4",	"GainRTP":"40",	"EffectType":"Summon",	"EffectValue1":"2001"},
+	{	"ID":"5",	"Ref":"drop5",	"EffectType":"AttackSpeedUP",	"EffectValue1":"2",	"EffectValue2":"20"},
+	{	"ID":"6",	"Ref":"drop6",	"GainRTP":"200",	"EffectType":"BuffSkill",	"EffectValue1":"6"},
+	{	"ID":"7",	"Ref":"drop7",	"GainRTP":"250",	"EffectType":"BuffSkill",	"EffectValue1":"7"},
+	{	"ID":"8",	"Ref":"drop8",	"GainRTP":"300",	"EffectType":"Summon",	"EffectValue1":"2002"},
+	{	"ID":"9",	"Ref":"drop9",	"GainRTP":"350",	"EffectType":"ReplaceAttack",	"EffectValue1":"9"},
+	{	"ID":"10",	"Ref":"drop10",	"GainRTP":"200",	"EffectType":"BuffSkill",	"EffectValue1":"10"},
+	{	"ID":"11",	"Ref":"drop11",	"GainRTP":"250",	"EffectType":"BuffSkill",	"EffectValue1":"11"},
+	{	"ID":"12",	"Ref":"drop12",	"GainRTP":"300",	"EffectType":"BuffSkill",	"EffectValue1":"12"},
+	{	"ID":"13",	"Ref":"drop13",	"GainRTP":"350",	"EffectType":"BuffSkill",	"EffectValue1":"13"}
+]}

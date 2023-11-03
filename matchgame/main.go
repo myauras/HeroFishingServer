@@ -52,7 +52,6 @@ func main() {
 	}
 
 	InitGameJson() // 初始化遊戲Json資料
-
 	roomChan := make(chan *game.Room)
 
 	roomInit := false
@@ -148,6 +147,8 @@ func main() {
 
 	// 開始遊戲房主循環
 	room.StartRun(stopChan, endGameChan)
+	// 初始生怪器
+	game.NewMonsterScheduler().InitMonsterSpawner(room.DBmap.JsonMapID)
 
 	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 
