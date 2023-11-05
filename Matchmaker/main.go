@@ -23,7 +23,13 @@ var SelfPodName string            // K8s上所屬的Pod名稱
 var Receptionist RoomReceptionist // 房間接待員
 
 func main() {
-	log.SetOutput(os.Stdout) //設定log輸出方式
+	// 設定日誌格式為JSON
+	log.SetFormatter(&log.JSONFormatter{})
+	// 設定日誌級別
+	log.SetLevel(log.InfoLevel)
+	// 設定日誌輸出，預設為標準輸出
+	log.SetOutput(os.Stdout)
+
 	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
 	// 設定Port
 	port := flag.String("port", "32680", "The port to listen to tcp traffic on")

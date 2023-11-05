@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.52
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.53
         resources:
           requests:
             memory: "1024Mi"
