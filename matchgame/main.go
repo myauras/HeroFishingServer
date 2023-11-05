@@ -1,10 +1,11 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
 	matchgameSetting "matchgame/setting"
+
+	log "github.com/sirupsen/logrus"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -35,7 +36,7 @@ var connnTokens []string // 連線驗證Token
 var Env string           // 環境版本
 
 func main() {
-	log.SetOutput(os.Stdout) //設定log輸出方式
+	// log.SetOutput(os.Stdout) //設定log輸出方式
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
@@ -99,7 +100,7 @@ func main() {
 			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
 			log.Infof("%s Address: %s", logger.LOG_Main, myGameServer.Status.Address)
 			log.Infof("%s Port: %v", logger.LOG_Main, myGameServer.Status.Ports[0].Port)
-			log.Infof("%s ==============Info Finished==============", logger.LOG_Main)
+			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
 			game.InitGameRoom(dbMapID, playerIDs, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
 			log.Infof("%s Init Game Room Success", logger.LOG_Main)
@@ -137,7 +138,6 @@ func main() {
 	close(roomChan)
 
 	// 開啟連線
-	log.Infof("%s Open TCP Connection", logger.LOG_Main)
 
 	src := ":" + *port
 	go openConnectTCP(agonesSDK, stopChan, src, room)
@@ -148,7 +148,8 @@ func main() {
 	// 開始遊戲房主循環
 	room.StartRun(stopChan, endGameChan)
 	// 初始生怪器
-	game.NewMonsterScheduler().InitMonsterSpawner(room.DBmap.JsonMapID)
+	scheduler := game.NewMonsterScheduler()
+	scheduler.InitMonsterSpawner(room.DBmap.JsonMapID)
 
 	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 
@@ -401,7 +402,7 @@ func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr,
 				CMD:    packet.UPDATE_UDP,
 				PackID: -1,
 				Content: game.ServerStateContent{
-					ServerTime: room.PassSecs,
+					ServerTime: room.GameTime,
 				},
 			})
 			if err != nil {

@@ -80,7 +80,7 @@ func GetMonsterSpawnerByID(id string) (MonsterSpawnerJsonData, error) {
 
 // 取得隨機生怪秒數
 func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnIntervalSec, ",")
+	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnIntervalSec, "~")
 	if len(ids) != 2 {
 		return 0, err
 	}

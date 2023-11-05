@@ -61,6 +61,7 @@ deleteMatchgameOldPods:
 	powershell -ExecutionPolicy Bypass -File .\Dev_DeleteAllMatchgameAndKeepByVersion.ps1
 	@echo "==============Matchgame Delete Finished=============="
 
+# 更新Json到GCS上
 uploadJsonToServer:
 	@echo "==============Uploading Json Datas to GCS=============="
 	.\Dev_UploadJsonToServer.bat

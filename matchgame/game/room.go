@@ -2,7 +2,6 @@ package game
 
 import (
 	"errors"
-	log "github.com/sirupsen/logrus"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
@@ -13,6 +12,8 @@ import (
 	"runtime/pprof"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -34,7 +35,7 @@ type Room struct {
 	gameState              GameState                     // 遊戲狀態
 	DBMatchgame            *mongo.DBMatchgame            // DB遊戲房資料
 	DBmap                  *mongo.DBMap                  // DB地圖設定
-	PassSecs               float64                       // 遊戲開始X秒
+	GameTime               float64                       // 遊戲開始X秒
 	MaxAllowDisconnectSecs float64                       // 最長允許玩家斷線秒數
 	ErrorLogs              []string                      // ErrorLogs
 	lastChangeStateTime    time.Time                     // 上次更新房間狀態時間
@@ -44,17 +45,17 @@ type Room struct {
 const CHAN_BUFFER = 4
 
 var Env string                       // 環境版本
-var room Room                        // 房間
-var UPDATE_INTERVAL_MS float64 = 200 // 每X毫秒更新一次
+var MyRoom Room                      // 房間
+var UPDATE_INTERVAL_MS float64 = 100 // 每X毫秒更新一次
 
 func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
-	if room.RoomName != "" {
+	if MyRoom.RoomName != "" {
 		return
 	}
 
 	if UPDATE_INTERVAL_MS <= 0 {
 		log.Errorf("%s Error Setting UDP Update interval", logger.LOG_Room)
-		UPDATE_INTERVAL_MS = 200
+		UPDATE_INTERVAL_MS = 100
 	}
 
 	// 依據dbMapID從DB中取dbMap設定
@@ -64,7 +65,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	if err != nil {
 		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤", logger.LOG_Room)
 	}
-	log.Infof("%s 取DBMap資料成功 DBMapID: %s", logger.LOG_Room, dbMapID)
+	log.Infof("%s 取DBMap資料成功 DBMapID: %s JsonMapID: %v", logger.LOG_Room, dbMap.ID, dbMap.JsonMapID)
 
 	// 設定dbMatchgame資料
 	var dbMatchgame mongo.DBMatchgame
@@ -79,17 +80,17 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	dbMatchgame.MatchmakerPodName = matchmakerPodName
 
 	// 初始化房間設定
-	room.RoomName = roomName
-	room.gameState = Init
-	room.DBmap = &dbMap
-	room.DBMatchgame = &dbMatchgame
-	room.PassSecs = 0
-	room.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
+	MyRoom.RoomName = roomName
+	MyRoom.gameState = Init
+	MyRoom.DBmap = &dbMap
+	MyRoom.DBMatchgame = &dbMatchgame
+	MyRoom.GameTime = 0
+	MyRoom.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
 
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s Init room", logger.LOG_Room)
-	roomChan <- &room
+	roomChan <- &MyRoom
 }
 func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
@@ -161,7 +162,7 @@ func (r *Room) getPlayerIndex(conn net.Conn) int {
 // 開始遊戲房主循環
 func (r *Room) StartRun(stop chan struct{}, endGame chan struct{}) {
 	go r.gameStateLooop(stop, endGame)
-	go r.UpdatePlayerLeaveTime(stop)
+	go r.UpdateTimer(stop)
 	go r.StuckCheck(stop)
 }
 
@@ -223,7 +224,7 @@ func (r *Room) broadCastPacket(pack *packet.Pack) {
 		}
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
-			log.Errorf("%s BroadCastPacket with error: %v", logger.LOG_Room, err)
+			log.Errorf("%s broadCastPacket錯誤: %v", logger.LOG_Room, err)
 			anyError = true
 		}
 	}
@@ -267,7 +268,7 @@ func (r *Room) UpdatePlayerStatus() {
 }
 
 // 更新玩家離開時間
-func (r *Room) UpdatePlayerLeaveTime(stop chan struct{}) {
+func (r *Room) UpdateTimer(stop chan struct{}) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s UpdatePlayerLeaveTime error: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
@@ -279,17 +280,17 @@ func (r *Room) UpdatePlayerLeaveTime(stop chan struct{}) {
 		select {
 		case <-ticker.C:
 			r.MutexLock.Lock()
-			r.PassSecs += UPDATE_INTERVAL_MS / 1000
-			for _, v := range r.players {
-				if v.ConnTCP.Conn == nil {
-					v.LeftSecs += UPDATE_INTERVAL_MS / 1000
+			r.GameTime += UPDATE_INTERVAL_MS / 1000
+			for _, player := range r.players {
+				if player.ConnTCP.Conn == nil {
+					player.LeftSecs += UPDATE_INTERVAL_MS / 1000
 					// if r.players[i].LeftSecs < MAX_ALLOW_DISCONNECT_SECS {
 					// 	r.players[i].LeftSecs += UPDATE_INTERVAL_MS / 1000
 					// } else {
 					// 	r.players[i].LeftSecs = MAX_ALLOW_DISCONNECT_SECS
 					// }
 				} else {
-					v.LeftSecs = 0
+					player.LeftSecs = 0
 				}
 			}
 			r.MutexLock.Unlock()

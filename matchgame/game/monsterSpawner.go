@@ -8,13 +8,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/martian/v3/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type ScheduledSpawn struct {
 	MonsterIDs []int
 	RouteID    int
 	IsBoss     bool
+}
+type Monster struct {
+	MonsterJson gameJson.MonsterJsonData // 怪物表Json
+	RouteJson   gameJson.RouteJsonData   // 路徑表Json
+	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
 }
 
 func NewScheduledSpawn(monsterIDs []int, routeID int, isBoss bool) *ScheduledSpawn {
@@ -26,24 +31,23 @@ func NewScheduledSpawn(monsterIDs []int, routeID int, isBoss bool) *ScheduledSpa
 	}
 }
 
-type MonsterScheduler struct {
-	BossExist bool // BOSS是否存在場上的標記
+var MyMonsterScheduler MonsterSpawner // 怪物產生器
 
-	spawnMonsterQueue chan *ScheduledSpawn // 出怪排程
-	spawnTimerMap     map[int]int          // <MonsterSpawn表ID,出怪倒數秒數>
-
-	mutex sync.Mutex
+type MonsterSpawner struct {
+	BossExist     bool               // BOSS是否存在場上的標記
+	spawnTimerMap map[int]int        // <MonsterSpawn表ID,出怪倒數秒數>
+	Monsters      map[int64]*Monster // 目前場上的怪物列表
+	mutex         sync.Mutex
 }
 
-func NewMonsterScheduler() *MonsterScheduler {
-	return &MonsterScheduler{
-		spawnMonsterQueue: make(chan *ScheduledSpawn, 100),
-		spawnTimerMap:     make(map[int]int),
+func NewMonsterScheduler() *MonsterSpawner {
+	return &MonsterSpawner{
+		spawnTimerMap: make(map[int]int),
 	}
 }
 
 // 初始化生怪器
-func (ms *MonsterScheduler) InitMonsterSpawner(mapID int32) {
+func (ms *MonsterSpawner) InitMonsterSpawner(mapID int32) {
 	log.Infof("%s 初始化生怪器", logger.LOG_MonsterSpawner)
 	mapData, err := gameJson.GetMapByID(strconv.Itoa(int(mapID)))
 	if err != nil {
@@ -69,16 +73,15 @@ func (ms *MonsterScheduler) InitMonsterSpawner(mapID int32) {
 		ms.spawnTimerMap[id] = spawnSecs
 	}
 	log.Infof("%s 生怪器初始化完成, 開始跑生怪循環", logger.LOG_MonsterSpawner)
-	// 啟動出怪檢查任務
-	go ms.SpawnCheck()
+	// 開始生怪計時器
+	go ms.ScheduleMonster()
 }
 
-// SpawnCheck 檢查那些出怪表ID需要被加入出怪排程中
-func (ms *MonsterScheduler) SpawnCheck() {
+// 生怪計時器, 執行生怪倒數, Spawner倒數結束就生怪
+func (ms *MonsterSpawner) ScheduleMonster() {
 	for {
 
 		time.Sleep(1000 * time.Millisecond) // 每秒檢查一次
-		log.Infof("%s 生怪檢查", logger.LOG_MonsterSpawner)
 		for spawnID, timer := range ms.spawnTimerMap {
 			spawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(spawnID)) // 這邊不用檢查err因為會加入spawnTimerMap都是檢查過的
 			if ms.BossExist && spawnData.SpawnType == gameJson.Boss {
@@ -118,7 +121,6 @@ func (ms *MonsterScheduler) SpawnCheck() {
 						continue
 					}
 					spawn = NewScheduledSpawn(monsterIDs, routID, newSpawnData.SpawnType == gameJson.Boss)
-					ms.spawnMonsterQueue <- spawn // 加入排程
 				case gameJson.Minion, gameJson.Boss:
 					monsterIDs, err := spawnData.GetMonsterIDs()
 					if err != nil {
@@ -130,7 +132,7 @@ func (ms *MonsterScheduler) SpawnCheck() {
 						continue
 					}
 					spawn = NewScheduledSpawn(monsterIDs, routID, spawnData.SpawnType == gameJson.Boss)
-					ms.spawnMonsterQueue <- spawn // 加入排程
+					ms.Spawn(spawn)
 				}
 				ms.mutex.Lock()
 				spawnSecs, err := spawnData.GetRandSpawnSec()
@@ -144,15 +146,26 @@ func (ms *MonsterScheduler) SpawnCheck() {
 	}
 }
 
-// DequeueMonster 從排程中移除出怪
-func (ms *MonsterScheduler) DequeueMonster() *ScheduledSpawn {
-	select {
-	case spawn := <-ms.spawnMonsterQueue:
-		if spawn.IsBoss {
-			ms.BossExist = true
+// 生怪並把怪物加入目前怪物清單中
+func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+	for monsterID := range spawn.MonsterIDs {
+		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
+		if err != nil {
+			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
+			continue
 		}
-		return spawn
-	default:
-		return nil
+		monsterIdx := utility.Accumulator.GetNextIndex("monster", 1)
+		routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteID))
+		if err != nil {
+			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteID)
+			continue
+		}
+		ms.Monsters[monsterIdx] = &Monster{
+			MonsterJson: monsterJson,
+			RouteJson:   routeJson,
+			SpawnTime:   MyRoom.GameTime,
+		}
 	}
 }
