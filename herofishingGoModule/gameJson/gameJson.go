@@ -42,6 +42,7 @@ func Init(env string) error {
 
 	// 執行查詢
 	item := bucket.Objects(ctx, query)
+	index := 0
 	for {
 		attrs, err := item.Next()
 		if err == iterator.Done {
@@ -53,14 +54,15 @@ func Init(env string) error {
 
 		// 檢查是否為.json檔案
 		if len(attrs.Name) > 5 && attrs.Name[len(attrs.Name)-5:] == ".json" {
+			index++
 			object := bucket.Object(attrs.Name)
 			reader, err := object.NewReader(ctx)
 			if err != nil {
 				return fmt.Errorf("%s Failed to read object: %v", logger.LOG_GameJson, err)
 			}
-			defer reader.Close()
 
 			data, err := io.ReadAll(reader)
+			reader.Close()
 			if err != nil {
 				return fmt.Errorf("%s Failed to read data: %v", logger.LOG_GameJson, err)
 			}
@@ -70,7 +72,6 @@ func Init(env string) error {
 
 		}
 	}
-
 	return nil
 }
 
@@ -151,6 +152,6 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		return err
 	}
 	jsonDic[jsonName] = items
-	log.Infof("%s 讀取Json資料成功: %s", logger.LOG_GameJson, jsonName)
+	log.Infof("%s 設定Json資料: %s", logger.LOG_GameJson, jsonName)
 	return nil
 }

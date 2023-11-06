@@ -10,10 +10,11 @@ import (
 
 // 封包命令列表
 const (
-	AUTH                    = "AUTH"                    // 身分驗證
-	AUTH_REPLY              = "AUTH_REPLY"              // 身分驗證回傳
+	AUTH                    = "AUTH"                    // 身分驗證(TCP)
+	AUTH_REPLY              = "AUTH_REPLY"              // 身分驗證回傳(TCP)
 	UPDATE_UDP              = "UPDATE_UDP"              // 狀態更新(UDP)
 	UPDATE_GAME_STATE_REPLY = "UPDATE_GAME_STATE_REPLY" // 更新遊戲狀態
+	SPAWNM                  = "SPAWN"                   // 生怪(TCP)
 )
 
 type Pack struct {

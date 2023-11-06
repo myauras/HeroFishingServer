@@ -57,10 +57,8 @@ func main() {
 	if err != nil {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
-
 	InitGameJson() // 初始化遊戲Json資料
 	roomChan := make(chan *game.Room)
-
 	roomInit := false
 	var matchmakerPodName string
 	var dbMapID string
@@ -190,7 +188,7 @@ func InitGameJson() {
 	// 	fmt.Printf("取資料錯誤: %v", err)
 	// }
 	// fmt.Printf(hero1.RoleCategory)
-	log.Infof("%s 初始化GameJson完成", logger.LOG_Main)
+
 }
 func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
 	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Main)

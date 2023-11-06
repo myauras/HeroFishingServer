@@ -4,6 +4,7 @@ import (
 	"herofishingGoModule/gameJson"
 	"herofishingGoModule/utility"
 	"matchgame/logger"
+	"matchgame/packet"
 	"strconv"
 	"sync"
 	"time"
@@ -102,7 +103,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 						log.Errorf("%s spawnData ID為 %s 的TypeValue不是,分割的字串: %v", logger.LOG_MonsterSpawner, spawnData.ID, err)
 						continue
 					}
-					if ids == nil || len(ids) == 0 {
+					if len(ids) == 0 {
 						log.Errorf("%s spawnData ID為 %s 的TypeValue填表錯誤: %v", logger.LOG_MonsterSpawner, spawnData.ID, err)
 						continue
 					}
@@ -121,6 +122,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 						continue
 					}
 					spawn = NewScheduledSpawn(monsterIDs, routID, newSpawnData.SpawnType == gameJson.Boss)
+					ms.Spawn(spawn)
 				case gameJson.Minion, gameJson.Boss:
 					monsterIDs, err := spawnData.GetMonsterIDs()
 					if err != nil {
@@ -146,11 +148,13 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 	}
 }
 
-// 生怪並把怪物加入目前怪物清單中
+// 生怪並把怪物加入怪物清單 並 廣播給所有玩家
 func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
+	log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
 	for monsterID := range spawn.MonsterIDs {
+		log.Infof("%s 生怪ID: %v", logger.LOG_MonsterSpawner, monsterID)
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
@@ -162,10 +166,22 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteID)
 			continue
 		}
+
+		// 加入怪物清單
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			RouteJson:   routeJson,
 			SpawnTime:   MyRoom.GameTime,
 		}
+
+		// 廣播給所有玩家
+		MyRoom.broadCastPacket(&packet.Pack{
+			CMD: packet.SPAWNM,
+			Content: &packet.SpawnCMD{
+				MonsterID: monsterID,
+				RouteID:   spawn.RouteID,
+				SpawnTime: MyRoom.GameTime,
+			},
+		})
 	}
 }
