@@ -44,6 +44,7 @@ type MonsterSpawner struct {
 func NewMonsterScheduler() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
+		Monsters:      make(map[int64]*Monster),
 	}
 }
 
@@ -153,8 +154,7 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 	log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
-	for monsterID := range spawn.MonsterIDs {
-		log.Infof("%s 生怪ID: %v", logger.LOG_MonsterSpawner, monsterID)
+	for _, monsterID := range spawn.MonsterIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)

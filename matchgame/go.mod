@@ -1,8 +1,8 @@
 module matchgame
 
-// replace herofishingGoModule => ../herofishingGoModule // for local
+replace herofishingGoModule => ../herofishingGoModule // for local
 
-replace herofishingGoModule => /home/herofishingGoModule // for docker
+// replace herofishingGoModule => /home/herofishingGoModule // for docker
 
 go 1.21.0
 
