@@ -1,5 +1,5 @@
 {"Map":[
-	{	"ID":"1",	"Ref":"map1",	"Multiplier":"1",	"MonsterSpawnerIDs":"10004"},
+	{	"ID":"1",	"Ref":"map1",	"Multiplier":"1",	"MonsterSpawnerIDs":"10004,10,1001"},
 	{	"ID":"2",	"Ref":"map1",	"Multiplier":"5",	"MonsterSpawnerIDs":"10004,10,1001"},
 	{	"ID":"3",	"Ref":"map1",	"Multiplier":"10",	"MonsterSpawnerIDs":"10004,10,1001"},
 	{	"ID":"4",	"Ref":"map1",	"Multiplier":"30",	"MonsterSpawnerIDs":"10004,10,1001"},

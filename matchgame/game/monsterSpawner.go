@@ -13,6 +13,7 @@ import (
 )
 
 type ScheduledSpawn struct {
+	SpawnID    int
 	MonsterIDs []int
 	RouteID    int
 	IsBoss     bool
@@ -23,9 +24,10 @@ type Monster struct {
 	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
 }
 
-func NewScheduledSpawn(monsterIDs []int, routeID int, isBoss bool) *ScheduledSpawn {
-	log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
+func NewScheduledSpawn(spawnID int, monsterIDs []int, routeID int, isBoss bool) *ScheduledSpawn {
+	// log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
 	return &ScheduledSpawn{
+		SpawnID:    spawnID,
 		MonsterIDs: monsterIDs,
 		RouteID:    routeID,
 		IsBoss:     isBoss,
@@ -122,7 +124,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 						log.Errorf("%s newSpawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 						continue
 					}
-					spawn = NewScheduledSpawn(monsterIDs, routID, newSpawnData.SpawnType == gameJson.Boss)
+					spawn = NewScheduledSpawn(rndSpawnID, monsterIDs, routID, newSpawnData.SpawnType == gameJson.Boss)
 					ms.Spawn(spawn)
 				case gameJson.Minion, gameJson.Boss:
 					monsterIDs, err := spawnData.GetMonsterIDs()
@@ -134,7 +136,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 						log.Errorf("%s spawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 						continue
 					}
-					spawn = NewScheduledSpawn(monsterIDs, routID, spawnData.SpawnType == gameJson.Boss)
+					spawn = NewScheduledSpawn(spawnID, monsterIDs, routID, spawnData.SpawnType == gameJson.Boss)
 					ms.Spawn(spawn)
 				}
 				ms.mutex.Lock()
@@ -153,7 +155,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
-	log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
+	// log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
 	for _, monsterID := range spawn.MonsterIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
@@ -173,15 +175,16 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 			RouteJson:   routeJson,
 			SpawnTime:   MyRoom.GameTime,
 		}
-
-		// 廣播給所有玩家
-		MyRoom.broadCastPacket(&packet.Pack{
-			CMD: packet.SPAWNM,
-			Content: &packet.SpawnCMD{
-				MonsterID: monsterID,
-				RouteID:   spawn.RouteID,
-				SpawnTime: MyRoom.GameTime,
-			},
-		})
 	}
+
+	// 廣播給所有玩家
+	MyRoom.broadCastPacket(&packet.Pack{
+		CMD: packet.SPAWNM,
+		Content: &packet.SpawnCMD{
+			IsBoss:     spawn.IsBoss,
+			MonsterIDs: spawn.MonsterIDs,
+			RouteID:    spawn.RouteID,
+			SpawnTime:  MyRoom.GameTime,
+		},
+	})
 }
