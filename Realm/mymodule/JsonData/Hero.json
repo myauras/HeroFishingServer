@@ -8,7 +8,7 @@
 	{	"ID":"15",	"Ref":"WitchDoctor",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
 	{	"ID":"16",	"Ref":"ShadowFiend",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
 	{	"ID":"17",	"Ref":"Silencer",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"18",	"Ref":"KAISA",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"19",	"Ref":"Ashe",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"20",	"Ref":"Jhin",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"}
+	{	"ID":"18",	"Ref":"KAISA",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"19",	"Ref":"Ashe",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"20",	"Ref":"Jhin",	"RoleCategory":"LOL",	"IdleMotions":"idle1"}
 ]}

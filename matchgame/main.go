@@ -325,21 +325,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 				return
 			}
 
-			// 驗證Token是否合法
-			// token, err := FirebaseFunction.VerifyIDToken(authContent.Token)
-			if err != nil {
-				log.Errorf("%s Verify ID token failed: %v\n", logger.LOG_Main, err)
-				_ = packet.SendPack(encoder, &packet.Pack{
-					CMD:    packet.AUTH_REPLY,
-					PackID: pack.PackID,
-					ErrMsg: err.Error(),
-					Content: &packet.AuthCMD_Reply{
-						IsAuth: false,
-					},
-				})
-				return
-			}
-
 			// 像mongodb atlas驗證token並取得playerID 有通過驗證後才處理後續
 			playerID, authErr := mongo.PlayerVerify(authContent.Token)
 			// 驗證失敗

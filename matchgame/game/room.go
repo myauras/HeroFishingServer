@@ -28,9 +28,10 @@ const MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
 
 type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
-	// 1. 索引代表玩家座位
+	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
 	players                [setting.PLAYER_NUMBER]Player // 玩家陣列
+	HeroIDs                [setting.PLAYER_NUMBER]int32  // 玩家使用英雄IDs
 	RoomName               string                        // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
 	gameState              GameState                     // 遊戲狀態
 	DBMatchgame            *mongo.DBMatchgame            // DB遊戲房資料
@@ -96,6 +97,11 @@ func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
 }
 
+// 設定遊戲房內玩家使用英雄ID
+func (r *Room) SetHeroID(index int32, heroID int32) {
+	r.HeroIDs[index] = heroID
+}
+
 // 玩家加入房間 成功時回傳true
 func (r *Room) PlayerJoin(player Player) bool {
 	index := -1
@@ -133,7 +139,7 @@ func (r *Room) PlayerLeave(conn net.Conn) {
 	r.UpdatePlayerStatus()
 }
 
-func (r *Room) HandleMessage(conn net.Conn, packet packet.Pack, stop chan struct{}) error {
+func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
 	seatIndex := r.getPlayerIndex(conn)
 	if seatIndex == -1 {
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
@@ -143,8 +149,23 @@ func (r *Room) HandleMessage(conn net.Conn, packet packet.Pack, stop chan struct
 	defer r.MutexLock.Unlock()
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
 	// 處理各類型封包
-	switch packet.CMD {
-	case "CMD類型":
+	switch pack.CMD {
+	case packet.PACTION_SETHERO:
+
+		content := packet.PAction_SetHeroCMD{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s Parse PACTION_SETHERO Failed", logger.LOG_Main)
+			return errors.New(" Parse PACTION_SETHERO Failed")
+		}
+		r.SetHeroID(content.Index, content.HeroID) // 設定使用的英雄ID
+		// 廣播給所有玩家
+		r.broadCastPacket(&packet.Pack{ // 廣播封包
+			CMD: packet.PACTION_SETHERO_REPLY,
+			Content: &packet.PAction_SetHeroCMD_Reply{
+				HeroIDs: r.HeroIDs,
+			},
+		})
+
 	}
 	return nil
 }
