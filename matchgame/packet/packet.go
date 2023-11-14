@@ -12,8 +12,8 @@ import (
 const (
 	AUTH                    = "AUTH"                    // 身分驗證(TCP)
 	AUTH_REPLY              = "AUTH_REPLY"              // 身分驗證回傳(TCP)
-	PACTION_SETHERO         = "PACTION_SETHERO"         // 設定玩家英雄(TCP)
-	PACTION_SETHERO_REPLY   = "PACTION_SETHERO_REPLY"   // 設定玩家英雄回傳(TCP)
+	ACTION_SETHERO          = "ACTION_SETHERO"          // 設定玩家英雄(TCP)
+	ACTION_SETHERO_REPLY    = "ACTION_SETHERO_REPLY"    // 設定玩家英雄回傳(TCP)
 	UPDATE_UDP              = "UPDATE_UDP"              // 狀態更新(UDP)
 	UPDATE_GAME_STATE_REPLY = "UPDATE_GAME_STATE_REPLY" // 更新遊戲狀態
 	SPAWNM                  = "SPAWN"                   // 生怪(TCP)

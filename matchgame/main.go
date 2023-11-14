@@ -339,23 +339,11 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 					},
 				})
 			}
-
-			// 通過驗證後回送驗證結果與連線toekn
 			isAuth = true
+
+			// 建立socket連線Token
 			newConnToken := generateSecureToken(32)
-			err = packet.SendPack(encoder, &packet.Pack{
-				CMD:    packet.AUTH_REPLY,
-				PackID: pack.PackID,
-				Content: &packet.AuthCMD_Reply{
-					IsAuth:    true,
-					ConnToken: newConnToken,
-				},
-			})
-			if err != nil {
-				return
-			}
 			defer removeConnectionToken(newConnToken)
-			connnTokens = append(connnTokens, newConnToken)
 
 			// 將玩家加入遊戲房
 			player := game.Player{
@@ -366,7 +354,27 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 					Decoder: decoder,
 				},
 			}
-			room.PlayerJoin(player)
+			joined := room.PlayerJoin(player)
+			if !joined {
+				log.Errorf("%s Player join room failed", logger.LOG_Main)
+				return
+			}
+			connnTokens = append(connnTokens, newConnToken)
+
+			// 回送client
+			err = packet.SendPack(encoder, &packet.Pack{
+				CMD:    packet.AUTH_REPLY,
+				PackID: pack.PackID,
+				Content: &packet.AuthCMD_Reply{
+					IsAuth:    true,
+					ConnToken: newConnToken,
+					Index:     player.Index,
+				},
+			})
+			if err != nil {
+				return
+			}
+
 		} else {
 			err = room.HandleMessage(conn, pack, stop)
 			if err != nil {

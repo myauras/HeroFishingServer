@@ -120,8 +120,8 @@ func (r *Room) PlayerJoin(player Player) bool {
 		log.Errorf("%s PlayerJoin failed, room is full", logger.LOG_Room)
 		return false
 	}
-
 	// 設定玩家
+	player.Index = int32(index)
 	r.players[index] = player
 	return true
 }
@@ -140,6 +140,7 @@ func (r *Room) PlayerLeave(conn net.Conn) {
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
+	log.Infof("aaaaaaaa")
 	seatIndex := r.getPlayerIndex(conn)
 	if seatIndex == -1 {
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
@@ -148,20 +149,23 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
+	log.Infof("bbbbb")
 	// 處理各類型封包
 	switch pack.CMD {
-	case packet.PACTION_SETHERO:
-
-		content := packet.PAction_SetHeroCMD{}
+	case packet.ACTION_SETHERO:
+		log.Infof("ccccc")
+		content := packet.Action_SetHeroCMD{}
 		if ok := content.Parse(pack.Content); !ok {
 			log.Errorf("%s Parse PACTION_SETHERO Failed", logger.LOG_Main)
 			return errors.New(" Parse PACTION_SETHERO Failed")
 		}
+		log.Infof("%s 設定玩家使用英雄ID: %v", logger.LOG_Main, content.HeroID)
 		r.SetHeroID(content.Index, content.HeroID) // 設定使用的英雄ID
+		log.Infof("%s 開始廣播: %v", logger.LOG_Main, r.HeroIDs)
 		// 廣播給所有玩家
 		r.broadCastPacket(&packet.Pack{ // 廣播封包
-			CMD: packet.PACTION_SETHERO_REPLY,
-			Content: &packet.PAction_SetHeroCMD_Reply{
+			CMD: packet.ACTION_SETHERO_REPLY,
+			Content: &packet.Action_SetHeroCMD_Reply{
 				HeroIDs: r.HeroIDs,
 			},
 		})
