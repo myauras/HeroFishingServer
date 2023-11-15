@@ -8,8 +8,9 @@ import (
 
 type Action_SetHeroCMD struct {
 	CMDContent
-	Index  int32 // 玩家的座位索引
-	HeroID int32 // 玩家選擇英雄
+	Index      int32  // 玩家的座位索引
+	HeroID     int32  // 玩家選擇英雄
+	HeroSkinID string // 玩家英雄Skin
 }
 
 func (p *Action_SetHeroCMD) Parse(common CMDContent) bool {
@@ -31,6 +32,16 @@ func (p *Action_SetHeroCMD) Parse(common CMDContent) bool {
 		// 寫LOG
 		log.WithFields(log.Fields{
 			"log": "parse heroID資料錯誤",
+		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "PAction_SetHeroCMD")
+		return false
+	}
+
+	if heroSkinID, ok := m["HeroSkinID"].(string); ok {
+		p.HeroSkinID = heroSkinID
+	} else {
+		// 寫LOG
+		log.WithFields(log.Fields{
+			"log": "parse heroSkinID資料錯誤",
 		}).Errorf("%s Parse error: %s", logger.LOG_Pack, "PAction_SetHeroCMD")
 		return false
 	}

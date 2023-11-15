@@ -32,6 +32,7 @@ type Room struct {
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
 	players                [setting.PLAYER_NUMBER]Player // 玩家陣列
 	HeroIDs                [setting.PLAYER_NUMBER]int32  // 玩家使用英雄IDs
+	HeroSkinIDs            [setting.PLAYER_NUMBER]string // 玩家使用英雄IDs
 	RoomName               string                        // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
 	gameState              GameState                     // 遊戲狀態
 	DBMatchgame            *mongo.DBMatchgame            // DB遊戲房資料
@@ -98,8 +99,9 @@ func (r *Room) WriteGameErrorLog(log string) {
 }
 
 // 設定遊戲房內玩家使用英雄ID
-func (r *Room) SetHeroID(index int32, heroID int32) {
+func (r *Room) SetHero(index int32, heroID int32, heroSkinID string) {
 	r.HeroIDs[index] = heroID
+	r.HeroSkinIDs[index] = heroSkinID
 }
 
 // 玩家加入房間 成功時回傳true
@@ -140,7 +142,6 @@ func (r *Room) PlayerLeave(conn net.Conn) {
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
-	log.Infof("aaaaaaaa")
 	seatIndex := r.getPlayerIndex(conn)
 	if seatIndex == -1 {
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
@@ -149,24 +150,22 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
-	log.Infof("bbbbb")
 	// 處理各類型封包
 	switch pack.CMD {
 	case packet.ACTION_SETHERO:
-		log.Infof("ccccc")
 		content := packet.Action_SetHeroCMD{}
 		if ok := content.Parse(pack.Content); !ok {
 			log.Errorf("%s Parse PACTION_SETHERO Failed", logger.LOG_Main)
 			return errors.New(" Parse PACTION_SETHERO Failed")
 		}
 		log.Infof("%s 設定玩家使用英雄ID: %v", logger.LOG_Main, content.HeroID)
-		r.SetHeroID(content.Index, content.HeroID) // 設定使用的英雄ID
-		log.Infof("%s 開始廣播: %v", logger.LOG_Main, r.HeroIDs)
+		r.SetHero(content.Index, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		// 廣播給所有玩家
 		r.broadCastPacket(&packet.Pack{ // 廣播封包
 			CMD: packet.ACTION_SETHERO_REPLY,
 			Content: &packet.Action_SetHeroCMD_Reply{
-				HeroIDs: r.HeroIDs,
+				HeroIDs:     r.HeroIDs,
+				HeroSkinIDs: r.HeroSkinIDs,
 			},
 		})
 
