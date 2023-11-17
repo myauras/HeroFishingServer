@@ -2,10 +2,12 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
 	"matchgame/packet"
+	gSetting "matchgame/setting"
 	"net"
 	"os"
 	"runtime/debug"
@@ -29,18 +31,18 @@ const MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
 type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
-	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
-	players                [setting.PLAYER_NUMBER]Player // 玩家陣列
-	HeroIDs                [setting.PLAYER_NUMBER]int32  // 玩家使用英雄IDs
-	HeroSkinIDs            [setting.PLAYER_NUMBER]string // 玩家使用英雄IDs
-	RoomName               string                        // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	gameState              GameState                     // 遊戲狀態
-	DBMatchgame            *mongo.DBMatchgame            // DB遊戲房資料
-	DBmap                  *mongo.DBMap                  // DB地圖設定
-	GameTime               float64                       // 遊戲開始X秒
-	MaxAllowDisconnectSecs float64                       // 最長允許玩家斷線秒數
-	ErrorLogs              []string                      // ErrorLogs
-	lastChangeStateTime    time.Time                     // 上次更新房間狀態時間
+	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
+	Players                [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
+	HeroIDs                [setting.PLAYER_NUMBER]int              // 玩家使用英雄IDs
+	HeroSkinIDs            [setting.PLAYER_NUMBER]string           // 玩家使用英雄IDs
+	RoomName               string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	gameState              GameState                               // 遊戲狀態
+	DBMatchgame            *mongo.DBMatchgame                      // DB遊戲房資料
+	DBmap                  *mongo.DBMap                            // DB地圖設定
+	GameTime               float64                                 // 遊戲開始X秒
+	MaxAllowDisconnectSecs float64                                 // 最長允許玩家斷線秒數
+	ErrorLogs              []string                                // ErrorLogs
+	lastChangeStateTime    time.Time                               // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
 }
 
@@ -99,22 +101,26 @@ func (r *Room) WriteGameErrorLog(log string) {
 }
 
 // 設定遊戲房內玩家使用英雄ID
-func (r *Room) SetHero(index int32, heroID int32, heroSkinID string) {
+func (r *Room) SetHero(index int, heroID int, heroSkinID string) {
+	r.MutexLock.Lock()
+	defer r.MutexLock.Unlock()
 	r.HeroIDs[index] = heroID
 	r.HeroSkinIDs[index] = heroSkinID
 }
 
-// 玩家加入房間 成功時回傳true
-func (r *Room) PlayerJoin(player Player) bool {
+// 把玩家加到房間中, 成功時回傳true
+func (r *Room) JoinPlayer(player *gSetting.Player) bool {
+	r.MutexLock.Lock()
+	defer r.MutexLock.Unlock()
 	index := -1
-	for i, v := range r.players {
+	for i, v := range r.Players {
+		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
+			index = i
+			break
+		}
 		if v.ID == player.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
 			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.ID)
 			return false
-		}
-		if index == -1 && v.ID == "" { // 有座位是空的就把座位索引存起來
-			index = i
-			break
 		}
 	}
 
@@ -124,21 +130,22 @@ func (r *Room) PlayerJoin(player Player) bool {
 	}
 	// 設定玩家
 	player.Index = int32(index)
-	r.players[index] = player
+	r.Players[index] = player
 	return true
 }
 
-// 玩家離開房間
-func (r *Room) PlayerLeave(conn net.Conn) {
+// 將玩家踢出房間
+func (r *Room) KickPlayer(conn net.Conn) {
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
 	seatIndex := r.getPlayerIndex(conn) // 取得座位索引
 	if seatIndex < 0 {
-		log.Errorf("%s PlayerLeave failed, get player seat failed", logger.LOG_Room)
 		return
 	}
-	r.players[seatIndex].CloseConnection()
-	r.UpdatePlayerStatus()
+
+	r.Players[seatIndex].CloseConnection()
+	r.Players[seatIndex] = nil
+	r.UpdatePlayer()
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
@@ -147,19 +154,17 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
 		return errors.New("HandleMessage fialed, Player is not in connection list")
 	}
-	r.MutexLock.Lock()
-	defer r.MutexLock.Unlock()
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
 	// 處理各類型封包
 	switch pack.CMD {
-	case packet.ACTION_SETHERO:
+	case packet.ACTION_SETHERO: // 設定英雄
 		content := packet.Action_SetHeroCMD{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s Parse PACTION_SETHERO Failed", logger.LOG_Main)
-			return errors.New(" Parse PACTION_SETHERO Failed")
+			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("Parse %s Failed", pack.CMD)
 		}
-		log.Infof("%s 設定玩家使用英雄ID: %v", logger.LOG_Main, content.HeroID)
-		r.SetHero(content.Index, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
+		index := r.getPlayerIndex(conn)
+		r.SetHero(index, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		// 廣播給所有玩家
 		r.broadCastPacket(&packet.Pack{ // 廣播封包
 			CMD: packet.ACTION_SETHERO_REPLY,
@@ -168,14 +173,26 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 				HeroSkinIDs: r.HeroSkinIDs,
 			},
 		})
-
+	case packet.ACTION_LEAVE: //離開遊戲房
+		log.Infof("////////////收到ACTION_LEAVE")
+		content := packet.Action_LeaveCMD{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("Parse %s Failed", pack.CMD)
+		}
+		r.KickPlayer(conn) // 將玩家踢出房間
 	}
+
 	return nil
 }
 
 // 取得玩家座位索引
 func (r *Room) getPlayerIndex(conn net.Conn) int {
-	for i, v := range r.players {
+	for i, v := range r.Players {
+		if v == nil {
+			continue
+		}
+
 		if v.ConnTCP.Conn == conn {
 			return i
 		}
@@ -239,54 +256,51 @@ func (r *Room) ChangeState(state GameState) {
 
 // 送封包給遊戲房間內所有玩家
 func (r *Room) broadCastPacket(pack *packet.Pack) {
-	anyError := false
-
+	log.Infof("broadCastPacket")
 	// 送封包給所有房間中的玩家
-	for _, v := range r.players {
-		if v.ConnTCP.Conn == nil {
+	for i, v := range r.Players {
+		if v == nil || v.ConnTCP.Conn == nil {
 			continue
 		}
+		log.Infof("send index: %v", i)
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s broadCastPacket錯誤: %v", logger.LOG_Room, err)
-			anyError = true
 		}
-	}
-	// 有錯誤就重送封包
-	if anyError {
-		r.UpdatePlayerStatus()
 	}
 }
 
 // 送封包給玩家
 func (r *Room) sendPacketToPlayer(pIndex int, pack *packet.Pack) {
-	if r.players[pIndex].ConnTCP.Conn == nil {
+	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
 		return
 	}
-	err := packet.SendPack(r.players[pIndex].ConnTCP.Encoder, pack)
+	err := packet.SendPack(r.Players[pIndex].ConnTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-		r.players[pIndex].CloseConnection()
-		r.UpdatePlayerStatus()
+		r.KickPlayer(r.Players[pIndex].ConnTCP.Conn)
 	}
 }
 
 // 取得遊戲房中所有玩家狀態
-func (r *Room) GetPlayerStatus() [setting.PLAYER_NUMBER]PlayerStatus {
-	playerStatuss := [setting.PLAYER_NUMBER]PlayerStatus{}
-	for i, v := range r.players {
+func (r *Room) GetPlayerStatus() [setting.PLAYER_NUMBER]gSetting.PlayerStatus {
+	playerStatuss := [setting.PLAYER_NUMBER]gSetting.PlayerStatus{}
+	for i, v := range r.Players {
+		if v == nil {
+			continue
+		}
 		playerStatuss[i] = *v.Status
 	}
 	return playerStatuss
 }
 
 // 送遊戲房中所有玩家狀態封包
-func (r *Room) UpdatePlayerStatus() {
+func (r *Room) UpdatePlayer() {
 	r.broadCastPacket(&packet.Pack{
-		CMD:    packet.UPDATE_GAME_STATE_REPLY,
+		CMD:    packet.UPDATE_PLAYER_REPLY,
 		PackID: -1,
-		Content: &UpdateRoomContent{
-			PlayerStatuss: r.GetPlayerStatus(),
+		Content: &packet.Update_Player_Reply{
+			Players: r.Players,
 		},
 	})
 }
@@ -305,14 +319,12 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 		case <-ticker.C:
 			r.MutexLock.Lock()
 			r.GameTime += UPDATE_INTERVAL_MS / 1000
-			for _, player := range r.players {
+			for _, player := range r.Players {
+				if player == nil {
+					continue
+				}
 				if player.ConnTCP.Conn == nil {
 					player.LeftSecs += UPDATE_INTERVAL_MS / 1000
-					// if r.players[i].LeftSecs < MAX_ALLOW_DISCONNECT_SECS {
-					// 	r.players[i].LeftSecs += UPDATE_INTERVAL_MS / 1000
-					// } else {
-					// 	r.players[i].LeftSecs = MAX_ALLOW_DISCONNECT_SECS
-					// }
 				} else {
 					player.LeftSecs = 0
 				}

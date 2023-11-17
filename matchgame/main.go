@@ -3,7 +3,7 @@ package main
 import (
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
-	matchgameSetting "matchgame/setting"
+	gSetting "matchgame/setting"
 
 	log "github.com/sirupsen/logrus"
 
@@ -306,7 +306,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 		}
 		pack, err := packet.ReadPack(decoder)
 		if err != nil {
-			room.PlayerLeave(conn)
+			room.KickPlayer(conn)
 			return
 		}
 		log.Infof("%s Receive: %s from %s \n", logger.LOG_Main, pack.CMD, remoteAddr)
@@ -346,15 +346,15 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			defer removeConnectionToken(newConnToken)
 
 			// 將玩家加入遊戲房
-			player := game.Player{
+			player := gSetting.Player{
 				ID: playerID,
-				ConnTCP: game.ConnectionTCP{
+				ConnTCP: gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,
 					Decoder: decoder,
 				},
 			}
-			joined := room.PlayerJoin(player)
+			joined := room.JoinPlayer(&player)
 			if !joined {
 				log.Errorf("%s Player join room failed", logger.LOG_Main)
 				return
@@ -379,7 +379,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			err = room.HandleMessage(conn, pack, stop)
 			if err != nil {
 				log.Errorf("%s GameRoom Handle Message Error: %v\n", logger.LOG_Main, err.Error())
-				room.PlayerLeave(conn)
+				room.KickPlayer(conn)
 				return
 			}
 		}
@@ -388,30 +388,30 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 
 // 處理UDP連線封包
 func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr, room *game.Room) {
-	timer := time.NewTicker(matchgameSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
+	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
 	for {
 		select {
 		case <-stop:
 			//被強制終止
 			return
 		case <-timer.C:
-			sendData, err := json.Marshal(&packet.Pack{
-				CMD:    packet.UPDATE_UDP,
-				PackID: -1,
-				Content: game.ServerStateContent{
-					ServerTime: room.GameTime,
-				},
-			})
-			if err != nil {
-				log.Errorf("%s Error Parse send UDP message. %s", logger.LOG_Main, err.Error())
-				continue
-			}
-			sendData = append(sendData, '\n')
-			_, sendErr := conn.WriteTo(sendData, addr)
-			if sendErr != nil {
-				log.Errorf("%s Error send UDP message. %s", logger.LOG_Main, sendErr.Error())
-				continue
-			}
+			// sendData, err := json.Marshal(&packet.Pack{
+			// 	CMD:    packet.UPDATE_UDP,
+			// 	PackID: -1,
+			// 	Content: game.ServerStateContent{
+			// 		ServerTime: room.GameTime,
+			// 	},
+			// })
+			// if err != nil {
+			// 	log.Errorf("%s Error Parse send UDP message. %s", logger.LOG_Main, err.Error())
+			// 	continue
+			// }
+			// sendData = append(sendData, '\n')
+			// _, sendErr := conn.WriteTo(sendData, addr)
+			// if sendErr != nil {
+			// 	log.Errorf("%s Error send UDP message. %s", logger.LOG_Main, sendErr.Error())
+			// 	continue
+			// }
 		}
 	}
 }
@@ -440,7 +440,7 @@ func delayShutdownServer(delay time.Duration, sdk *sdk.SDK, stop chan struct{}) 
 
 // 伺服器健康狀態檢測
 func agonesHealthPin(agonesSDK *sdk.SDK, stop <-chan struct{}) {
-	tick := time.Tick(matchgameSetting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
+	tick := time.Tick(gSetting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
 	for {
 		if err := agonesSDK.Health(); err != nil {
 			log.Errorf("%s Could not send health ping: %v", logger.LOG_Main, err)

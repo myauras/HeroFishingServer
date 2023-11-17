@@ -1,0 +1,14 @@
+{"HeroSpell":[
+	{	"ID":"1_attack",	"Ref":"1_attack",	"RTP":"1",	"CD":"0.3",	"SpellType":"LineShot",	"SpellTypeValues":"5,0.4,15,2",	"Motions":"attack1,attack2",	"PrefabID":"10",	"HitMonsterShaderSetting":"191,35,12,255,3,1.2,1,-1.29,0"},
+	{	"ID":"1_spell1",	"Ref":"1_spell1",	"RTP":"15",	"CD":"5",	"Cost":"8",	"SpellType":"LineShot",	"SpellTypeValues":"5,0.6,15,2",	"HitEffectType":"Chain",	"HitEffectValues":"2",	"Motions":"spell1",	"PrefabID":"11",	"HitMonsterShaderSetting":"191,35,12,255,3,1.2,1,-1.29,0"},
+	{	"ID":"1_spell2",	"Ref":"1_spell2",	"RTP":"30",	"CD":"5",	"Cost":"15",	"Waves":"5",	"SpellType":"LineRange",	"SpellTypeValues":"3,1,15,2",	"Motions":"spell3",	"PrefabID":"12",	"HitMonsterShaderSetting":"191,35,12,255,3,1.2,1,-1.29,0"},
+	{	"ID":"1_spell3",	"Ref":"1_spell3",	"RTP":"120",	"CD":"5",	"Cost":"60",	"Waves":"10",	"SpellType":"LineRange",	"SpellTypeValues":"5,1.5,15,2",	"Threshold":"5,10",	"Motions":"spell4",	"PrefabID":"13",	"HitMonsterShaderSetting":"191,35,12,255,3,1.2,1,-1.29,0"},
+	{	"ID":"7_attack",	"Ref":"7_attack",	"RTP":"1",	"CD":"0.3",	"SpellType":"LineShot",	"SpellTypeValues":"6,0.2,15,2",	"Motions":"attack1",	"PrefabID":"70"},
+	{	"ID":"7_spell1",	"Ref":"7_spell1",	"RTP":"15",	"CD":"5",	"Cost":"8",	"Motions":"spell1",	"PrefabID":"71"},
+	{	"ID":"7_spell2",	"Ref":"7_spell2",	"RTP":"15",	"CD":"5",	"Cost":"8",	"Motions":"spell2",	"PrefabID":"72"},
+	{	"ID":"7_spell3",	"Ref":"7_spell3",	"RTP":"100",	"CD":"5",	"Cost":"50",	"Threshold":"5,10",	"Motions":"spell3",	"PrefabID":"73"},
+	{	"ID":"19_attack",	"Ref":"19_attack",	"RTP":"1",	"CD":"0.3",	"SpellType":"LineShot",	"SpellTypeValues":"5,0.4,15,2",	"Motions":"attack1,attack2",	"PrefabID":"190",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
+	{	"ID":"19_spell1",	"Ref":"19_spell1",	"RTP":"30",	"CD":"5",	"Cost":"15",	"SpellType":"SpreadLineShot",	"SpellTypeValues":"5,0.4,15,10,5,2",	"Motions":"spell1",	"PrefabID":"190",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
+	{	"ID":"19_spell2",	"Ref":"19_spell2",	"RTP":"50",	"CD":"5",	"Cost":"25",	"SpellType":"LineRange",	"SpellTypeValues":"3,1,15,2",	"Motions":"spell3",	"PrefabID":"192",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
+	{	"ID":"19_spell3",	"Ref":"19_spell3",	"RTP":"80",	"CD":"5",	"Cost":"40",	"SpellType":"LineRange",	"SpellTypeValues":"5,1.5,15,2",	"Threshold":"5,10",	"Motions":"spell4",	"PrefabID":"190",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"}
+]}

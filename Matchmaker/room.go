@@ -70,7 +70,10 @@ func (r *room) clearRoom() {
 		"players": r.players,
 	}).Infof("%s ClearRoom", logger.LOG_ROOM)
 	// 清除房間
-	for i := 0; i < len(r.players); i++ {
+	for i, v := range r.players {
+		if v == nil {
+			continue
+		}
 		r.players[i].LeaveRoom()
 	}
 	r.players = nil
@@ -158,6 +161,9 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 // 檢查此房間是否已經存在該玩家ID
 func (r *room) IsIDExist(playerID string) bool {
 	for _, v := range r.players {
+		if v == nil {
+			continue
+		}
 		if v.id == playerID {
 			return true
 		}
@@ -247,9 +253,15 @@ func (r *room) generateRoomName() (string, bool) {
 	roomName = fmt.Sprintf("%s_%d_%s", r.creater.id, newCounterValue, time.Now().Format("20060102T150405"))
 	return roomName, true
 }
+
+// 取遊戲房中玩家ID清單 如果該位置沒有玩家會存空字串
 func (r *room) getPlayerIDs() []string {
 	ids := []string{}
 	for _, v := range r.players {
+		if v == nil {
+			ids = append(ids, "")
+			continue
+		}
 		ids = append(ids, v.id)
 	}
 	return ids
@@ -266,6 +278,9 @@ func (p roomPlayer) playerLeaveRoom() {
 func (r *room) removePlayer(p roomPlayer) {
 	tarIdx := -1
 	for i, player := range r.players {
+		if player == nil {
+			continue
+		}
 		if player.connTCP == p.connTCP {
 			tarIdx = i
 		}
@@ -273,6 +288,9 @@ func (r *room) removePlayer(p roomPlayer) {
 	if tarIdx >= 0 {
 		newPlayers := []*roomPlayer{}
 		for i, v := range r.players {
+			if v == nil {
+				continue
+			}
 			if i != tarIdx {
 				newPlayers = append(newPlayers, v)
 			}
