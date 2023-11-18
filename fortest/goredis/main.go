@@ -2,50 +2,89 @@ package main
 
 import (
 	"context"
-	"time"
-	// "crypto/tls"
 	"fmt"
+	"strconv"
+	"time"
 
 	redis "github.com/redis/go-redis/v9"
 )
 
+var playerID = "scozirge"
+var dbWriteMinMiliSecs = 1000
+
 // Test-NetConnection -ComputerName redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com -Port 10238
 
 func main() {
-
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
-		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx", // no password set
-		DB:       0,                                  // use default DB
-		// TLSConfig: &tls.Config{
-		// 	MinVersion: tls.VersionTLS12,
-		// 	//Certificates: []tls.Certificate{cert}
-		// },
+		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
+		DB:       0,
 	})
 
-	ctx := context.Background()
-	rdb.Set(ctx, "name", "scoz2", 1*time.Minute)
-	val, err := rdb.Do(ctx, "get", "name").Result()
-	if err != nil {
-		if err == redis.Nil {
-			fmt.Println("key does not exists")
-			return
-		}
-		panic(err)
-	}
-	fmt.Println(val.(string))
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// val, err := rdb.Get(ctx, "key").Result()
-	// switch {
-	// case err == redis.Nil:
-	// 	fmt.Println("key does not exist")
-	// case err != nil:
-	// 	fmt.Println("Get failed", err)
-	// case val == "":
-	// 	fmt.Println("value is empty")
+	// _, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
+	// 	"gold":   9800,
+	// 	"heroLV": 10,
+	// }).Result()
+	// if err != nil {
+	// 	panic(err)
 	// }
 
-	// Alternatively you can save the command and later access the value and the error separately:
-	// get := rdb.Get(ctx, "key")
-	// fmt.Println(get.Val(), get.Err())
+	defer cancel()
+
+	goldChanges := make(chan int)
+
+	// 啟動協程
+	go updateGold(ctx, rdb, goldChanges)
+	// 金幣變化
+	goldChanges <- -1
+	goldChanges <- 100
+	goldChanges <- -1
+
+	// 取得資料
+	time.Sleep(1 * time.Second)
+	showPlayerInfo(ctx, rdb)
+
+	// 最後清理和退出
+	cancel() // 通知協程退出
+	close(goldChanges)
+}
+
+func showPlayerInfo(ctx context.Context, rdb *redis.Client) {
+
+	val, err := rdb.HGetAll(ctx, playerID).Result()
+	if err != nil {
+		panic(err)
+	}
+
+	gold, _ := strconv.ParseInt(val["gold"], 10, 64)
+	heroLV64, _ := strconv.ParseInt(val["heroLV"], 10, 32)
+	heroLV := int32(heroLV64)
+	fmt.Printf("playerID: %s gold: %d heroLV: %d\n", playerID, gold, heroLV)
+}
+
+func updateGold(ctx context.Context, rdb *redis.Client, goldChanges <-chan int) {
+	var balance int
+	ticker := time.NewTicker(time.Duration(dbWriteMinMiliSecs) * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case change := <-goldChanges:
+			balance += change
+
+		case <-ticker.C:
+			if balance != 0 {
+				_, err := rdb.HIncrBy(ctx, playerID, "gold", int64(balance)).Result()
+				if err != nil {
+					fmt.Println("Error updating gold:", err)
+				}
+				balance = 0
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
 }
