@@ -146,4 +146,5 @@ func ShowPlayer(playerID string) {
 	gold, _ := strconv.ParseInt(val["gold"], 10, 64)
 	heroExp, _ := strconv.ParseInt(val["heroExp"], 10, 64)
 	log.Infof("%s playerID: %s gold: %d heroExp: %d\n", logger.LOG_Redis, id, gold, heroExp)
+
 }

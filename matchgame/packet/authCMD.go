@@ -5,10 +5,17 @@ import (
 
 	log "github.com/sirupsen/logrus"
 )
-
+// 帳號登入
 type AuthCMD struct {
 	CMDContent
 	Token string
+}
+// 帳號登入回傳client
+type AuthCMD_Reply struct {
+	CMDContent
+	IsAuth    bool   // 是否驗證成功
+	ConnToken string // 連線Token
+	Index     int32  // 玩家座位
 }
 
 func (p *AuthCMD) Parse(common CMDContent) bool {

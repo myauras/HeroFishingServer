@@ -82,6 +82,7 @@ type JsonNameStruct struct {
 	GameSetting    string
 	Hero           string
 	HeroEXP        string
+	HeroSpell      string
 	Map            string
 	Monster        string
 	MonsterSpawner string
@@ -96,6 +97,7 @@ var JsonName = JsonNameStruct{
 	GameSetting:    "GameSetting",
 	Hero:           "Hero",
 	HeroEXP:        "HeroEXP",
+	HeroSpell:      "HeroSpell",
 	Map:            "Map",
 	Monster:        "Monster",
 	MonsterSpawner: "MonsterSpawner",

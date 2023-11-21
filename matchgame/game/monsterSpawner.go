@@ -13,16 +13,20 @@ import (
 )
 
 type ScheduledSpawn struct {
-	SpawnID    int
-	MonsterIDs []int
-	RouteID    int
-	IsBoss     bool
+	SpawnID     int
+	MonsterIDs  []int
+	MonsterIdxs []int64 //怪物唯一索引清單
+	RouteID     int
+	IsBoss      bool
 }
 type Monster struct {
 	MonsterJson gameJson.MonsterJsonData // 怪物表Json
+	MonsterIdx  int64                    // 怪物唯一索引, 在怪物被Spawn後由server產生
 	RouteJson   gameJson.RouteJsonData   // 路徑表Json
 	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
 }
+
+var spawnAccumulator = utility.NewAccumulator() // 產生一個生怪累加器
 
 func NewScheduledSpawn(spawnID int, monsterIDs []int, routeID int, isBoss bool) *ScheduledSpawn {
 	// log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
@@ -156,22 +160,25 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 	// log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
-	for _, monsterID := range spawn.MonsterIDs {
+	for i, monsterID := range spawn.MonsterIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
 			continue
 		}
-		monsterIdx := utility.Accumulator.GetNextIndex("monster", 1)
+		monsterIdx := spawnAccumulator.GetNextIndex("monster", 1)
 		routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteID)
 			continue
 		}
 
+		spawn.MonsterIdxs[i] = monsterIdx // 設定怪物唯一索引
+
 		// 加入怪物清單
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
+			MonsterIdx:  monsterIdx,
 			RouteJson:   routeJson,
 			SpawnTime:   MyRoom.GameTime,
 		}
@@ -181,10 +188,11 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	MyRoom.broadCastPacket(&packet.Pack{
 		CMD: packet.SPAWNM,
 		Content: &packet.SpawnCMD{
-			IsBoss:     spawn.IsBoss,
-			MonsterIDs: spawn.MonsterIDs,
-			RouteID:    spawn.RouteID,
-			SpawnTime:  MyRoom.GameTime,
+			IsBoss:      spawn.IsBoss,
+			MonsterIDs:  spawn.MonsterIDs,
+			MonsterIdxs: spawn.MonsterIdxs,
+			RouteID:     spawn.RouteID,
+			SpawnTime:   MyRoom.GameTime,
 		},
 	})
 }

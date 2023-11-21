@@ -2,26 +2,29 @@ package utility
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
-type AccumulatorStruct struct {
-	keyValueMap map[string]*int64
+type accumulator struct {
+	keyValueMap map[string]int64
 	mutex       sync.Mutex
 }
 
-var Accumulator = &AccumulatorStruct{
-	keyValueMap: make(map[string]*int64),
+// 產生一個新的累加器
+func NewAccumulator() *accumulator {
+	return &accumulator{
+		keyValueMap: make(map[string]int64),
+	}
 }
 
 // 傳入key 與 要累加的value 取得累加後的value
-func (accumulator *AccumulatorStruct) GetNextIndex(key string, addValue int64) int64 {
-	accumulator.mutex.Lock()
-	defer accumulator.mutex.Unlock()
+func (a *accumulator) GetNextIndex(key string, addValue int64) int64 {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
-	if _, exists := accumulator.keyValueMap[key]; !exists {
-		var initVal int64
-		accumulator.keyValueMap[key] = &initVal
+	if _, exists := a.keyValueMap[key]; !exists {
+		a.keyValueMap[key] = 0
 	}
-	return atomic.AddInt64(accumulator.keyValueMap[key], addValue)
+
+	a.keyValueMap[key] += addValue
+	return a.keyValueMap[key]
 }
