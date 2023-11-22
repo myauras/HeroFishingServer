@@ -7,10 +7,10 @@ import (
 
 // Monster JSON
 type MonsterJsonData struct {
-	ID         string `json:"ID"`
-	Ref        string `json:"Ref"`
-	Multiplier string `json:"Multiplier"`
-	EXP        string `json:"EXP"`
+	ID   string `json:"ID"`
+	Ref  string `json:"Ref"`
+	Odds string `json:"Odds"`
+	EXP  string `json:"EXP"`
 	// Radius       string `json:"Radius"`
 	// Speed        string `json:"Speed"`
 	MonsterType string `json:"MonsterType"`

@@ -93,12 +93,14 @@ var ColName = ColNameStruct{
 
 // DB地圖資料
 type DBMap struct {
-	ID           string `bson:"_id"`
-	MatchType    string `bson:"matchType"`
-	JsonMapID    int32  `bson:"jsonMapID"`
-	Bet          int32  `bson:"bet"`
-	BetThreshold int64  `bson:"betThreshold"`
-	Enable       bool   `bson:"enable"`
+	ID             string  `bson:"_id"`
+	MatchType      string  `bson:"matchType"`
+	JsonMapID      int32   `bson:"jsonMapID"`
+	Bet            int32   `bson:"bet"`
+	BetThreshold   int64   `bson:"betThreshold"`
+	Enable         bool    `bson:"enable"`
+	RTP            float64 `bson:"rtp"`
+	SpellSharedRTP float64 `bson:"spellSharedRTP"`
 }
 
 // 遊戲房資料

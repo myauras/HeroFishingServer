@@ -15,6 +15,7 @@ const (
 	ACTION_SETHERO       = "ACTION_SETHERO"       // 設定玩家英雄(TCP)
 	ACTION_SETHERO_REPLY = "ACTION_SETHERO_REPLY" // 設定玩家英雄回傳(TCP)
 	ACTION_LEAVE         = "ACTION_LEAVE"         // 離開遊戲房(TCP)
+	ACTION_HIT           = "ACTION_HIT"           // 擊中(TCP)
 	UPDATE_PLAYER_REPLY  = "UPDATE_PLAYER_Reply"  // 更新玩家(TCP)
 
 	UPDATE_UDP              = "UPDATE_UDP"              // 狀態更新(UDP)

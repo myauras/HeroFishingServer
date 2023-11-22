@@ -15,13 +15,13 @@ import (
 type ScheduledSpawn struct {
 	SpawnID     int
 	MonsterIDs  []int
-	MonsterIdxs []int64 //怪物唯一索引清單
+	MonsterIdxs []int //怪物唯一索引清單
 	RouteID     int
 	IsBoss      bool
 }
 type Monster struct {
 	MonsterJson gameJson.MonsterJsonData // 怪物表Json
-	MonsterIdx  int64                    // 怪物唯一索引, 在怪物被Spawn後由server產生
+	MonsterIdx  int                      // 怪物唯一索引, 在怪物被Spawn後由server產生
 	RouteJson   gameJson.RouteJsonData   // 路徑表Json
 	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
 }
@@ -41,16 +41,16 @@ func NewScheduledSpawn(spawnID int, monsterIDs []int, routeID int, isBoss bool) 
 var MyMonsterScheduler MonsterSpawner // 怪物產生器
 
 type MonsterSpawner struct {
-	BossExist     bool               // BOSS是否存在場上的標記
-	spawnTimerMap map[int]int        // <MonsterSpawn表ID,出怪倒數秒數>
-	Monsters      map[int64]*Monster // 目前場上的怪物列表
+	BossExist     bool             // BOSS是否存在場上的標記
+	spawnTimerMap map[int]int      // <MonsterSpawn表ID,出怪倒數秒數>
+	Monsters      map[int]*Monster // 目前場上的怪物列表
 	mutex         sync.Mutex
 }
 
 func NewMonsterScheduler() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
-		Monsters:      make(map[int64]*Monster),
+		Monsters:      make(map[int]*Monster),
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 // HeroSpell JSON
 type HeroSpellJsonData struct {
 	ID    string `json:"ID"`
-	RTP   string `json:"EXP"`
+	RTP   string `json:"RTP"`
 	CD    string `json:"CD"`
 	Cost  string `json:"Cost"`
 	Waves string `json:"Waves"`
