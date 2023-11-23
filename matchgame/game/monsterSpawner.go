@@ -13,11 +13,11 @@ import (
 )
 
 type ScheduledSpawn struct {
-	SpawnID     int
-	MonsterIDs  []int
-	MonsterIdxs []int //怪物唯一索引清單
-	RouteID     int
-	IsBoss      bool
+	SpawnID        int
+	MonsterJsonIDs []int
+	MonsterIdxs    []int //怪物唯一索引清單
+	RouteJsonID    int
+	IsBoss         bool
 }
 type Monster struct {
 	MonsterJson gameJson.MonsterJsonData // 怪物表Json
@@ -28,17 +28,17 @@ type Monster struct {
 
 var spawnAccumulator = utility.NewAccumulator() // 產生一個生怪累加器
 
-func NewScheduledSpawn(spawnID int, monsterIDs []int, routeID int, isBoss bool) *ScheduledSpawn {
+func NewScheduledSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBoss bool) *ScheduledSpawn {
 	// log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
+	monsterIdxs := make([]int, len(monsterJsonIDs))
 	return &ScheduledSpawn{
-		SpawnID:    spawnID,
-		MonsterIDs: monsterIDs,
-		RouteID:    routeID,
-		IsBoss:     isBoss,
+		SpawnID:        spawnID,
+		MonsterJsonIDs: monsterJsonIDs,
+		MonsterIdxs:    monsterIdxs,
+		RouteJsonID:    routeJsonID,
+		IsBoss:         isBoss,
 	}
 }
-
-var MyMonsterScheduler MonsterSpawner // 怪物產生器
 
 type MonsterSpawner struct {
 	BossExist     bool             // BOSS是否存在場上的標記
@@ -47,7 +47,7 @@ type MonsterSpawner struct {
 	mutex         sync.Mutex
 }
 
-func NewMonsterScheduler() *MonsterSpawner {
+func NewMonsterSpawner() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
 		Monsters:      make(map[int]*Monster),
@@ -55,11 +55,11 @@ func NewMonsterScheduler() *MonsterSpawner {
 }
 
 // 初始化生怪器
-func (ms *MonsterSpawner) InitMonsterSpawner(mapID int32) {
+func (ms *MonsterSpawner) InitMonsterSpawner(mapJsonID int32) {
 	log.Infof("%s 初始化生怪器", logger.LOG_MonsterSpawner)
-	mapData, err := gameJson.GetMapByID(strconv.Itoa(int(mapID)))
+	mapData, err := gameJson.GetMapByID(strconv.Itoa(int(mapJsonID)))
 	if err != nil {
-		log.Errorf("%s gameJson.GetMapByID(strconv.Itoa(mapID))錯誤: %v", logger.LOG_MonsterSpawner, err)
+		log.Errorf("%s gameJson.GetMapByID(strconv.Itoa(int(mapJsonID)))錯誤: %v", logger.LOG_MonsterSpawner, err)
 		return
 	}
 
@@ -87,6 +87,7 @@ func (ms *MonsterSpawner) InitMonsterSpawner(mapID int32) {
 
 // 生怪計時器, 執行生怪倒數, Spawner倒數結束就生怪
 func (ms *MonsterSpawner) ScheduleMonster() {
+	time.Sleep(5000 * time.Millisecond) // X秒後再開始生怪
 	for {
 
 		time.Sleep(1000 * time.Millisecond) // 每秒檢查一次
@@ -119,28 +120,28 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 						continue
 					}
 					newSpawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(rndSpawnID))
-					monsterIDs, err := newSpawnData.GetMonsterIDs()
+					monsterJsonIDs, err := newSpawnData.GetMonsterJsonIDs()
 					if err != nil {
 						log.Errorf("%s newSpawnData.GetMonsterIDs()錯誤: %v", logger.LOG_MonsterSpawner, err)
 					}
-					routID, err := newSpawnData.GetRandRoutID()
+					routJsonID, err := newSpawnData.GetRandRoutJsonID()
 					if err != nil {
 						log.Errorf("%s newSpawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 						continue
 					}
-					spawn = NewScheduledSpawn(rndSpawnID, monsterIDs, routID, newSpawnData.SpawnType == gameJson.Boss)
+					spawn = NewScheduledSpawn(rndSpawnID, monsterJsonIDs, routJsonID, newSpawnData.SpawnType == gameJson.Boss)
 					ms.Spawn(spawn)
 				case gameJson.Minion, gameJson.Boss:
-					monsterIDs, err := spawnData.GetMonsterIDs()
+					monsterJsonIDs, err := spawnData.GetMonsterJsonIDs()
 					if err != nil {
 						log.Errorf("%s spawnData.GetMonsterIDs()錯誤: %v", logger.LOG_MonsterSpawner, err)
 					}
-					routID, err := spawnData.GetRandRoutID()
+					routJsonID, err := spawnData.GetRandRoutJsonID()
 					if err != nil {
 						log.Errorf("%s spawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 						continue
 					}
-					spawn = NewScheduledSpawn(spawnID, monsterIDs, routID, spawnData.SpawnType == gameJson.Boss)
+					spawn = NewScheduledSpawn(spawnID, monsterJsonIDs, routJsonID, spawnData.SpawnType == gameJson.Boss)
 					ms.Spawn(spawn)
 				}
 				ms.mutex.Lock()
@@ -160,16 +161,16 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 	// log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
-	for i, monsterID := range spawn.MonsterIDs {
+	for i, monsterID := range spawn.MonsterJsonIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
 			continue
 		}
 		monsterIdx := spawnAccumulator.GetNextIndex("monster", 1)
-		routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteID))
+		routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteJsonID))
 		if err != nil {
-			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteID)
+			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteJsonID)
 			continue
 		}
 
@@ -186,12 +187,12 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 
 	// 廣播給所有玩家
 	MyRoom.broadCastPacket(&packet.Pack{
-		CMD: packet.SPAWNM,
+		CMD: packet.SPAWN,
 		Content: &packet.SpawnCMD{
 			IsBoss:      spawn.IsBoss,
-			MonsterIDs:  spawn.MonsterIDs,
+			MonsterIDs:  spawn.MonsterJsonIDs,
 			MonsterIdxs: spawn.MonsterIdxs,
-			RouteID:     spawn.RouteID,
+			RouteID:     spawn.RouteJsonID,
 			SpawnTime:   MyRoom.GameTime,
 		},
 	})

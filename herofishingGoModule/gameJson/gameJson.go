@@ -129,6 +129,8 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		unmarshaler = GameSettingJsonData{}
 	case JsonName.Hero:
 		unmarshaler = HeroJsonData{}
+	case JsonName.HeroSpell:
+		unmarshaler = HeroSpellJsonData{}
 	case JsonName.HeroEXP:
 		unmarshaler = HeroEXPJsonData{}
 	case JsonName.Map:
@@ -146,6 +148,7 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 	case JsonName.Rank:
 		unmarshaler = RankJsonData{}
 	default:
+		log.Errorf("%s 未定義的jsonName: %v", logger.LOG_GameJson, jsonName)
 		return errors.New("未定義的jsonName")
 	}
 	items, err := unmarshaler.UnmarshalJSONData(jsonName, jsonData)

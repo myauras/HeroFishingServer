@@ -6,6 +6,7 @@ import (
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
+	"herofishingGoModule/utility"
 	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
@@ -49,6 +50,7 @@ type Room struct {
 	MaxAllowDisconnectSecs float64                                 // 最長允許玩家斷線秒數
 	ErrorLogs              []string                                // ErrorLogs
 	MathModel              *gamemath.Model                         // 數學模型
+	MSpawner               *MonsterSpawner                         // 生怪器
 	AttackEvents           map[string]*gamemath.AttackEvent        // 攻擊事件
 	lastChangeStateTime    time.Time                               // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
@@ -102,6 +104,10 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		GameRTP:        dbMap.RTP,            // 遊戲RTP
 		SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
 	}
+	// 初始生怪器
+	MyRoom.MSpawner = NewMonsterSpawner()
+	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
+	MyRoom.AttackEvents = make(map[string]*gamemath.AttackEvent)
 
 	// 這裡之後要加房間初始化Log到DB
 
@@ -141,7 +147,7 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 		return false
 	}
 	// 設定玩家
-	player.Index = int32(index)
+	player.Index = index
 	r.Players[index] = player
 	return true
 }
@@ -204,8 +210,7 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
 		}
-		MyRoom.HandleAttackEvent(content)
-
+		MyRoom.HandleAttackEvent(conn, pack, content)
 	}
 
 	return nil
@@ -223,6 +228,20 @@ func (r *Room) getPlayerIndex(conn net.Conn) int {
 		}
 	}
 	return -1
+}
+
+// 取得玩家
+func (r *Room) getPlayer(conn net.Conn) *gSetting.Player {
+	for _, v := range r.Players {
+		if v == nil {
+			continue
+		}
+
+		if v.ConnTCP.Conn == conn {
+			return v
+		}
+	}
+	return nil
 }
 
 // 開始遊戲房主循環
@@ -281,13 +300,12 @@ func (r *Room) ChangeState(state GameState) {
 
 // 送封包給遊戲房間內所有玩家
 func (r *Room) broadCastPacket(pack *packet.Pack) {
-	log.Infof("broadCastPacket")
+	log.Infof("broadCastPacket CMD: %v Content: %v", pack.CMD, pack.Content)
 	// 送封包給所有房間中的玩家
-	for i, v := range r.Players {
+	for _, v := range r.Players {
 		if v == nil || v.ConnTCP.Conn == nil {
 			continue
 		}
-		log.Infof("send index: %v", i)
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s broadCastPacket錯誤: %v", logger.LOG_Room, err)
@@ -362,14 +380,26 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 }
 
 // 處理收到的攻擊事件
-func (room *Room) HandleAttackEvent(hitCMD packet.Action_HitCMD) {
-	spellJson, err := gameJson.GetHeroSpellByID(strconv.Itoa(int(hitCMD.SpellJsonID)))
-	if err != nil {
-		log.Errorf("%s gameJson.GetHeroSpellByID(strconv.Itoa(int(hitCMD.SpellJsonID)))錯誤: %v", logger.LOG_Room, err)
+func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Action_HitCMD) {
+	// 取玩家
+	player := room.getPlayer(conn)
+	if player == nil {
+		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
 		return
 	}
+
+	spellJson, err := gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)
+	if err != nil {
+		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+		return
+	}
+
 	curWave := 0
+	var killMonsterIdxs []int // 擊殺怪物索引清單
+	var gainGolds []int       // 獲得金幣清單
+
 	if _, ok := room.AttackEvents[hitCMD.AttackID]; !ok {
+
 		rtp := 0.0
 		if spellJson.RTP != "" {
 			convertRTP, err := strconv.ParseFloat(spellJson.RTP, 64)
@@ -377,9 +407,12 @@ func (room *Room) HandleAttackEvent(hitCMD packet.Action_HitCMD) {
 				log.Errorf("%s strconv.ParseFloat(spellJson.RTP, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
+			if convertRTP < 0 {
+				log.Errorf("%s rtp不可小於0", logger.LOG_Room)
+				return
+			}
 			rtp = convertRTP
 		}
-
 		waves, err := strconv.ParseInt(spellJson.Waves, 10, 32)
 		if err != nil {
 			log.Errorf("%s strconv.ParseInt(spellJson.Waves, 10, 32)錯誤: %v", logger.LOG_Room, err)
@@ -421,8 +454,15 @@ func (room *Room) HandleAttackEvent(hitCMD packet.Action_HitCMD) {
 		curWave = len(event.MonsterIdxs) - 1
 	}
 	event := room.AttackEvents[hitCMD.AttackID]
-	for _, idx := range event.MonsterIdxs[curWave] {
-		if monster, ok := MyMonsterScheduler.Monsters[idx]; ok {
+
+	// 此波攻擊沒命中任何怪物
+	if len(event.MonsterIdxs[curWave]) == 0 {
+		return
+	}
+
+	// 遍歷命中的怪物並檢查那些怪物被擊殺了
+	for _, monsterIdx := range event.MonsterIdxs[curWave] {
+		if monster, ok := room.MSpawner.Monsters[monsterIdx]; ok {
 			if monster == nil {
 				log.Errorf("%s MyMonsterScheduler.Monsters中的怪物為nil", logger.LOG_Room)
 				continue
@@ -432,11 +472,36 @@ func (room *Room) HandleAttackEvent(hitCMD packet.Action_HitCMD) {
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
-			if event.SpellJSonRTP == 0 {
+
+			rewardGold := int(odds * float64(room.DBmap.Bet)) // 怪物死掉會獲得的金幣
+			kill := false
+			if event.SpellJSonRTP == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
 				attackKP := room.MathModel.GetAttackKP(odds)
+				kill = utility.GetProbResult(attackKP)
+
+			} else { // 此攻擊為技能攻擊
+				attackKP := room.MathModel.GetSpellKP(event.SpellJSonRTP, odds)
+				kill = utility.GetProbResult(attackKP)
 			}
 
+			// 如果有擊殺
+			if kill {
+				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
+				gainGolds = append(gainGolds, rewardGold)
+			}
 		}
+	}
+
+	// 如果怪物被擊殺就廣播給client
+	if len(killMonsterIdxs) > 0 {
+		room.broadCastPacket(&packet.Pack{
+			CMD:    packet.ACTION_HIT_REPLY,
+			PackID: pack.PackID,
+			Content: &packet.Action_HitCMD_Reply{
+				KillMonsterIdxs: killMonsterIdxs,
+				GainGolds:       gainGolds,
+			}},
+		)
 	}
 
 }

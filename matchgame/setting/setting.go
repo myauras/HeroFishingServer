@@ -8,7 +8,7 @@ import (
 // 玩家
 type Player struct {
 	ID       string
-	Index    int32 // 玩家在房間的索引(座位)
+	Index    int // 玩家在房間的索引(座位)
 	Status   *PlayerStatus
 	LeftSecs float64       // 玩家已離開遊戲房X秒
 	ConnTCP  ConnectionTCP // TCP連線

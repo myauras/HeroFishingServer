@@ -23,8 +23,9 @@ func (a *accumulator) GetNextIndex(key string, addValue int) int {
 
 	if _, exists := a.keyValueMap[key]; !exists {
 		a.keyValueMap[key] = 0
+	} else {
+		a.keyValueMap[key] += addValue
 	}
 
-	a.keyValueMap[key] += addValue
 	return a.keyValueMap[key]
 }

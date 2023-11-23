@@ -28,11 +28,20 @@ func RandomIntBetweenInts(min, max int) (int, error) {
 
 // GetRandomTFromSlice 傳入泛型切片，返回隨機1個元素。
 func GetRandomTFromSlice[T any](slice []T) (T, error) {
-	if slice == nil || len(slice) == 0 {
+	if len(slice) == 0 {
 		var value T
 		return value, fmt.Errorf("GetRandomTFromSlice傳入參數錯誤")
 	}
-	rand.Seed(time.Now().UnixNano())
-	randIndex := rand.Intn(len(slice))
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+	randIndex := r.Intn(len(slice))
 	return slice[randIndex], nil
+}
+
+// 傳入機率回傳結果 EX. 傳入0.3就是有30%機率返回true
+func GetProbResult(prob float64) bool {
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+	randomFloat := r.Float64()
+	return randomFloat <= prob
 }

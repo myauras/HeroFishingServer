@@ -92,13 +92,13 @@ func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
 }
 
 // 取得生怪IDs
-func (jsonData MonsterSpawnerJsonData) GetMonsterIDs() ([]int, error) {
+func (jsonData MonsterSpawnerJsonData) GetMonsterJsonIDs() ([]int, error) {
 	ids, err := utility.StrToIntSlice(jsonData.MonsterIDs, ",")
 	return ids, err
 }
 
 // 取得隨機路徑ID
-func (jsonData MonsterSpawnerJsonData) GetRandRoutID() (int, error) {
+func (jsonData MonsterSpawnerJsonData) GetRandRoutJsonID() (int, error) {
 	ids, err := utility.StrToIntSlice(jsonData.Routes, ",")
 	if err != nil {
 		return 0, err

@@ -151,9 +151,6 @@ func main() {
 
 	// 開始遊戲房主循環
 	room.StartRun(stopChan, endGameChan)
-	// 初始生怪器
-	scheduler := game.NewMonsterScheduler()
-	scheduler.InitMonsterSpawner(room.DBmap.JsonMapID)
 
 	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 
