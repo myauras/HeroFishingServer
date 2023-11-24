@@ -8,12 +8,11 @@ import (
 
 // HeroSpell JSON
 type HeroSpellJsonData struct {
-	ID    string `json:"ID"`
-	RTP   string `json:"RTP"`
-	CD    string `json:"CD"`
-	Cost  string `json:"Cost"`
-	Waves string `json:"Waves"`
-	Hits  string `json:"Hits"`
+	ID      string `json:"ID"`
+	RTP     string `json:"RTP"`
+	CD      string `json:"CD"`
+	Cost    string `json:"Cost"`
+	MaxHits string `json:"MaxHits"`
 }
 
 func (jsonData HeroSpellJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {

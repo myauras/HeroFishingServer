@@ -13,13 +13,13 @@ type Model struct {
 }
 
 // 取得普攻擊殺率
-func (model *Model) GetAttackKP(targetOdds float64) float64 {
+func (model *Model) GetAttackKP(targetOdds float64, spellMaxHit int) float64 {
 	attackRTP := model.GameRTP - model.SpellSharedRTP
 	if attackRTP <= 0 {
 		log.Errorf("%s GetAttackKP錯誤 attackRTP<=0", logger.LOG_MathModel)
 		return 0
 	}
-	p := attackRTP / targetOdds
+	p := attackRTP / targetOdds / float64(spellMaxHit)
 
 	// 擊殺率大於1時處理
 	if p > 1 {
@@ -30,8 +30,8 @@ func (model *Model) GetAttackKP(targetOdds float64) float64 {
 }
 
 // 取得技能擊殺率
-func (model *Model) GetSpellKP(spellRTP float64, targetOdds float64) float64 {
-	p := spellRTP / targetOdds
+func (model *Model) GetSpellKP(spellRTP float64, targetOdds float64, spellMaxHit int) float64 {
+	p := spellRTP / targetOdds / float64(spellMaxHit)
 
 	// 擊殺率大於1時處理
 	if p > 1 {

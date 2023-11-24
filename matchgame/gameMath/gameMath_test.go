@@ -14,6 +14,6 @@ var model = Model{
 
 func TestGetSpellKP(t *testing.T) {
 
-	p := model.GetAttackKP(100)
+	p := model.GetAttackKP(100, 1)
 	log.Infof("%s p: %v", logger.LOG_MathModel, p)
 }

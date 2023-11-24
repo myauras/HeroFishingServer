@@ -90,7 +90,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 	time.Sleep(5000 * time.Millisecond) // X秒後再開始生怪
 	for {
 
-		time.Sleep(1000 * time.Millisecond) // 每秒檢查一次
+		time.Sleep(2000 * time.Millisecond) // 每秒檢查一次
 		for spawnID, timer := range ms.spawnTimerMap {
 			spawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(spawnID)) // 這邊不用檢查err因為會加入spawnTimerMap都是檢查過的
 			if ms.BossExist && spawnData.SpawnType == gameJson.Boss {

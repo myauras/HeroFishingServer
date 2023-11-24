@@ -32,7 +32,7 @@ const (
 
 const (
 	MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
-	HIT_EXPIRED_SECS          float64 = 30   // Hit實例被創建後X秒後刪除
+	ATTACK_EXPIRED_SECS       float64 = 30   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 )
 
 type Room struct {
@@ -40,8 +40,6 @@ type Room struct {
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
 	Players                [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
-	HeroIDs                [setting.PLAYER_NUMBER]int              // 玩家使用英雄IDs
-	HeroSkinIDs            [setting.PLAYER_NUMBER]string           // 玩家使用英雄IDs
 	RoomName               string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
 	gameState              GameState                               // 遊戲狀態
 	DBMatchgame            *mongo.DBMatchgame                      // DB遊戲房資料
@@ -51,7 +49,7 @@ type Room struct {
 	ErrorLogs              []string                                // ErrorLogs
 	MathModel              *gamemath.Model                         // 數學模型
 	MSpawner               *MonsterSpawner                         // 生怪器
-	AttackEvents           map[string]*gamemath.AttackEvent        // 攻擊事件
+	AttackEvents           map[string]*gSetting.AttackEvent        // 攻擊事件
 	lastChangeStateTime    time.Time                               // 上次更新房間狀態時間
 	MutexLock              sync.Mutex
 }
@@ -107,7 +105,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	// 初始生怪器
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
-	MyRoom.AttackEvents = make(map[string]*gamemath.AttackEvent)
+	MyRoom.AttackEvents = make(map[string]*gSetting.AttackEvent)
 
 	// 這裡之後要加房間初始化Log到DB
 
@@ -119,11 +117,32 @@ func (r *Room) WriteGameErrorLog(log string) {
 }
 
 // 設定遊戲房內玩家使用英雄ID
-func (r *Room) SetHero(index int, heroID int, heroSkinID string) {
+func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
-	r.HeroIDs[index] = heroID
-	r.HeroSkinIDs[index] = heroSkinID
+	player := r.getPlayer(conn)
+	if player != nil {
+		player.HeroID = heroID
+		player.HeroSkinID = heroSkinID
+	}
+}
+
+// 取得房間內所有玩家使用英雄與Skin資料
+func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBER]string) {
+	r.MutexLock.Lock()
+	defer r.MutexLock.Unlock()
+	var heroIDs [setting.PLAYER_NUMBER]int
+	var heroSkinIDs [setting.PLAYER_NUMBER]string
+	for i, player := range r.Players {
+		if player == nil {
+			heroIDs[i] = 0
+			heroSkinIDs[i] = ""
+			continue
+		}
+		heroIDs[i] = player.HeroID
+		heroSkinIDs[i] = player.HeroSkinID
+	}
+	return heroIDs, heroSkinIDs
 }
 
 // 把玩家加到房間中, 成功時回傳true
@@ -183,14 +202,14 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
 		}
-		index := r.getPlayerIndex(conn)
-		r.SetHero(index, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
+		r.SetHero(conn, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
+		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
 		r.broadCastPacket(&packet.Pack{ // 廣播封包
 			CMD: packet.ACTION_SETHERO_REPLY,
 			Content: &packet.Action_SetHeroCMD_Reply{
-				HeroIDs:     r.HeroIDs,
-				HeroSkinIDs: r.HeroSkinIDs,
+				HeroIDs:     heroIDs,
+				HeroSkinIDs: heroSkinIDs,
 			},
 		})
 
@@ -381,110 +400,91 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 
 // 處理收到的攻擊事件
 func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Action_HitCMD) {
+
 	// 取玩家
 	player := room.getPlayer(conn)
 	if player == nil {
 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
 		return
 	}
-
+	// 取英雄表
+	heroJson, err := gameJson.GetHeroByID(strconv.Itoa(player.HeroID))
+	if err != nil {
+		log.Errorf("%s  gameJson.GetHeroByID(strconv.Itoa(player.HeroID))錯誤: %v", logger.LOG_Room, err)
+		return
+	}
+	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)
 	if err != nil {
 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
 		return
 	}
-
-	curWave := 0
-	var killMonsterIdxs []int // 擊殺怪物索引清單
-	var gainGolds []int       // 獲得金幣清單
-
-	if _, ok := room.AttackEvents[hitCMD.AttackID]; !ok {
-
-		rtp := 0.0
-		if spellJson.RTP != "" {
-			convertRTP, err := strconv.ParseFloat(spellJson.RTP, 64)
-			if err != nil {
-				log.Errorf("%s strconv.ParseFloat(spellJson.RTP, 64)錯誤: %v", logger.LOG_Room, err)
-				return
-			}
-			if convertRTP < 0 {
-				log.Errorf("%s rtp不可小於0", logger.LOG_Room)
-				return
-			}
-			rtp = convertRTP
-		}
-		waves, err := strconv.ParseInt(spellJson.Waves, 10, 32)
+	// 取rtp
+	rtp := 0.0
+	if spellJson.RTP != "" {
+		convertRTP, err := strconv.ParseFloat(spellJson.RTP, 64)
 		if err != nil {
-			log.Errorf("%s strconv.ParseInt(spellJson.Waves, 10, 32)錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s strconv.ParseFloat(spellJson.RTP, 64)錯誤: %v", logger.LOG_Room, err)
 			return
 		}
-		hits, err := strconv.ParseInt(spellJson.Hits, 10, 32)
-		if err != nil {
-			log.Errorf("%s  strconv.ParseInt(spellJson.Hits, 10, 32)錯誤: %v", logger.LOG_Room, err)
+		if convertRTP < 0 {
+			log.Errorf("%s rtp不可小於0", logger.LOG_Room)
 			return
 		}
-		idxs := make([][]int, 1)
-		idxs[0] = hitCMD.MonsterIdxs
-		event := gamemath.AttackEvent{
-			AttackID:       hitCMD.AttackID,
-			ExpiredTime:    room.GameTime + HIT_EXPIRED_SECS,
-			MonsterIdxs:    idxs,
-			SpellJSonRTP:   rtp,
-			SpellJsonWaves: int(waves),
-			SpellJsonHits:  int(hits),
-		}
-		room.AttackEvents[hitCMD.AttackID] = &event
-		curWave = 0
-	} else {
-		event := room.AttackEvents[hitCMD.AttackID]
-		if event == nil {
-			log.Errorf("%s room.AttackEvents[hitCMD.AttackID]為nil", logger.LOG_Room)
-			return
-		}
-		maxWave, err := strconv.ParseInt(spellJson.Waves, 10, 32)
-		if err != nil {
-			log.Errorf("%s strconv.ParseInt(spellJson.Waves, 10, 32)錯誤: %v", logger.LOG_Room, err)
-			return
-		}
-		if (len(event.MonsterIdxs) + 1) >= int(maxWave) {
-			log.Errorf("%s 收到的波次大於SpellJson的指定波次", logger.LOG_Room)
-			return
-		}
-		event.MonsterIdxs = append(event.MonsterIdxs, hitCMD.MonsterIdxs)
-		curWave = len(event.MonsterIdxs) - 1
+		rtp = convertRTP
 	}
-	event := room.AttackEvents[hitCMD.AttackID]
-
-	// 此波攻擊沒命中任何怪物
-	if len(event.MonsterIdxs[curWave]) == 0 {
+	// 取波次命中數
+	spellMaxHits, err := strconv.ParseInt(spellJson.MaxHits, 10, 32)
+	if err != nil {
+		log.Errorf("%s strconv.ParseInt(spellJson.Hits, 10, 32)錯誤: %v", logger.LOG_Room, err)
 		return
 	}
 
-	// 遍歷命中的怪物並檢查那些怪物被擊殺了
-	for _, monsterIdx := range event.MonsterIdxs[curWave] {
+	var hitMonsterIdxs []int   // 擊中怪物索引清單
+	var killMonsterIdxs []int  // 擊殺怪物索引清單
+	var gainGolds []int64      // 獲得金幣清單
+	var gainSpellCharges []int // 獲得技能充能清單
+	var gainDrops []int        // 獲得掉落清單
+
+	// 遍歷擊中的怪物並計算擊殺與獎勵
+	hitCMD.MonsterIdxs = utility.RemoveDuplicatesFromSlice(hitCMD.MonsterIdxs) // 移除重複的命中索引
+	for _, monsterIdx := range hitCMD.MonsterIdxs {
+		// 確認怪物索引存在清單中, 不存在代表已死亡或是client送錯怪物索引
 		if monster, ok := room.MSpawner.Monsters[monsterIdx]; ok {
+
 			if monster == nil {
-				log.Errorf("%s MyMonsterScheduler.Monsters中的怪物為nil", logger.LOG_Room)
+				log.Errorf("%s room.MSpawner.Monsters中的monster is null", logger.LOG_Room)
 				continue
 			}
+
+			hitMonsterIdxs = append(hitMonsterIdxs, monsterIdx) // 加入擊中怪物索引清單
+
+			// 取得怪物賠率
 			odds, err := strconv.ParseFloat(monster.MonsterJson.Odds, 64)
 			if err != nil {
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
 
-			rewardGold := int(odds * float64(room.DBmap.Bet)) // 怪物死掉會獲得的金幣
-			kill := false
-			if event.SpellJSonRTP == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
-				attackKP := room.MathModel.GetAttackKP(odds)
-				kill = utility.GetProbResult(attackKP)
+			// 計算實際怪物死掉獲得金幣數
+			rewardGold := int64(odds * float64(room.DBmap.Bet))
 
-			} else { // 此攻擊為技能攻擊
-				attackKP := room.MathModel.GetSpellKP(event.SpellJSonRTP, odds)
+			// 計算是否造成擊殺
+			kill := false
+
+			if rtp == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
+				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits))
 				kill = utility.GetProbResult(attackKP)
+				// 取得隨機一個尚未充滿能的技能
+				heroJson
+				dropChargeP := room.MathModel.GetHeroSpellDropP_AttackKilling()
+				log.Infof("spellMaxHits:%v odds:%v attackKP:%v kill:%v", spellMaxHits, odds, attackKP, kill)
+			} else { // 此攻擊為技能攻擊
+				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
+				log.Infof("spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", spellMaxHits, rtp, odds, attackKP, kill)
 			}
 
-			// 如果有擊殺
+			// 如果有擊殺就加到清單中
 			if kill {
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainGolds = append(gainGolds, rewardGold)
@@ -492,16 +492,60 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		}
 	}
 
+	// 此波攻擊沒命中任何怪物
+	if len(hitMonsterIdxs) == 0 {
+		return
+	}
+
+	// 以client傳來的AttackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
+	if _, ok := room.AttackEvents[hitCMD.AttackID]; !ok {
+		// 檢查擊中怪物數量是否超過此技能的最大擊中數量
+		if len(hitMonsterIdxs) > int(spellMaxHits) {
+			log.Errorf("%s 收到的擊中數量超過此技能最大擊中數量: %v", logger.LOG_Room, err)
+			return
+		}
+
+		idxs := make([][]int, 1)
+		idxs[0] = hitMonsterIdxs
+		attackEvent := gSetting.AttackEvent{
+			AttackID:    hitCMD.AttackID,
+			ExpiredTime: room.GameTime + ATTACK_EXPIRED_SECS,
+			MonsterIdxs: idxs,
+		}
+		room.AttackEvents[hitCMD.AttackID] = &attackEvent
+	} else {
+		attackEvent := room.AttackEvents[hitCMD.AttackID]
+		if attackEvent == nil {
+			log.Errorf("%s room.AttackEvents[hitCMD.AttackID]為nil", logger.LOG_Room)
+			return
+		}
+		// 目前此技能收到的總擊中數量
+		curHits := len(hitMonsterIdxs)
+		for _, innerSlice := range attackEvent.MonsterIdxs {
+			curHits += len(innerSlice)
+		}
+		// 檢查擊中數量是否超過此技能的最大擊中數量
+		if curHits > int(spellMaxHits) {
+			log.Errorf("%s 收到的擊中數量超過此技能最大可擊中數量: %v", logger.LOG_Room, err)
+			return
+		}
+		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
+	}
+
+	// 從怪物清單中移除被擊殺的怪物
+	utility.RemoveFromMapByKeys(room.MSpawner.Monsters, killMonsterIdxs)
+
 	// 如果怪物被擊殺就廣播給client
 	if len(killMonsterIdxs) > 0 {
 		room.broadCastPacket(&packet.Pack{
 			CMD:    packet.ACTION_HIT_REPLY,
 			PackID: pack.PackID,
 			Content: &packet.Action_HitCMD_Reply{
-				KillMonsterIdxs: killMonsterIdxs,
-				GainGolds:       gainGolds,
+				KillMonsterIdxs:  killMonsterIdxs,
+				GainGolds:        gainGolds,
+				GainSpellCharges: gainSpellCharges,
+				GainDrops:        gainDrops,
 			}},
 		)
 	}
-
 }

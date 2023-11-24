@@ -3,6 +3,7 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	// "herofishingGoModule/logger"
 )
 
@@ -62,4 +63,8 @@ func GetHeroByID(id string) (HeroJsonData, error) {
 	}
 
 	return HeroJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.Hero)
+}
+func (jsonData HeroJsonData) GetSpellIDByIdx(idx int) string {
+	spellID := jsonData.ID + "spell" + strconv.Itoa(idx)
+	return spellID
 }

@@ -21,8 +21,10 @@ type Action_HitCMD struct {
 type Action_HitCMD_Reply struct {
 	CMDContent
 	// KillMonsterIdxs與GainGolds是對應的, 例如KillMonsterIdxs為[0,3,6]而GainGolds是[30,0,120], 就是此次攻擊擊殺了索引為0,3,6的怪物並分別獲得30,0,120金幣
-	KillMonsterIdxs []int // 擊殺怪物索引清單
-	GainGolds       []int // 獲得金幣清單
+	KillMonsterIdxs  []int   // 擊殺怪物索引清單
+	GainGolds        []int64 // 獲得金幣清單
+	GainSpellCharges []int   // 獲得技能充能清單, [1,2]就是第一個技能跟第二個技能
+	GainDrops        []int   // 獲得掉落清單, [4,5]就是DropJsonID為4與5的掉落
 }
 
 func (p *Action_HitCMD) Parse(common CMDContent) bool {
