@@ -64,7 +64,25 @@ func GetHeroByID(id string) (HeroJsonData, error) {
 
 	return HeroJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.Hero)
 }
-func (jsonData HeroJsonData) GetSpellIDByIdx(idx int) string {
-	spellID := jsonData.ID + "spell" + strconv.Itoa(idx)
+
+// 取得此英雄的3個技能
+func (heroJson HeroJsonData) GetSpellJsons() [3]HeroSpellJsonData {
+	spellJsons := [3]HeroSpellJsonData{}
+	for i := 0; i < 3; i++ {
+		spellID := heroJson.GetSpellIDByIdx(i + 1)
+		spellJson, err := GetHeroSpellByID(spellID)
+		if err != nil {
+			fmt.Printf("GetSpellJsons時GetHeroSpellByID(spellID)發生錯誤: %v \n", err)
+			continue
+		}
+		spellJsons[i] = spellJson
+
+	}
+	return spellJsons
+}
+
+// 傳入X取得英雄第X個技能, EX. 傳入1就是第一個技能
+func (heroJson HeroJsonData) GetSpellIDByIdx(idx int) string {
+	spellID := heroJson.ID + "_spell" + strconv.Itoa(idx)
 	return spellID
 }

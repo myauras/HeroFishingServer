@@ -2,19 +2,35 @@ package setting
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
+	"herofishingGoModule/gameJson"
+	"herofishingGoModule/utility"
+	"matchgame/logger"
 	"net"
 )
 
 // 玩家
 type Player struct {
-	ID         string
-	Index      int    // 玩家在房間的索引(座位)
-	HeroID     int    // 使用中的英雄ID
-	HeroSkinID string // 使用中的SkinID
-	Status     *PlayerStatus
-	LeftSecs   float64       // 玩家已離開遊戲房X秒
-	ConnTCP    ConnectionTCP // TCP連線
-	ConnUDP    net.Conn      // UDP連線
+	ID       string
+	Index    int           // 玩家在房間的索引(座位)
+	MyHero   *Hero         // 使用中的英雄
+	LeftSecs float64       // 玩家已離開遊戲房X秒
+	ConnTCP  ConnectionTCP // TCP連線
+	ConnUDP  net.Conn      // UDP連線
+}
+
+// 英雄
+type Hero struct {
+	HeroID     int           // 英雄ID
+	HeroSkinID string        // SkinID
+	HeroEXP    int           // 英雄經驗
+	Spells     [3]*HeroSpell // 英雄技能
+}
+
+// 英雄技能
+type HeroSpell struct {
+	SpellJson gameJson.HeroSpellJsonData
+	Charge    int // 充能
 }
 
 // 將玩家連線斷掉
@@ -32,14 +48,44 @@ func (player *Player) CloseConnection() {
 	}
 }
 
+// 取得此英雄隨機尚未充滿能的技能
+func (hero *Hero) GetRandomUnchargedSpell() *HeroSpell {
+	spells := hero.GetUnchargedSpells()
+	if len(spells) == 0 {
+		return nil
+	}
+	spell, err := utility.GetRandomTFromSlice(spells)
+	if err != nil {
+		log.Errorf("%s utility.GetRandomTFromSlice(spells)錯誤: %v", logger.LOG_Setting, err)
+	}
+	return spell
+}
+
+// 取得此英雄尚未充滿能的技能
+func (hero *Hero) GetUnchargedSpells() []*HeroSpell {
+	spells := make([]*HeroSpell, 0)
+	for _, spell := range hero.Spells {
+		if !spell.IsCharged() {
+			spells = append(spells, spell)
+		}
+	}
+	return spells
+}
+
+// 取得此技能充能比例
+func (spell *HeroSpell) GetChargeRatio() float64 {
+	return float64(spell.Charge) / float64(spell.SpellJson.Cost)
+}
+
+// 此技能是否充滿能
+func (spell *HeroSpell) IsCharged() bool {
+	return spell.Charge >= spell.SpellJson.Cost
+}
+
 type ConnectionTCP struct {
 	Conn    net.Conn      // TCP連線
 	Encoder *json.Encoder // 連線編碼
 	Decoder *json.Decoder // 連線解碼
-}
-
-// 玩家狀態
-type PlayerStatus struct {
 }
 
 // 伺服器設定

@@ -1,10 +1,12 @@
 package utility
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
 
+// 將傳入的字串以傳入的字元分隔並轉為[]int
 func StrToIntSlice(str string, char string) ([]int, error) {
 	parts := strings.Split(str, char)
 	nums := make([]int, 0, len(parts))
@@ -18,4 +20,17 @@ func StrToIntSlice(str string, char string) ([]int, error) {
 	}
 
 	return nums, nil
+}
+
+// 將字串最後一個字轉為數字
+func ExtractLastDigit(s string) (int, error) {
+	if len(s) == 0 {
+		return 0, fmt.Errorf("ExtractLastDigit時傳入字串為空")
+	}
+	lastChar := s[len(s)-1:]
+	num, err := strconv.Atoi(lastChar)
+	if err != nil {
+		return 0, fmt.Errorf("ExtractLastDigit最後一個字串 '%s' 不能轉為數字", lastChar)
+	}
+	return num, nil
 }
