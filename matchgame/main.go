@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
+	"herofishingGoModule/redis"
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
@@ -58,6 +59,17 @@ func main() {
 		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
 	}
 	InitGameJson() // 初始化遊戲Json資料
+
+	// 初始化redisDB
+	log.Infof("%s 開始初始化RedisDB", logger.LOG_Main)
+	redis.Init()
+	redisErr := redis.Ping()
+	if redisErr != nil {
+		log.Errorf("%s 初始化RedisDB發生錯誤: %v", logger.LOG_Main, redisErr)
+	} else {
+		log.Infof("%s 初始化RedisDB完成", logger.LOG_Main)
+	}
+
 	roomChan := make(chan *game.Room)
 	roomInit := false
 	var matchmakerPodName string
@@ -331,21 +343,64 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 				_ = packet.SendPack(encoder, &packet.Pack{
 					CMD:    packet.AUTH_TOCLIENT,
 					PackID: pack.PackID,
-					ErrMsg: "Auth toekn驗證失敗",
+					ErrMsg: "玩家驗證錯誤",
 					Content: &packet.Auth_ToClient{
 						IsAuth: false,
 					},
 				})
 			}
+			var dbPlayer mongo.DBPlayer
+			getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, playerID, &dbPlayer)
+			if getPlayerDocErr != nil {
+				log.Errorf("%s DBPlayer資料錯誤: %v", logger.LOG_Main, getPlayerDocErr)
+				_ = packet.SendPack(encoder, &packet.Pack{
+					CMD:    packet.AUTH_TOCLIENT,
+					PackID: pack.PackID,
+					ErrMsg: "DBPlayer資料錯誤",
+					Content: &packet.Auth_ToClient{
+						IsAuth: false,
+					},
+				})
+			}
+			var dbPlayerState mongo.DBPlayerState
+			getPlayerStateDocErr := mongo.GetDocByID(mongo.ColName.PlayerState, playerID, &dbPlayerState)
+			if getPlayerStateDocErr != nil {
+				log.Errorf("%s DBPlayerState資料錯誤: %v", logger.LOG_Main, getPlayerStateDocErr)
+				_ = packet.SendPack(encoder, &packet.Pack{
+					CMD:    packet.AUTH_TOCLIENT,
+					PackID: pack.PackID,
+					ErrMsg: "DBPlayerState資料錯誤",
+					Content: &packet.Auth_ToClient{
+						IsAuth: false,
+					},
+				})
+			}
+
 			isAuth = true
 
 			// 建立socket連線Token
 			newConnToken := generateSecureToken(32)
 			defer removeConnectionToken(newConnToken)
 
+			// 建立RedisDB Player
+			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayerState.HeroExp))
+			if redisPlayerErr != nil {
+				log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, getPlayerStateDocErr)
+				_ = packet.SendPack(encoder, &packet.Pack{
+					CMD:    packet.AUTH_TOCLIENT,
+					PackID: pack.PackID,
+					ErrMsg: "建立RedisPlayer錯誤",
+					Content: &packet.Auth_ToClient{
+						IsAuth: false,
+					},
+				})
+			}
+
 			// 將玩家加入遊戲房
 			player := gSetting.Player{
-				ID: playerID,
+				DBPlayer:      &dbPlayer,
+				DBPlayerState: &dbPlayerState,
+				RedisPlayer:   redisPlayer,
 				ConnTCP: gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,

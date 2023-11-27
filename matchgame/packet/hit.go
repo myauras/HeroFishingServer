@@ -20,11 +20,14 @@ type Hit struct {
 // 命中怪物回傳client
 type Hit_ToClient struct {
 	CMDContent
-	// KillMonsterIdxs與GainGolds是對應的, 例如KillMonsterIdxs為[0,3,6]而GainGolds是[30,0,120], 就是此次攻擊擊殺了索引為0,3,6的怪物並分別獲得30,0,120金幣
+	// 以下陣列切片資料的索引都是對應到第幾隻死掉的怪物, 例如KillMonsterIdxs為[0,3,6]代表依次擊殺索引ID為0,3,6的怪物
+	// 而GainGolds是[30,0,120], 就是依次獲得30,0,120金幣
 	KillMonsterIdxs  []int   // 擊殺怪物索引清單
-	GainGolds        []int64 // 獲得金幣清單
-	GainSpellCharges []int   // 獲得技能充能清單, [1,2]就是第一個技能跟第二個技能
-	GainDrops        []int   // 獲得掉落清單, [4,5]就是DropJsonID為4與5的掉落
+	GainPoints       []int64 // 獲得金幣清單
+	GainHeroExps     []int   // 獲得英雄經驗清單
+	GainSpellCharges []int   // 獲得技能充能清單, [1,2,1]就是依次獲得技能1,技能2,技能1的充能
+	GainDrops        []int   // 獲得掉落清單, [4,5]就是依次獲得DropJson中ID為4與5的掉落
+
 }
 
 func (p *Hit) Parse(common CMDContent) bool {

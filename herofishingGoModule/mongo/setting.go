@@ -91,6 +91,30 @@ var ColName = ColNameStruct{
 	Matchgame: "matchgame",
 }
 
+// DB玩家資料
+type DBPlayer struct {
+	ID        string    `bson:"_id"`
+	CreatedAt time.Time `bson:"createdAt"`
+	Point     int64     `bson:"point"`
+	Ban       bool      `bson:"ban"`
+
+	// 用不到的資料放這
+	// AuthType      string    `bson:"authType"`
+	// OnlineState   string    `bson:"onlineState"`
+	// LastSigninAt  time.Time `bson:"lastSigninAt"`
+	// LastSignoutAt time.Time `bson:"lastSignoutAt"`
+	// DeviceUID     string    `bson:"deviceUID"`
+}
+
+// DB玩家狀態資料
+type DBPlayerState struct {
+	ID            string    `bson:"_id"`
+	CreatedAt     time.Time `bson:"createdAt"`
+	LastUpdateAt  time.Time `bson:"lastUpdateAt"`
+	InMatchgameID string    `bson:"inMatchgameID"`
+	HeroExp       int32     `bson:"heroExp"`
+}
+
 // DB地圖資料
 type DBMap struct {
 	ID             string  `bson:"_id"`

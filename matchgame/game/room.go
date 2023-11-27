@@ -178,8 +178,8 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 			index = i
 			break
 		}
-		if v.ID == player.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
-			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.ID)
+		if v.DBPlayer.ID == player.DBPlayer.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
+			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.DBPlayer.ID)
 			return false
 		}
 	}
@@ -430,8 +430,9 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 
 	hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
 	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單
-	gainGolds := make([]int64, 0)      // 獲得金幣清單
+	gainPoints := make([]int64, 0)     // 獲得點數清單
 	gainSpellCharges := make([]int, 0) // 獲得技能充能清單
+	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單
 
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	hitCMD.MonsterIdxs = utility.RemoveDuplicatesFromSlice(hitCMD.MonsterIdxs) // 移除重複的命中索引
@@ -452,16 +453,33 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
+			// 取得怪物經驗
+			monsterExp, err := strconv.ParseFloat(monster.MonsterJson.EXP, 64)
+			if err != nil {
+				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Room, err)
+				return
+			}
 
-			// 計算實際怪物死掉獲得金幣數
-			rewardGold := int64(odds * float64(room.DBmap.Bet))
+			// 計算實際怪物死掉獲得點數數
+			rewardPoint := int64(odds * float64(room.DBmap.Bet))
 
 			// 計算是否造成擊殺
 			kill := false
-
+			rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
 			if rtp == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
+				// 擊殺判定
+				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
+				kill = utility.GetProbResult(attackKP)
+				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v ", hitCMD.AttackID, spellMaxHits, odds, attackKP, kill)
+			} else { // 此攻擊為技能攻擊
+				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
+				kill = utility.GetProbResult(attackKP)
+				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", hitCMD.AttackID, spellMaxHits, rtp, odds, attackKP, kill)
+			}
+
+			// 如果有擊殺就加到清單中
+			if kill {
 				// 技能充能掉落
-				rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
 				dropChargeP := 0.0
 				if rndUnchargedSpell != nil {
 					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
@@ -473,21 +491,9 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 						gainSpellCharges = append(gainSpellCharges, spellIndex)
 					}
 				}
-				// 擊殺判定
-				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
-				kill = utility.GetProbResult(attackKP)
-
-				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v dropChargeP: %v", hitCMD.AttackID, spellMaxHits, odds, attackKP, kill, dropChargeP)
-			} else { // 此攻擊為技能攻擊
-				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
-				kill = utility.GetProbResult(attackKP)
-				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", hitCMD.AttackID, spellMaxHits, rtp, odds, attackKP, kill)
-			}
-
-			// 如果有擊殺就加到清單中
-			if kill {
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
-				gainGolds = append(gainGolds, rewardGold)
+				gainPoints = append(gainPoints, rewardPoint)
+				gainHeroExps = append(gainHeroExps, int(monsterExp))
 			}
 		}
 	}
@@ -530,18 +536,25 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		}
 		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 	}
+
 	// 從怪物清單中移除被擊殺的怪物
 	utility.RemoveFromMapByKeys(room.MSpawner.Monsters, killMonsterIdxs)
-	log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
-	log.Infof("gainGolds: %v \n", gainGolds)
-	log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
+	// 玩家增加點數
+	player.AddPoint(utility.SliceSum(gainPoints))
+	// 玩家英雄增加經驗
+	player.AddHeroExp(utility.SliceSum(gainHeroExps))
+
+	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
+	// log.Infof("gainPoints: %v \n", gainPoints)
+	// log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
 	// 廣播給client
 	room.broadCastPacket(&packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
 		PackID: pack.PackID,
 		Content: &packet.Hit_ToClient{
 			KillMonsterIdxs:  killMonsterIdxs,
-			GainGolds:        gainGolds,
+			GainPoints:       gainPoints,
+			GainHeroExps:     gainHeroExps,
 			GainSpellCharges: gainSpellCharges,
 			GainDrops:        make([]int, 0),
 		}},
