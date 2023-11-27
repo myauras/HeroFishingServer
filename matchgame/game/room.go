@@ -411,7 +411,6 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 
 // 處理收到的攻擊事件
 func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Action_HitCMD) {
-
 	// 取玩家
 	player := room.getPlayer(conn)
 	if player == nil {
@@ -463,8 +462,9 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 			if rtp == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
 				// 技能充能掉落
 				rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
+				dropChargeP := 0.0
 				if rndUnchargedSpell != nil {
-					dropChargeP := room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
+					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
 						spellIndex, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)
 						if err != nil {
@@ -477,11 +477,11 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
 				kill = utility.GetProbResult(attackKP)
 
-				log.Infof("spellMaxHits:%v odds:%v attackKP:%v kill:%v", spellMaxHits, odds, attackKP, kill)
+				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v dropChargeP: %v", hitCMD.AttackID, spellMaxHits, odds, attackKP, kill, dropChargeP)
 			} else { // 此攻擊為技能攻擊
 				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
 				kill = utility.GetProbResult(attackKP)
-				log.Infof("spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", spellMaxHits, rtp, odds, attackKP, kill)
+				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", hitCMD.AttackID, spellMaxHits, rtp, odds, attackKP, kill)
 			}
 
 			// 如果有擊殺就加到清單中
@@ -491,7 +491,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 			}
 		}
 	}
-	log.Infof("hitMonsterIdxs: %v \n", hitMonsterIdxs)
+
 	// 此波攻擊沒命中任何怪物
 	if len(hitMonsterIdxs) == 0 {
 		return

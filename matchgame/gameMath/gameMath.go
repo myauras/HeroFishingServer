@@ -50,7 +50,8 @@ func (model *Model) GetHeroSpellDropP_AttackKilling(spellRTP float64, targetOdds
 		log.Errorf("%s HeroSpellDropP錯誤 spellRTP<=model.AttackRTP", logger.LOG_MathModel)
 		return 0
 	}
-	p := ((model.GameRTP - model.SpellSharedRTP) / (spellRTP - model.SpellSharedRTP)) / (model.GameRTP / targetOdds)
+	attackRTP := model.GameRTP - model.SpellSharedRTP
+	p := ((model.GameRTP - attackRTP) / (spellRTP - attackRTP)) / (model.GameRTP / targetOdds)
 
 	// 掉落率大於1時處理
 	if p > 1 {

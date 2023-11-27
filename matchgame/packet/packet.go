@@ -18,10 +18,10 @@ const (
 	ACTION_HIT           = "ACTION_HIT"           // 擊中(TCP)
 	ACTION_HIT_REPLY     = "ACTION_HIT_REPLY"     // 擊中回傳(TCP)
 	UPDATE_PLAYER_REPLY  = "UPDATE_PLAYER_Reply"  // 更新玩家(TCP)
+	SPAWN                = "SPAWN"                // 生怪(TCP)
 
-	UPDATE_UDP              = "UPDATE_UDP"              // 狀態更新(UDP)
-	UPDATE_GAME_STATE_REPLY = "UPDATE_GAME_STATE_REPLY" // 更新遊戲狀態
-	SPAWN                   = "SPAWN"                   // 生怪(TCP)
+	UPDATEGAME = "UPDATEGAME" // 遊戲狀態更新(UDP)(每TIME_UPDATE_INTERVAL_MS毫秒會送一次)
+
 )
 
 type Pack struct {

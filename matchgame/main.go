@@ -268,7 +268,7 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room)
 		// log.Infof("%s Received packet from %v: %v", logger.LOG_Main, sender.String(), txt)
 		hasToken := false
 		for _, t := range connnTokens {
-			log.Infof("%s Connection Tokens : %s", logger.LOG_Main, t)
+			log.Infof("%s 連線Tokens : %s", logger.LOG_Main, t)
 			if t == txt {
 				hasToken = true
 			}
@@ -287,7 +287,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 	defer conn.Close()
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("%s HandleConnectionTCP error: %v.", logger.LOG_Main, err)
+			log.Errorf("%s 處理TCP封包錯誤: %v.", logger.LOG_Main, err)
 		}
 	}()
 	isAuth := false
@@ -297,6 +297,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 	for {
 		select {
 		case <-stop:
+			log.Errorf("強制終止TCP")
 			// 被強制終止
 			return
 		default:
@@ -306,11 +307,11 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			room.KickPlayer(conn)
 			return
 		}
-		log.Infof("%s Receive: %s from %s \n", logger.LOG_Main, pack.CMD, remoteAddr)
+		log.Infof("%s 收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
 
 		//未驗證前，除了Auth指令進來其他都擋掉
 		if !isAuth && pack.CMD != packet.AUTH {
-			log.Infof("%s UnAuth command", logger.LOG_Main)
+			log.Infof("%s 收到未驗證的封包", logger.LOG_Main)
 			return
 		}
 		log.Infof("%s pack.CMD: %s", logger.LOG_Main, pack.CMD)
@@ -318,7 +319,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 
 			authContent := packet.AuthCMD{}
 			if ok := authContent.Parse(pack.Content); !ok {
-				log.Errorf("%s Parse AuthCMD Failed", logger.LOG_Main)
+				log.Errorf("%s 反序列化AUTH封包失敗", logger.LOG_Main)
 				return
 			}
 
@@ -326,7 +327,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			playerID, authErr := mongo.PlayerVerify(authContent.Token)
 			// 驗證失敗
 			if authErr != nil || playerID == "" {
-				log.Errorf("%s Player verify failed: %v", logger.LOG_Main, authErr)
+				log.Errorf("%s 玩家驗證錯誤: %v", logger.LOG_Main, authErr)
 				_ = packet.SendPack(encoder, &packet.Pack{
 					CMD:    packet.AUTH_REPLY,
 					PackID: pack.PackID,
@@ -353,7 +354,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			}
 			joined := room.JoinPlayer(&player)
 			if !joined {
-				log.Errorf("%s Player join room failed", logger.LOG_Main)
+				log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
 				return
 			}
 			connnTokens = append(connnTokens, newConnToken)
@@ -375,7 +376,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 		} else {
 			err = room.HandleMessage(conn, pack, stop)
 			if err != nil {
-				log.Errorf("%s GameRoom Handle Message Error: %v\n", logger.LOG_Main, err.Error())
+				log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
 				room.KickPlayer(conn)
 				return
 			}
@@ -390,25 +391,26 @@ func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr,
 		select {
 		case <-stop:
 			//被強制終止
+			log.Errorf("強制終止UDP")
 			return
 		case <-timer.C:
-			// sendData, err := json.Marshal(&packet.Pack{
-			// 	CMD:    packet.UPDATE_UDP,
-			// 	PackID: -1,
-			// 	Content: game.ServerStateContent{
-			// 		ServerTime: room.GameTime,
-			// 	},
-			// })
-			// if err != nil {
-			// 	log.Errorf("%s Error Parse send UDP message. %s", logger.LOG_Main, err.Error())
-			// 	continue
-			// }
-			// sendData = append(sendData, '\n')
-			// _, sendErr := conn.WriteTo(sendData, addr)
-			// if sendErr != nil {
-			// 	log.Errorf("%s Error send UDP message. %s", logger.LOG_Main, sendErr.Error())
-			// 	continue
-			// }
+			sendData, err := json.Marshal(&packet.Pack{
+				CMD:    packet.UPDATEGAME,
+				PackID: -1,
+				Content: &packet.UpdateGame{
+					GameTime: room.GameTime,
+				},
+			})
+			if err != nil {
+				log.Errorf("%s (UDP)序列化UPDATEGAME封包錯誤. %s", logger.LOG_Main, err.Error())
+				continue
+			}
+			sendData = append(sendData, '\n')
+			_, sendErr := conn.WriteTo(sendData, addr)
+			if sendErr != nil {
+				log.Errorf("%s (UDP)送UPDATEGAME封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+				continue
+			}
 		}
 	}
 }

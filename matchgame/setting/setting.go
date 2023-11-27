@@ -90,8 +90,8 @@ type ConnectionTCP struct {
 
 // 伺服器設定
 const (
-	TIME_UPDATE_INTERVAL_MS        = 200 // 每X毫秒更新Server時間
-	AGONES_HEALTH_PIN_INTERVAL_SEC = 2   //每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
+	TIME_UPDATE_INTERVAL_MS        = 100 // 每X毫秒更新Server時間
+	AGONES_HEALTH_PIN_INTERVAL_SEC = 2   // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 )
 
 // 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)
