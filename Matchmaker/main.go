@@ -198,7 +198,7 @@ func handleConnectionTCP(conn net.Conn) {
 
 // 處理封包-帳戶驗證
 func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
-	authContent := packet.AuthCMD{}
+	authContent := packet.Auth{}
 	if ok := authContent.Parse(pack.Content); !ok {
 		log.Errorf("%s Parse AuthCMD failed", logger.LOG_Main)
 		return
@@ -210,10 +210,10 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	if authErr != nil || playerID == "" {
 		log.Errorf("%s Player verify failed: %v", logger.LOG_Main, authErr)
 		_ = packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-			CMD:    packet.AUTH_REPLY,
+			CMD:    packet.AUTH_TOCLIENT,
 			PackID: pack.PackID,
 			ErrMsg: "Auth toekn驗證失敗",
-			Content: &packet.AuthCMD_Reply{
+			Content: &packet.AuthC_ToClient{
 				IsAuth: false,
 			},
 		})
@@ -223,9 +223,9 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 	log.Infof("%s Player verify success, playerID: %s", logger.LOG_Main, playerID)
 	player.isAuth = true
 	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-		CMD:    packet.AUTH_REPLY,
+		CMD:    packet.AUTH_TOCLIENT,
 		PackID: pack.PackID,
-		Content: &packet.AuthCMD_Reply{
+		Content: &packet.AuthC_ToClient{
 			IsAuth: true,
 		},
 	})
@@ -236,9 +236,9 @@ func packHandle_Auth(pack packet.Pack, player *roomPlayer) {
 
 // 處理封包-開遊戲房
 func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr string) {
-	createRoomCMD := packet.CreateRoomCMD{}
+	createRoomCMD := packet.CreateRoom{}
 	if ok := createRoomCMD.Parse(pack.Content); !ok {
-		log.Infof("%s Parse CreateRoomCMD failed", logger.LOG_Main)
+		log.Infof("%s Parse CreateRoom failed", logger.LOG_Main)
 		return
 	}
 
@@ -257,9 +257,9 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	canCreate := true
 	if !canCreate {
 		packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-			CMD:    packet.CREATEROOM_REPLY,
+			CMD:    packet.CREATEROOM_TOCLIENT,
 			PackID: pack.PackID,
-			Content: &packet.CreateRoomCMD_Reply{
+			Content: &packet.CreateRoom_ToClient{
 				IP:   "",
 				Port: -1,
 			},
@@ -288,9 +288,9 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 		gs := player.room.gameServer
 		// 回送封包
 		packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-			CMD:    packet.CREATEROOM_REPLY,
+			CMD:    packet.CREATEROOM_TOCLIENT,
 			PackID: pack.PackID,
-			Content: &packet.CreateRoomCMD_Reply{
+			Content: &packet.CreateRoom_ToClient{
 				CreaterID:     player.room.creater.id,
 				PlayerIDs:     player.room.getPlayerIDs(),
 				DBMapID:       player.room.dbMapID,
@@ -335,9 +335,9 @@ func disconnectCheck(p *roomPlayer) {
 // 送創建房間結果封包
 func sendCreateRoomCMD_Reply(player roomPlayer, p packet.Pack, log string) error {
 	err := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-		CMD:     packet.CREATEROOM_REPLY,
+		CMD:     packet.CREATEROOM_TOCLIENT,
 		PackID:  p.PackID,
-		Content: &packet.CreateRoomCMD_Reply{},
+		Content: &packet.CreateRoom_ToClient{},
 		ErrMsg:  log,
 	})
 	return err

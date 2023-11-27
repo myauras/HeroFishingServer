@@ -317,7 +317,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 		log.Infof("%s pack.CMD: %s", logger.LOG_Main, pack.CMD)
 		if pack.CMD == packet.AUTH {
 
-			authContent := packet.AuthCMD{}
+			authContent := packet.Auth{}
 			if ok := authContent.Parse(pack.Content); !ok {
 				log.Errorf("%s 反序列化AUTH封包失敗", logger.LOG_Main)
 				return
@@ -329,10 +329,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			if authErr != nil || playerID == "" {
 				log.Errorf("%s 玩家驗證錯誤: %v", logger.LOG_Main, authErr)
 				_ = packet.SendPack(encoder, &packet.Pack{
-					CMD:    packet.AUTH_REPLY,
+					CMD:    packet.AUTH_TOCLIENT,
 					PackID: pack.PackID,
 					ErrMsg: "Auth toekn驗證失敗",
-					Content: &packet.AuthCMD_Reply{
+					Content: &packet.Auth_ToClient{
 						IsAuth: false,
 					},
 				})
@@ -361,9 +361,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 
 			// 回送client
 			err = packet.SendPack(encoder, &packet.Pack{
-				CMD:    packet.AUTH_REPLY,
+				CMD:    packet.AUTH_TOCLIENT,
 				PackID: pack.PackID,
-				Content: &packet.AuthCMD_Reply{
+				Content: &packet.Auth_ToClient{
 					IsAuth:    true,
 					ConnToken: newConnToken,
 					Index:     player.Index,
@@ -395,9 +395,9 @@ func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr,
 			return
 		case <-timer.C:
 			sendData, err := json.Marshal(&packet.Pack{
-				CMD:    packet.UPDATEGAME,
+				CMD:    packet.UPDATEGAME_TOCLIENT,
 				PackID: -1,
-				Content: &packet.UpdateGame{
+				Content: &packet.UpdateGame_ToClient{
 					GameTime: room.GameTime,
 				},
 			})

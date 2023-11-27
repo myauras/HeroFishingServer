@@ -187,8 +187,8 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 
 	// 廣播給所有玩家
 	MyRoom.broadCastPacket(&packet.Pack{
-		CMD: packet.SPAWN,
-		Content: &packet.SpawnCMD{
+		CMD: packet.SPAWN_TOCLIENT,
+		Content: &packet.Spawn_ToClient{
 			IsBoss:      spawn.IsBoss,
 			MonsterIDs:  spawn.MonsterJsonIDs,
 			MonsterIdxs: spawn.MonsterIdxs,

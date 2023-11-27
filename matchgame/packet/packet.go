@@ -10,17 +10,16 @@ import (
 
 // 封包命令列表
 const (
-	AUTH                 = "AUTH"                 // 身分驗證(TCP)
-	AUTH_REPLY           = "AUTH_REPLY"           // 身分驗證回傳(TCP)
-	ACTION_SETHERO       = "ACTION_SETHERO"       // 設定玩家英雄(TCP)
-	ACTION_SETHERO_REPLY = "ACTION_SETHERO_REPLY" // 設定玩家英雄回傳(TCP)
-	ACTION_LEAVE         = "ACTION_LEAVE"         // 離開遊戲房(TCP)
-	ACTION_HIT           = "ACTION_HIT"           // 擊中(TCP)
-	ACTION_HIT_REPLY     = "ACTION_HIT_REPLY"     // 擊中回傳(TCP)
-	UPDATE_PLAYER_REPLY  = "UPDATE_PLAYER_Reply"  // 更新玩家(TCP)
-	SPAWN                = "SPAWN"                // 生怪(TCP)
-
-	UPDATEGAME = "UPDATEGAME" // 遊戲狀態更新(UDP)(每TIME_UPDATE_INTERVAL_MS毫秒會送一次)
+	AUTH                  = "AUTH"                  // (TCP)身分驗證
+	AUTH_TOCLIENT         = "AUTH_TOCLIENT"         // (TCP)身分驗證-送Client
+	SETHERO               = "SETHERO"               // (TCP)設定玩家英雄
+	SETHERO_TOCLIENT      = "SETHERO_TOCLIENT"      // (TCP)設定玩家英雄-送Client
+	LEAVE                 = "LEAVE"                 // (TCP)離開遊戲房
+	HIT                   = "HIT"                   // (TCP)擊中
+	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
+	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
+	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
+	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新(每TIME_UPDATE_INTERVAL_MS毫秒會送一次)
 
 )
 

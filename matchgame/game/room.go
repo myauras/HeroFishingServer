@@ -219,8 +219,8 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	switch pack.CMD {
 
 	// ==========設定英雄==========
-	case packet.ACTION_SETHERO:
-		content := packet.Action_SetHeroCMD{}
+	case packet.SETHERO:
+		content := packet.SetHero{}
 		if ok := content.Parse(pack.Content); !ok {
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
@@ -229,16 +229,16 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
 		r.broadCastPacket(&packet.Pack{ // 廣播封包
-			CMD: packet.ACTION_SETHERO_REPLY,
-			Content: &packet.Action_SetHeroCMD_Reply{
+			CMD: packet.SETHERO_TOCLIENT,
+			Content: &packet.SetHero_ToClient{
 				HeroIDs:     heroIDs,
 				HeroSkinIDs: heroSkinIDs,
 			},
 		})
 
 	// ==========離開遊戲房==========
-	case packet.ACTION_LEAVE: //離開遊戲房
-		content := packet.Action_LeaveCMD{}
+	case packet.LEAVE: //離開遊戲房
+		content := packet.Leave{}
 		if ok := content.Parse(pack.Content); !ok {
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
@@ -246,8 +246,8 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 		r.KickPlayer(conn) // 將玩家踢出房間
 
 	// ==========擊中怪物==========
-	case packet.ACTION_HIT:
-		content := packet.Action_HitCMD{}
+	case packet.HIT:
+		content := packet.Hit{}
 		if ok := content.Parse(pack.Content); !ok {
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
@@ -370,9 +370,9 @@ func (r *Room) sendPacketToPlayer(pIndex int, pack *packet.Pack) {
 // 送遊戲房中所有玩家狀態封包
 func (r *Room) UpdatePlayer() {
 	r.broadCastPacket(&packet.Pack{
-		CMD:    packet.UPDATE_PLAYER_REPLY,
+		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
-		Content: &packet.Update_Player_Reply{
+		Content: &packet.UpdatePlayer_ToClient{
 			Players: r.Players,
 		},
 	})
@@ -410,7 +410,7 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 }
 
 // 處理收到的攻擊事件
-func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Action_HitCMD) {
+func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) {
 	// 取玩家
 	player := room.getPlayer(conn)
 	if player == nil {
@@ -537,9 +537,9 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
 	// 廣播給client
 	room.broadCastPacket(&packet.Pack{
-		CMD:    packet.ACTION_HIT_REPLY,
+		CMD:    packet.HIT_TOCLIENT,
 		PackID: pack.PackID,
-		Content: &packet.Action_HitCMD_Reply{
+		Content: &packet.Hit_ToClient{
 			KillMonsterIdxs:  killMonsterIdxs,
 			GainGolds:        gainGolds,
 			GainSpellCharges: gainSpellCharges,

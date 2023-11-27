@@ -1,6 +1,6 @@
 package packet
 
-type SpawnCMD struct {
+type Spawn_ToClient struct {
 	CMDContent
 	IsBoss      bool    // 是否為Boss生怪
 	MonsterIDs  []int   // 怪物JsonIDs
