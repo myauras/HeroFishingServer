@@ -427,6 +427,8 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	rtp := spellJson.RTP
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
+	// 花費點數
+	spendPoint := int64(0)
 
 	hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
 	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單
@@ -467,6 +469,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 			kill := false
 			rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
 			if rtp == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
+				spendPoint = -int64(room.DBmap.Bet)
 				// 擊殺判定
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
 				kill = utility.GetProbResult(attackKP)
@@ -536,11 +539,13 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		}
 		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 	}
-
+	// 玩家點數變化
+	totalGainPoint := spendPoint + utility.SliceSum(gainPoints) // 總點數變化是消耗點數+獲得點數
+	if totalGainPoint != 0 {
+		player.AddPoint(totalGainPoint)
+	}
 	// 從怪物清單中移除被擊殺的怪物
 	utility.RemoveFromMapByKeys(room.MSpawner.Monsters, killMonsterIdxs)
-	// 玩家增加點數
-	player.AddPoint(utility.SliceSum(gainPoints))
 	// 玩家英雄增加經驗
 	player.AddHeroExp(utility.SliceSum(gainHeroExps))
 
