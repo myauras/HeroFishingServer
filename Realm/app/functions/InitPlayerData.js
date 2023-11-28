@@ -35,7 +35,6 @@ exports = async function InitPlayerData(data) {
   writePlayerStateDocData = {
     _id: context.user.id,
     lastUpdatedAt: new Date(),
-    inMatchgameID: "",
   };
   // 寫入playerState資料
   let playerStateDoc = await ah.DBManager.DB_InsertOne(ah.GameSetting.ColName.playerState, writePlayerStateDocData);

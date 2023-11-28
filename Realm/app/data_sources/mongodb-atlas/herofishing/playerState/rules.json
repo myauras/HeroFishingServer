@@ -12,10 +12,6 @@
                 "read": true
             },
             "fields": {
-                "inMatchgameID": {
-                    "write": true,
-                    "read": true
-                },
                 "lastUpdatedAt": {
                     "write": true,
                     "read": true

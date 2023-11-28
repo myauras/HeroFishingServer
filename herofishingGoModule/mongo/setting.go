@@ -55,7 +55,7 @@ const (
 )
 
 // Collection名稱列表結構
-type ColNameStruct struct {
+type colNameStruct struct {
 	// 遊戲設定
 	GameSetting string
 	GameLog     string
@@ -73,7 +73,7 @@ type ColNameStruct struct {
 }
 
 // Collection名稱列表
-var ColName = ColNameStruct{
+var ColName = colNameStruct{
 
 	// 遊戲設定
 	GameSetting: "gameSetting",
@@ -91,12 +91,27 @@ var ColName = ColNameStruct{
 	Matchgame: "matchgame",
 }
 
+type Operator string
+
+const (
+	Equal              Operator = "$eq"  // 等於 (Equal) - 指定字段等於給定值
+	GreaterThan        Operator = "$gt"  // 大於 (Greater Than) - 指定字段大於給定值
+	GreaterThanOrEqual Operator = "$gte" // 大於等於 (Greater Than or Equal) - 指定字段大於或等於給定值
+	In                 Operator = "$in"  // 包含於 (In) - 指定字段的值在給定的數組中
+	LessThan           Operator = "$lt"  // 小於 (Less Than) - 指定字段小於給定值
+	LessThanOrEqual    Operator = "$lte" // 小於等於 (Less Than or Equal) - 指定字段小於或等於給定值
+	NotEqual           Operator = "$ne"  // 不等於 (Not Equal) - 指定字段不等於給定值
+	NotIn              Operator = "$nin" // 不包含於 (Not In) - 指定字段的值不在給定的數組中
+)
+
 // DB玩家資料
 type DBPlayer struct {
-	ID        string    `bson:"_id"`
-	CreatedAt time.Time `bson:"createdAt"`
-	Point     int64     `bson:"point"`
-	Ban       bool      `bson:"ban"`
+	ID            string    `bson:"_id"`
+	CreatedAt     time.Time `bson:"createdAt"`
+	Point         int64     `bson:"point"`
+	Ban           bool      `bson:"ban"`
+	InMatchgameID string    `bson:"inMatchgameID"`
+	HeroExp       int32     `bson:"heroExp"`
 
 	// 用不到的資料放這
 	// AuthType      string    `bson:"authType"`
@@ -108,11 +123,9 @@ type DBPlayer struct {
 
 // DB玩家狀態資料
 type DBPlayerState struct {
-	ID            string    `bson:"_id"`
-	CreatedAt     time.Time `bson:"createdAt"`
-	LastUpdateAt  time.Time `bson:"lastUpdatedAt"`
-	InMatchgameID string    `bson:"inMatchgameID"`
-	HeroExp       int32     `bson:"heroExp"`
+	ID           string    `bson:"_id"`
+	CreatedAt    time.Time `bson:"createdAt"`
+	LastUpdateAt time.Time `bson:"lastUpdatedAt"`
 }
 
 // DB地圖資料

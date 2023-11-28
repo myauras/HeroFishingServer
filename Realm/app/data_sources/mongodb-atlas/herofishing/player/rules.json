@@ -15,6 +15,10 @@
                 "deviceUID": {
                     "write": true,
                     "read": true
+                },
+                "inMatchgameID": {
+                    "write": true,
+                    "read": true
                 }
             },
             "insert": false,

@@ -14,7 +14,6 @@ import (
 // 玩家
 type Player struct {
 	DBPlayer      *mongo.DBPlayer      // 玩家DB資料
-	DBPlayerState *mongo.DBPlayerState // 玩家狀態DB資料
 	RedisPlayer   *redis.RedisPlayer   // RedisDB玩家實例
 	Index         int                  // 玩家在房間的索引(座位)
 	MyHero        *Hero                // 使用中的英雄
@@ -46,7 +45,7 @@ func (player *Player) AddPoint(value int64) {
 // 英雄經驗增減
 func (player *Player) AddHeroExp(value int) {
 	player.RedisPlayer.AddHeroExp(value)
-	player.DBPlayerState.HeroExp += int32(value)
+	player.DBPlayer.HeroExp += int32(value)
 }
 
 // 將玩家連線斷掉

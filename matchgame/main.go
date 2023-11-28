@@ -362,19 +362,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 					},
 				})
 			}
-			var dbPlayerState mongo.DBPlayerState
-			getPlayerStateDocErr := mongo.GetDocByID(mongo.ColName.PlayerState, playerID, &dbPlayerState)
-			if getPlayerStateDocErr != nil {
-				log.Errorf("%s DBPlayerState資料錯誤: %v", logger.LOG_Main, getPlayerStateDocErr)
-				_ = packet.SendPack(encoder, &packet.Pack{
-					CMD:    packet.AUTH_TOCLIENT,
-					PackID: pack.PackID,
-					ErrMsg: "DBPlayerState資料錯誤",
-					Content: &packet.Auth_ToClient{
-						IsAuth: false,
-					},
-				})
-			}
 
 			isAuth = true
 
@@ -383,9 +370,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			defer removeConnectionToken(newConnToken)
 
 			// 建立RedisDB Player
-			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayerState.HeroExp))
+			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayer.HeroExp))
 			if redisPlayerErr != nil {
-				log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, getPlayerStateDocErr)
+				log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 				_ = packet.SendPack(encoder, &packet.Pack{
 					CMD:    packet.AUTH_TOCLIENT,
 					PackID: pack.PackID,
@@ -398,9 +385,8 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 
 			// 將玩家加入遊戲房
 			player := gSetting.Player{
-				DBPlayer:      &dbPlayer,
-				DBPlayerState: &dbPlayerState,
-				RedisPlayer:   redisPlayer,
+				DBPlayer:    &dbPlayer,
+				RedisPlayer: redisPlayer,
 				ConnTCP: gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,

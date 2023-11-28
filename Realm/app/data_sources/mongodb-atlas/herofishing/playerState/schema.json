@@ -6,12 +6,6 @@
         "createdAt": {
             "bsonType": "date"
         },
-        "heroExp": {
-            "bsonType": "int"
-        },
-        "inMatchgameID": {
-            "bsonType": "string"
-        },
         "lastUpdatedAt": {
             "bsonType": "date"
         }
