@@ -1,16 +1,16 @@
 # ====================MongoDB Shell使用說明===================
 # 1. 要先安裝cli工具, 這是官方連結: https://www.mongodb.com/docs/mongodb-shell/install/#procedure
 # 2. 連上mongoDB, 語法類似以下, 要把pem檔路徑改成自己放pem的路徑
-mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\MongoDB_X509-cert-1367701216246648381.pem"
+mongosh "mongodb+srv://cluster-herofishing.8yp6fou.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\aura-developer.pem"
 # 3. 連上後就可以進行CRUD等操作, 可參考官方文件: https://www.mongodb.com/docs/mongodb-shell/crud
 # 4. 測試mongoShell可以修改MongoShellTest.js搭配以下指令來執行
-mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\MongoDB_X509-cert-1367701216246648381.pem" -f D:\HeroFishingServer\Realm\MongoShellTest.js
+mongosh "mongodb+srv://cluster-herofishing.8yp6fou.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\aura-developer.pem" -f D:\HeroFishingServer\Realm\MongoShellTest.js
 
 # ====================常用指令===================
 
 
 # 連接到MongoDB cluster
-mongosh "mongodb+srv://cluster0.edk0n6b.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\MongoDB_X509-cert-1367701216246648381.pem"
+mongosh "mongodb+srv://cluster-herofishing.8yp6fou.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509" --apiVersion 1 --tls --tlsCertificateKeyFile "D:\HeroFishingServer\Keys\aura-developer.pem"
 # 列出所有db
 show databases
 # 選擇使用的DB
@@ -21,3 +21,5 @@ db.getName()
 show collections
 # collection清空
 db.collection名稱.deleteMany({})
+# collection中的文件欄位更名
+db.col名稱.updateMany({}, {$rename: {"lastUpdateAt": "lastUpdatedAt"}});

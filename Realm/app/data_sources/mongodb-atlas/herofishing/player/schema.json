@@ -26,21 +26,11 @@
         },
         "point": {
             "bsonType": "long"
-        },
-        "test": {
-            "bsonType": "string"
         }
     },
     "required": [
         "_id",
-        "authType",
-        "ban",
-        "createdAt",
-        "deviceUID",
-        "lastSigninAt",
-        "lastSignoutAt",
-        "onlineState",
-        "point"
+        "createdAt"
     ],
     "title": "player"
 }

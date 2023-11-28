@@ -24,7 +24,7 @@ exports = async function UpdateOnlineTime() {
     _id: context.user.id
   }, {
     "$set": {
-      lastUpdateAt: new Date()
+      lastUpdatedAt: new Date()
     }
   }, null);
 

@@ -110,7 +110,7 @@ type DBPlayer struct {
 type DBPlayerState struct {
 	ID            string    `bson:"_id"`
 	CreatedAt     time.Time `bson:"createdAt"`
-	LastUpdateAt  time.Time `bson:"lastUpdateAt"`
+	LastUpdateAt  time.Time `bson:"lastUpdatedAt"`
 	InMatchgameID string    `bson:"inMatchgameID"`
 	HeroExp       int32     `bson:"heroExp"`
 }

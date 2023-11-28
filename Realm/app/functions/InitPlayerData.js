@@ -34,7 +34,7 @@ exports = async function InitPlayerData(data) {
   // 建立playerState資料
   writePlayerStateDocData = {
     _id: context.user.id,
-    lastUpdateAt: new Date(),
+    lastUpdatedAt: new Date(),
     inMatchgameID: "",
   };
   // 寫入playerState資料

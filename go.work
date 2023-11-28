@@ -1,8 +1,10 @@
 go 1.21.0
 
 use (
+	./crontasker
 	./fortest/goredis
+	./gofortest
+	./herofishingGoModule
 	./matchgame
 	./matchmaker
-	./herofishingGoModule
 )

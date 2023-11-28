@@ -6,18 +6,19 @@
         "createdAt": {
             "bsonType": "date"
         },
+        "heroExp": {
+            "bsonType": "int"
+        },
         "inMatchgameID": {
             "bsonType": "string"
         },
-        "lastUpdateAt": {
+        "lastUpdatedAt": {
             "bsonType": "date"
         }
     },
     "required": [
         "_id",
-        "createdAt",
-        "lastUpdateAt",
-        "inMatchgameID"
+        "createdAt"
     ],
     "title": "playerState"
 }

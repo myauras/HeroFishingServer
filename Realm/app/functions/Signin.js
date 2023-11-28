@@ -29,7 +29,7 @@ exports = async function Signin() {
     _id: context.user.id
   }, {
     "$set": {
-      lastUpdateAt: now
+      lastUpdatedAt: now
     }
   }, null);
 

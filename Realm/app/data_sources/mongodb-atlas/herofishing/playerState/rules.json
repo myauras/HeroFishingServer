@@ -16,7 +16,7 @@
                     "write": true,
                     "read": true
                 },
-                "lastUpdateAt": {
+                "lastUpdatedAt": {
                     "write": true,
                     "read": true
                 }

@@ -24,9 +24,6 @@
     },
     "required": [
         "_id",
-        "createdAt",
-        "dbMapID",
-        "ip",
-        "port"
+        "createdAt"
     ]
 }

@@ -16,12 +16,9 @@
             "bsonType": "bool"
         },
         "jsonMapID": {
-            "bsonType": "string"
+            "bsonType": "int"
         },
         "matchType": {
-            "bsonType": "string"
-        },
-        "prefabID": {
             "bsonType": "string"
         },
         "priority": {
@@ -30,14 +27,7 @@
     },
     "required": [
         "_id",
-        "bet",
-        "betThreshold",
-        "createdAt",
-        "enable",
-        "jsonMapID",
-        "matchType",
-        "prefabID",
-        "priority"
+        "createdAt"
     ],
     "title": "map"
 }

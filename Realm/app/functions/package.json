@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/pubsub": "^4.0.6",
-    "aura-herofishing": "^1.0.3",
+    "aura-herofishing": "^1.0.4",
     "aurafortest-herofishing": "^1.0.75"
   }
 }
