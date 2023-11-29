@@ -15,13 +15,20 @@ import (
 
 // Cron格式參考: https://crontab.cronhub.io/
 const (
-	PLAYER_OFFLINE_CRON              = "*/3 * * * *" // 離線檢測時間
+	PLAYER_OFFLINE_CRON              = "*/1 * * * *" // 離線檢測時間
 	PLAYER_OFFLINE_THRESHOLD_MINUTES = 3             // 上次更新離現在超過X分鐘算是離線
 )
 
 var Env string // 環境版本
 
 func main() {
+	// 設定日誌格式為JSON
+	log.SetFormatter(&log.JSONFormatter{})
+	// 設定日誌級別
+	log.SetLevel(log.InfoLevel)
+	// 設定日誌輸出，預設為標準輸出
+	log.SetOutput(os.Stdout)
+
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 
 	// 設定環境版本

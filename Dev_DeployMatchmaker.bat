@@ -18,7 +18,6 @@ kubectl apply -f RoleBinding.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f Dev_Matchmaker.yaml
 @if ERRORLEVEL 1 exit /b 1
-kubectl describe pod herofishing-matchgame-6hxxt-gkszj -n herofishing-gameserver
 @REM 建立k8s cluster的防火牆 以下這行如果本來就有建立防火牆就不需要執行 可以註解掉否則會報錯誤
 @REM gcloud compute firewall-rules create herofishing-matchmaker-firewall-tcp --allow tcp:32680 --target-tags herofishing --description "Firewall to allow Herofishing matchmaker TCP traffic"
 

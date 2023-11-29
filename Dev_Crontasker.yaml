@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: herofishing-crontasker-deployment
+  namespace: herofishing-service
+spec:
+  selector:
+    matchLabels:
+      app: herofishing-crontasker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: herofishing-crontasker
+    spec:
+      containers:
+      - name: herofishing-crontasker
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.4
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "100m"
+          limits:
+            memory: "2048Mi"
+            cpu: "200m"
+        # 環境變數設定
+        env:
+        - name: "Env"
+          value: "Dev"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name              
+        # mongodb相關
+        - name: MongoAPIPublicKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPublicKey
+        - name: MongoAPIPrivateKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPrivateKey
+        - name: MongoUser
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoUser
+        - name: MongoPW
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoPW
