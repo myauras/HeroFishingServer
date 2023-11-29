@@ -15,7 +15,7 @@ import (
 
 // Cron格式參考: https://crontab.cronhub.io/
 const (
-	PLAYER_OFFLINE_CRON              = "*/1 * * * *" // 離線檢測時間
+	PLAYER_OFFLINE_CRON              = "*/3 * * * *" // 離線檢測時間
 	PLAYER_OFFLINE_THRESHOLD_MINUTES = 3             // 上次更新離現在超過X分鐘算是離線
 )
 
@@ -46,7 +46,7 @@ func main() {
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
 	myCron := cron.New()
-	_, err := myCron.AddFunc(PLAYER_OFFLINE_CRON, playerOfflineHandler)
+	_, err := myCron.AddFunc(PLAYER_OFFLINE_CRON, playerOfflineHandle)
 	if err != nil {
 		log.Infof("%s 安排playerOfflineHandler錯誤: %v \n", logger.LOG_Main, err)
 		return
@@ -69,7 +69,7 @@ func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string
 
 // 使用playerIds清單找出PlayerState表中 _id為playerIDs中且lastUpdatedAt欄位的時間小於minutesBefore的表
 // 如果有表符合以上條件就把對應_id的Player表的onlineState改為Offline
-func playerOfflineHandler() {
+func playerOfflineHandle() {
 	log.Infof("%s 處理玩家離線 \n", logger.LOG_Main)
 
 	playerIDs, err := mongo.GetDocIDsByFieldValue(mongo.ColName.Player, "onlineState", "Online", mongo.Equal)
@@ -94,13 +94,19 @@ func playerOfflineHandler() {
 		return
 	}
 
-	// 找出需要更新的playerIDs
-	var offlinePlayerIDs []string
-	for _, playerState := range offlinePlayerStates {
-		if playerState.LastUpdateAt.Before(minutesBefore) {
-			offlinePlayerIDs = append(offlinePlayerIDs, playerState.ID)
-		}
+	// 取需要設為Offline的玩家IDs
+	filter := bson.M{
+		"$and": []bson.M{
+			{"_id": bson.M{"$in": playerIDs}},
+			{"lastUpdatedAt": bson.M{"$lt": minutesBefore}},
+		},
 	}
+	offlinePlayerIDs, err := mongo.GetDocIDsByFilter(mongo.ColName.PlayerState, filter)
+	if err != nil {
+		fmt.Println("查找 playerState 錯誤:", err)
+		return
+	}
+	log.Infof("%s 將%v個玩家設為離線: %v", logger.LOG_Main, len(offlinePlayerIDs), offlinePlayerIDs)
 
 	// 批量更新player文件的onlineState
 	if len(offlinePlayerIDs) > 0 {

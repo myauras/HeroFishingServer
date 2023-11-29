@@ -79,6 +79,39 @@ func GetDocIDsByFieldValue(col string, fieldName string, fieldValue interface{},
 	return results, nil
 }
 
+// GetDocIDsByFilter 取得符合特定過濾條件的所有文檔的ID切片
+// col: 集合名稱
+// filter: 過濾條件
+func GetDocIDsByFilter(col string, filter bson.M) ([]string, error) {
+	var results []string
+
+	// 只包括 _id 欄位的投影
+	projection := bson.M{"_id": 1} // 1是包含, 0是排除
+
+	// 執行查詢只返回符合投影條件的字段
+	cursor, err := DB.Collection(col).Find(context.TODO(), filter, options.Find().SetProjection(projection))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	for cursor.Next(context.TODO()) {
+		var elem struct {
+			ID string `bson:"_id"`
+		}
+		if err = cursor.Decode(&elem); err != nil {
+			return nil, err
+		}
+		results = append(results, elem.ID)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 // 更新文件
 func UpdateDocByID(col string, id string, updateData bson.D) (*mongoDriver.UpdateResult, error) {
 
@@ -97,7 +130,7 @@ func UpdateDocByID(col string, id string, updateData bson.D) (*mongoDriver.Updat
 // col: 要更新的集合名
 // filterField: 過濾條件的欄位名
 // filterValue: 過濾條件的欄位值
-// updateData: 更新內容 (bson.D 格式)
+// updateData: 更新內容 (bson.D 格式) Ex. bson.D{{Key: "onlineState", Value: "Offline"}}
 func UpdateDocsByField(col string, filterField string, filterValue interface{}, updateData bson.D) (*mongoDriver.UpdateResult, error) {
 	filter := bson.M{filterField: bson.M{"$in": filterValue}}
 
