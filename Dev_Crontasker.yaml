@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: herofishing-crontasker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.5
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.8
         resources:
           requests:
             memory: "1024Mi"

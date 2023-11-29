@@ -20,6 +20,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -57,7 +58,7 @@ type Room struct {
 const CHAN_BUFFER = 4
 
 var Env string                       // 環境版本
-var MyRoom Room                      // 房間
+var MyRoom *Room                     // 房間
 var UPDATE_INTERVAL_MS float64 = 100 // 每X毫秒更新一次
 
 func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
@@ -110,7 +111,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s Init room", logger.LOG_Room)
-	roomChan <- &MyRoom
+	roomChan <- MyRoom
 }
 func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
@@ -120,7 +121,7 @@ func (r *Room) WriteGameErrorLog(log string) {
 func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
-	player := r.getPlayer(conn)
+	player := r.GetPlayerByTCPConn(conn)
 	if player == nil {
 		log.Errorf("%s SetHero時player := r.getPlayer(conn)為nil", logger.LOG_Room)
 		return
@@ -198,18 +199,25 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 func (r *Room) KickPlayer(conn net.Conn) {
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
-	seatIndex := r.getPlayerIndex(conn) // 取得座位索引
-	if seatIndex < 0 {
+	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
+	if seatIndex < 0 || r.Players[seatIndex] == nil || r.Players[seatIndex].DBPlayer == nil {
 		return
 	}
-
 	r.Players[seatIndex].CloseConnection()
+
+	// 更新玩家DB資料
+	updatePlayerBson := bson.D{
+		{Key: "heroExp", Value: r.Players[seatIndex].DBPlayer.HeroExp},
+		{Key: "leftGameAt", Value: time.Now()},
+	}
+	mongo.UpdateDocByID(mongo.ColName.Player, r.Players[seatIndex].DBPlayer.ID, updatePlayerBson)
+
 	r.Players[seatIndex] = nil
 	r.UpdatePlayer()
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
-	seatIndex := r.getPlayerIndex(conn)
+	seatIndex := r.GetPlayerIndexByTCPConn(conn)
 	if seatIndex == -1 {
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
 		return errors.New("HandleMessage fialed, Player is not in connection list")
@@ -258,8 +266,8 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	return nil
 }
 
-// 取得玩家座位索引
-func (r *Room) getPlayerIndex(conn net.Conn) int {
+// 透過TCPConn取得玩家座位索引
+func (r *Room) GetPlayerIndexByTCPConn(conn net.Conn) int {
 	for i, v := range r.Players {
 		if v == nil {
 			continue
@@ -272,14 +280,42 @@ func (r *Room) getPlayerIndex(conn net.Conn) int {
 	return -1
 }
 
-// 取得玩家
-func (r *Room) getPlayer(conn net.Conn) *gSetting.Player {
+// 透過UDPConn取得玩家座位索引
+func (r *Room) GetPlayerIndexByUDPConn(conn net.Conn) int {
+	for i, v := range r.Players {
+		if v == nil {
+			continue
+		}
+
+		if v.ConnUDP == conn {
+			return i
+		}
+	}
+	return -1
+}
+
+// 透過TCPConn取得玩家
+func (r *Room) GetPlayerByTCPConn(conn net.Conn) *gSetting.Player {
 	for _, v := range r.Players {
 		if v == nil {
 			continue
 		}
 
 		if v.ConnTCP.Conn == conn {
+			return v
+		}
+	}
+	return nil
+}
+
+// 透過UDPConn取得玩家
+func (r *Room) GetPlayerByUDPConn(conn net.Conn) *gSetting.Player {
+	for _, v := range r.Players {
+		if v == nil {
+			continue
+		}
+
+		if v.ConnUDP == conn {
 			return v
 		}
 	}
@@ -412,7 +448,7 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 // 處理收到的攻擊事件
 func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) {
 	// 取玩家
-	player := room.getPlayer(conn)
+	player := room.GetPlayerByTCPConn(conn)
 	if player == nil {
 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
 		return

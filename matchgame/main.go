@@ -19,7 +19,6 @@ import (
 	"matchgame/packet"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	serverSDK "agones.dev/agones/pkg/sdk"
@@ -156,8 +155,8 @@ func main() {
 	// 開啟連線
 
 	src := ":" + *port
-	go openConnectTCP(agonesSDK, stopChan, src, room)
-	go OpenConnectUDP(agonesSDK, stopChan, src, room)
+	go openConnectTCP(agonesSDK, stopChan, src)
+	go OpenConnectUDP(agonesSDK, stopChan, src)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
 
@@ -230,7 +229,7 @@ func signalListen() {
 }
 
 // 開啟TCP連線
-func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room) {
+func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectTCP error: %v.\n", logger.LOG_Main, err)
@@ -250,12 +249,12 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room)
 			log.Errorf("%s Unable to accept incoming tcp connection: %v.\n", logger.LOG_Main, err)
 			continue
 		}
-		go handleConnectionTCP(conn, stop, room)
+		go handleConnectionTCP(conn, stop)
 	}
 }
 
 // 開啟UDP連線
-func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room) {
+func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectUDP error: %v.\n", logger.LOG_Main, err)
@@ -270,36 +269,54 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string, room *game.Room)
 	log.Infof("%s UDP server start and listening on %s", logger.LOG_Main, src)
 
 	for {
-		b := make([]byte, 1024)
-		n, sender, err := conn.ReadFrom(b)
-		if err != nil || n <= 0 {
-			log.Errorf("%s Could not read from udp stream: %v.\n", logger.LOG_Main, err)
+		buffer := make([]byte, 1024)
+
+		// txt := strings.TrimSpace(string(buffer[:n]))
+		// log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, sender.String(), txt)
+		// hasToken := false
+		// for _, t := range connnTokens {
+		// 	log.Infof("%s 連線Tokens : %s", logger.LOG_Main, t)
+		// 	if t == txt {
+		// 		hasToken = true
+		// 	}
+		// }
+
+		// 取得收到的封包
+		n, sender, readBufferErr := conn.ReadFrom(buffer)
+		if readBufferErr != nil {
+			log.Errorf("%s (UDP)讀取封包錯誤: %v", logger.LOG_Main, readBufferErr)
 			continue
 		}
-		txt := strings.TrimSpace(string(b[:n]))
-		// log.Infof("%s Received packet from %v: %v", logger.LOG_Main, sender.String(), txt)
-		hasToken := false
+		// 解析json數據
+		var pack packet.UDPReceivePack
+		unmarshalErr := json.Unmarshal(buffer[:n], &pack)
+		if unmarshalErr != nil {
+			log.Errorf("%s (UDP)解析封包錯誤: %s", logger.LOG_Main, unmarshalErr.Error())
+			continue
+		}
+		validToken := false
 		for _, t := range connnTokens {
 			log.Infof("%s 連線Tokens : %s", logger.LOG_Main, t)
-			if t == txt {
-				hasToken = true
+			if t == pack.ConnToken {
+				validToken = true
 			}
 		}
-		if hasToken {
-			// log.Infof("%s Start Update UDP Message", logger.LOG_Main)
-			go handleConnectionUDP(conn, stop, sender, room)
+		if !validToken {
+			return
 		}
+
+		handleConnectionUDP(conn, stop, sender, pack)
 	}
 }
 
 // 處理TCP連線封包，目前只處理加房驗證，之後遊戲內通訊改由UDP處理
-func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
+func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	remoteAddr := conn.RemoteAddr().String()
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
 	defer conn.Close()
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("%s 處理TCP封包錯誤: %v.", logger.LOG_Main, err)
+			log.Errorf("%s (TCP)處理封包錯誤: %v.", logger.LOG_Main, err)
 		}
 	}()
 	isAuth := false
@@ -316,10 +333,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 		}
 		pack, err := packet.ReadPack(decoder)
 		if err != nil {
-			room.KickPlayer(conn)
+			game.MyRoom.KickPlayer(conn)
 			return
 		}
-		log.Infof("%s 收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
+		log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
 
 		//未驗證前，除了Auth指令進來其他都擋掉
 		if !isAuth && pack.CMD != packet.AUTH {
@@ -393,7 +410,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 					Decoder: decoder,
 				},
 			}
-			joined := room.JoinPlayer(&player)
+			joined := game.MyRoom.JoinPlayer(&player)
 			if !joined {
 				log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
 				return
@@ -415,10 +432,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 			}
 
 		} else {
-			err = room.HandleMessage(conn, pack, stop)
+			err = game.MyRoom.HandleMessage(conn, pack, stop)
 			if err != nil {
 				log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
-				room.KickPlayer(conn)
+				game.MyRoom.KickPlayer(conn)
 				return
 			}
 		}
@@ -426,34 +443,40 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}, room *game.Room) {
 }
 
 // 處理UDP連線封包
-func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr, room *game.Room) {
-	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
-	for {
-		select {
-		case <-stop:
-			//被強制終止
-			log.Errorf("強制終止UDP")
-			return
-		case <-timer.C:
-			sendData, err := json.Marshal(&packet.Pack{
-				CMD:    packet.UPDATEGAME_TOCLIENT,
-				PackID: -1,
-				Content: &packet.UpdateGame_ToClient{
-					GameTime: room.GameTime,
-				},
-			})
-			if err != nil {
-				log.Errorf("%s (UDP)序列化UPDATEGAME封包錯誤. %s", logger.LOG_Main, err.Error())
-				continue
-			}
-			sendData = append(sendData, '\n')
-			_, sendErr := conn.WriteTo(sendData, addr)
-			if sendErr != nil {
-				log.Errorf("%s (UDP)送UPDATEGAME封包錯誤 %s", logger.LOG_Main, sendErr.Error())
-				continue
+func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr, pack packet.UDPReceivePack) {
+	switch {
+	case pack.CMD == packet.AUTH:
+		timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
+		for {
+			select {
+			case <-stop:
+				//被強制終止
+				log.Errorf("強制終止UDP")
+				return
+			case <-timer.C:
+				// 定時送遊戲更新給Client
+				sendData, err := json.Marshal(&packet.Pack{
+					CMD:    packet.UPDATEGAME_TOCLIENT,
+					PackID: -1,
+					Content: &packet.UpdateGame_ToClient{
+						GameTime: game.MyRoom.GameTime,
+					},
+				})
+				if err != nil {
+					log.Errorf("%s (UDP)序列化UPDATEGAME封包錯誤. %s", logger.LOG_Main, err.Error())
+					continue
+				}
+				sendData = append(sendData, '\n')
+				_, sendErr := conn.WriteTo(sendData, addr)
+				if sendErr != nil {
+					log.Errorf("%s (UDP)送UPDATEGAME封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+					continue
+				}
 			}
 		}
+	case pack.CMD == packet.UPDATEGAME:
 	}
+
 }
 
 // 通知Agones關閉server並結束應用程式

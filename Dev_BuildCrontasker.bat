@@ -28,11 +28,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content crontasker\
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Build image=======
-docker build --no-cache -f crontasker/Dockerfile -t asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.5 .
+docker build --no-cache -f crontasker/Dockerfile -t asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.8 .
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Push image=======
-docker push asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.5
+docker push asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-crontasker:0.1.8
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Change go.mod back to local setting=======
