@@ -22,6 +22,10 @@ kubectl delete pod herofishing-matchgame-bbhbg-w8n82 -n herofishing-gameserver
 kubectl describe pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver
 # 查看pod的label資訊
 kubectl get pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver -o=jsonpath='{.metadata.labels}'
+# 新增namespace
+kubectl create namespace herofishing-matchserver
+# 移除namespace
+kubectl delete namespace herofishing-matchserver
 # 查看防火牆設定
 gcloud compute firewall-rules list --project=herofishing-dev
 # 新增火牆
@@ -39,6 +43,7 @@ gcloud compute instances remove-tags gke-cluster-herofishing-default-pool-fbb152
 # 查看Storage項目
 gsutil ls
 gsutil ls gs://herofishing_gamejson_dev/
+
 
 
 

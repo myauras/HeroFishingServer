@@ -19,15 +19,15 @@ gcloud container clusters create cluster-herofishing --zone=asia-east1-c --relea
 # gcloud container node-pools create agones-system --cluster=cluster-herofishing --zone=asia-east1-c --node-taints agones.dev/agones-system=true:NoExecute --node-labels agones.dev/agones-system=true --num-nodes=1 --machine-type=e2-standard-4
 gcloud container clusters update cluster-herofishing --zone=asia-east1-c --workload-pool=herofishing-dev.svc.id.goog
 # 新增命名空間matchmaker(配房伺服器) 與 matchgame(遊戲伺服器)
-kubectl create namespace herofishing-matchserver
+kubectl create namespace herofishing-service
 kubectl create namespace herofishing-gameserver
 
 # =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
 # 為命名空間添加Annotation(註解), 註解是key-value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcs-editor@herofishing-dev.iam.gserviceaccount.com
-kubectl annotate namespace herofishing-matchserver "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
+kubectl annotate namespace herofishing-service "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
 kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
-# 為 herofishing-matchserver 命名空間的 default 服務帳戶綁定 IAM 策略
-gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-matchserver/default]"
+# 為 herofishing-service 命名空間的 default 服務帳戶綁定 IAM 策略
+gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-service/default]"
 # 為 herofishing-gameserver 命名空間的 default 服務帳戶綁定 IAM 策略
 gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-gameserver/default]"
 
@@ -65,9 +65,9 @@ gcloud auth configure-docker asia-east1-docker.pkg.dev
 # 使用k8s secret建立mongo需要的敏感資料並在建置yaml檔案中取
 kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
 # 以下為範例 matchserver跟gameserver都要建立
-kubectl create secret generic mongodb-secret -n herofishing-matchserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
+kubectl create secret generic mongodb-secret -n herofishing-service --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 kubectl create secret generic mongodb-secret -n herofishing-gameserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 # 查看secret方法
-kubectl get secrets -n herofishing-matchserver
+kubectl get secrets -n herofishing-service
 # 刪除secret方法
 kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]

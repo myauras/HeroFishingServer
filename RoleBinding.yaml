@@ -7,7 +7,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: herofishing-matchserver
+  namespace: herofishing-service
 roleRef:
   kind: ClusterRole
   name: gameserver-control
@@ -20,11 +20,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: service-reader-binding
-  namespace: herofishing-matchserver
+  namespace: herofishing-service
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: herofishing-matchserver
+  namespace: herofishing-service
 roleRef:
   kind: Role
   name: service-reader

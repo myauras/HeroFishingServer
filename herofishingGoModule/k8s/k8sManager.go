@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	logger "herofishingGoModule/logger"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -25,7 +26,7 @@ func GetLoadBalancerExternalIP(servicesNameSpace string, servicesName string) (s
 	}
 
 	// 取得Service
-	// service, err := clientset.CoreV1().Services("herofishing-matchserver").Get(context.TODO(), "herofishing-matchmaker", metav1.GetOptions{})
+	// service, err := clientset.CoreV1().Services("herofishing-service").Get(context.TODO(), "herofishing-matchmaker", metav1.GetOptions{})
 	service, err := clientset.CoreV1().Services(servicesNameSpace).Get(context.TODO(), servicesName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
