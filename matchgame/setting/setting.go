@@ -13,13 +13,13 @@ import (
 
 // 玩家
 type Player struct {
-	DBPlayer      *mongo.DBPlayer      // 玩家DB資料
-	RedisPlayer   *redis.RedisPlayer   // RedisDB玩家實例
-	Index         int                  // 玩家在房間的索引(座位)
-	MyHero        *Hero                // 使用中的英雄
-	LeftSecs      float64              // 玩家已離開遊戲房X秒
-	ConnTCP       ConnectionTCP        // TCP連線
-	ConnUDP       net.Conn             // UDP連線
+	DBPlayer    *mongo.DBPlayer    // 玩家DB資料
+	RedisPlayer *redis.RedisPlayer // RedisDB玩家實例
+	Index       int                // 玩家在房間的索引(座位)
+	MyHero      *Hero              // 使用中的英雄
+	LeftSecs    float64            // 玩家已離開遊戲房X秒
+	ConnTCP     ConnectionTCP      // TCP連線
+	ConnUDP     net.Conn           // UDP連線
 }
 
 // 英雄

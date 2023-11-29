@@ -15,8 +15,8 @@ import (
 
 // Cron格式參考: https://crontab.cronhub.io/
 const (
-	PLAYER_OFFLINE_CRON              = "*/3 * * * *" // 離線檢測時間
-	PLAYER_OFFLINE_THRESHOLD_MINUTES = 3             // 上次更新離現在超過X分鐘算是離線
+	PLAYER_OFFLINE_CRON = "*/2 * * * *"  // 玩家離線檢測Cron
+	RESET_HEROEXP_CRON  = "*/10 * * * *" // 英雄經驗重置Cron
 )
 
 var Env string // 環境版本
@@ -67,10 +67,18 @@ func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string
 	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
 }
 
-// 使用playerIds清單找出PlayerState表中 _id為playerIDs中且lastUpdatedAt欄位的時間小於minutesBefore的表
-// 如果有表符合以上條件就把對應_id的Player表的onlineState改為Offline
+// 從player文件中找出olineState為Online的文件_id清單(playerIDs)並從PlayerState表中找_id為playerIDs中且lastUpdatedAt欄位的時間小於minutesBefore的文件
+// 如果有表符合以上條件就把對應_id的Player文件的onlineState改為Offline
 func playerOfflineHandle() {
 	log.Infof("%s 處理玩家離線 \n", logger.LOG_Main)
+
+	// 取Timer設定
+	dbTimerDoc := &mongo.DBTimer{}
+	err := mongo.GetDocByID(mongo.ColName.GameSetting, "Timer", dbTimerDoc)
+	if err != nil {
+		fmt.Println("playerOfflineHandler取timer文件錯誤:", err)
+		return
+	}
 
 	playerIDs, err := mongo.GetDocIDsByFieldValue(mongo.ColName.Player, "onlineState", "Online", mongo.Equal)
 	if err != nil {
@@ -84,7 +92,7 @@ func playerOfflineHandle() {
 	}
 
 	// 計算離線閾值時間
-	minutesBefore := time.Now().Add(-PLAYER_OFFLINE_THRESHOLD_MINUTES * time.Minute)
+	minutesBefore := time.Now().Add(-time.Duration(dbTimerDoc.PlayerOfflineMinute) * time.Minute)
 
 	// 批量查詢playerState文檔
 	var offlinePlayerStates []mongo.DBPlayerState
@@ -109,14 +117,72 @@ func playerOfflineHandle() {
 	log.Infof("%s 將%v個玩家設為離線: %v", logger.LOG_Main, len(offlinePlayerIDs), offlinePlayerIDs)
 
 	// 批量更新player文件的onlineState
-	if len(offlinePlayerIDs) > 0 {
-		updateData := bson.D{{Key: "onlineState", Value: "Offline"}}
-		_, err := mongo.UpdateDocsByField(mongo.ColName.Player, "_id", offlinePlayerIDs, updateData)
-		if err != nil {
-			fmt.Println("批量更新 player onlineState 錯誤:", err)
-		}
+	if len(offlinePlayerIDs) <= 0 {
+		log.Infof("%s 沒有需要設為離線的玩家 \n", logger.LOG_Main)
+		return
+	}
+
+	updateData := bson.D{{Key: "onlineState", Value: "Offline"}}
+	_, updateErr := mongo.UpdateDocsByField(mongo.ColName.Player, "_id", offlinePlayerIDs, updateData)
+	if updateErr != nil {
+		fmt.Println("批量更新 player onlineState 錯誤:", updateErr)
 	}
 
 	log.Infof("%s 處理玩家離線完成 \n", logger.LOG_Main)
+
+}
+
+// 從player文件中找出heroExp不為0且leftGameAt小於minutesBefore的文件_id清單(playerIDs)並把heroExp設為0
+func resetHeroExpHandle() {
+	log.Infof("%s 處理英雄經驗重置 \n", logger.LOG_Main)
+
+	// 取Timer設定
+	dbTimerDoc := &mongo.DBTimer{}
+	err := mongo.GetDocByID(mongo.ColName.GameSetting, "Timer", dbTimerDoc)
+	if err != nil {
+		fmt.Println("resetHeroExpHandle取timer文件錯誤:", err)
+		return
+	}
+
+	// 計算離開遊戲時間閾值
+	minutesBefore := time.Now().Add(-time.Duration(dbTimerDoc.ResetHeroExpMinute) * time.Minute)
+
+	// 查找 heroExp 不為 0 的玩家ID
+	heroExpPlayerIDs, err := mongo.GetDocIDsByFieldValue(mongo.ColName.Player, "heroExp", 0, mongo.NotEqual)
+	if err != nil {
+		fmt.Println("resetHeroExpHandle執行mongo.GetDocIDsByFieldValue找Player錯誤:", err)
+		return
+	}
+
+	if len(heroExpPlayerIDs) <= 0 {
+		log.Infof("%s 沒有需要重置英雄經驗的玩家 \n", logger.LOG_Main)
+		return
+	}
+
+	// 構建查詢條件
+	filter := bson.M{
+		"$and": []bson.M{
+			{"_id": bson.M{"$in": heroExpPlayerIDs}},
+			{"leftMatchgameAt": bson.M{"$lt": minutesBefore}},
+		},
+	}
+
+	// 找出需要重置 heroExp 的玩家
+	needResetPlayerIDs, err := mongo.GetDocIDsByFilter(mongo.ColName.Player, filter)
+	if err != nil {
+		fmt.Println("查找需要重置經驗的 player 錯誤:", err)
+		return
+	}
+
+	// 更新需要重置 heroExp 的玩家
+	if len(needResetPlayerIDs) > 0 {
+		updateData := bson.D{{Key: "heroExp", Value: 0}}
+		_, err := mongo.UpdateDocsByField(mongo.ColName.Player, "_id", needResetPlayerIDs, updateData)
+		if err != nil {
+			fmt.Println("批量更新 player heroExp 錯誤:", err)
+		}
+	}
+
+	log.Infof("%s 處理英雄經驗重置完成 \n", logger.LOG_Main)
 
 }

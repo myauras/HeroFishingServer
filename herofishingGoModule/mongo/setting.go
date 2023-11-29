@@ -121,6 +121,14 @@ type DBPlayer struct {
 	// DeviceUID     string    `bson:"deviceUID"`
 }
 
+// gameSetting的Timer文件
+type DBTimer struct {
+	ID                  string    `bson:"_id"`
+	CreatedAt           time.Time `bson:"createdAt"`
+	PlayerOfflineMinute int       `bson:"playerOfflineMinute"`
+	ResetHeroExpMinute  int       `bson:"resetHeroExpMinute"`
+}
+
 // DB玩家狀態資料
 type DBPlayerState struct {
 	ID           string    `bson:"_id"`
