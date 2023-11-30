@@ -26,6 +26,7 @@ type Response_Verify struct {
 
 // 驗證玩家帳戶，成功時返回playerID
 func PlayerVerify(token string) (string, error) {
+	log.Infof("%s PlayerVerify: %s", logger.LOG_Mongo, token)
 	if token == "" {
 		log.Errorf("%s 傳入toekn為空", logger.LOG_Mongo)
 		return "", fmt.Errorf("傳入toekn為空")
@@ -34,12 +35,15 @@ func PlayerVerify(token string) (string, error) {
 	// log.Infof("%s APIPrivateKey: %s", logger.LOG_Mongo, APIPrivateKey)
 	// 使用 MongoDB Realm Admin API 可以參考官方文件: https://www.mongodb.com/docs/atlas/app-services/admin/api/v3/#section/Project-and-Application-IDs
 	// 取得admin access_token
+
 	authEndpoint := "https://realm.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login"
 	authBody := map[string]string{
 		"username": APIPublicKey,
 		"apiKey":   APIPrivateKey,
 	}
+
 	authBytes, _ := json.Marshal(authBody)
+
 	authResp, err := http.Post(authEndpoint, "application/json", bytes.NewBuffer(authBytes))
 	if err != nil {
 		return "", err
@@ -51,6 +55,7 @@ func PlayerVerify(token string) (string, error) {
 	if authResp.StatusCode != 200 {
 		return "", fmt.Errorf("get admin access_token failed: %v, Response: %s", authResp.Status, authBodyBytes)
 	}
+
 	// 取得admin access_token成功
 	var auth Response_Auth
 	json.Unmarshal(authBodyBytes, &auth)
@@ -89,7 +94,6 @@ func PlayerVerify(token string) (string, error) {
 		log.Errorf("%s JSON Unmarshal error: %v", logger.LOG_Mongo, err)
 		return "", err
 	}
-
 	if verify.CustomUserData == nil {
 		log.Errorf("%s CustomUserData is nil", logger.LOG_Mongo)
 		return "", fmt.Errorf("CustomUserData is nil")
@@ -101,7 +105,7 @@ func PlayerVerify(token string) (string, error) {
 		return "", fmt.Errorf("Failed to extract playerID")
 	}
 
-	log.Infof("%s playerID: %s", logger.LOG_Mongo, playerID)
+	log.Infof("%s PlayerVerify成功 playerID: %s", logger.LOG_Mongo, playerID)
 
 	return playerID, nil
 }

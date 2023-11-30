@@ -96,7 +96,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 
 	log.Infof("%s 初始化房間設定", logger.LOG_Room)
 	// 初始化房間設定
-	MyRoom := &Room{
+	MyRoom = &Room{
 		RoomName:               roomName,
 		GameState:              Init,
 		DBmap:                  &dbMap,
@@ -177,8 +177,10 @@ func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBE
 
 // 把玩家加到房間中, 成功時回傳true
 func (r *Room) JoinPlayer(player *gSetting.Player) bool {
+	log.Info("JoinPlayer")
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
+	log.Infof("r.Players: %v", r.Players)
 	index := -1
 	for i, v := range r.Players {
 		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
@@ -198,6 +200,7 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 	// 設定玩家
 	player.Index = index
 	r.Players[index] = player
+	log.Info("JoinPlayer Finished")
 	return true
 }
 

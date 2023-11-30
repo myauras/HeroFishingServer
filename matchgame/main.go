@@ -35,16 +35,14 @@ const (
 var Env string // 環境版本
 
 func main() {
-	// 設置為到納秒級的時間戳
-	log.SetFormatter(&log.JSONFormatter{
-		TimestampFormat: time.RFC3339Nano,
-	})
-	// 設定日誌格式為JSON
-	log.SetFormatter(&log.JSONFormatter{})
 	// 設定日誌級別
 	log.SetLevel(log.InfoLevel)
 	// 設定日誌輸出，預設為標準輸出
 	log.SetOutput(os.Stdout)
+	// 自定義時間格式，包含毫秒
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
 
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
@@ -78,6 +76,7 @@ func main() {
 	var dbMapID string
 	var myGameServer *serverSDK.GameServer
 	var playerIDs [setting.PLAYER_NUMBER]string
+
 	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		// log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
 		defer func() {
@@ -241,10 +240,10 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string) {
 	}()
 	tcpListener, err := net.Listen("tcp", src)
 	if err != nil {
-		log.Errorf("%s Listen error: %v.\n", logger.LOG_Main, err)
+		log.Errorf("%s (TCP)偵聽失敗: %v.\n", logger.LOG_Main, err)
 	}
 	defer tcpListener.Close()
-	log.Infof("%s TCP server start and listening on %s", logger.LOG_Main, src)
+	log.Infof("%s (TCP)開始偵聽 %s", logger.LOG_Main, src)
 
 	for {
 		conn, err := tcpListener.Accept()
@@ -277,6 +276,9 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 		n, addr, readBufferErr := conn.ReadFrom(buffer)
 		if readBufferErr != nil {
 			log.Errorf("%s (UDP)讀取封包錯誤: %v", logger.LOG_Main, readBufferErr)
+			continue
+		}
+		if n <= 0 {
 			continue
 		}
 		// 解析json數據
@@ -356,15 +358,12 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			log.Infof("%s 收到未驗證的封包", logger.LOG_Main)
 			return
 		}
-		log.Infof("%s pack.CMD: %s", logger.LOG_Main, pack.CMD)
 		if pack.CMD == packet.AUTH {
-
 			authContent := packet.Auth{}
 			if ok := authContent.Parse(pack.Content); !ok {
 				log.Errorf("%s 反序列化AUTH封包失敗", logger.LOG_Main)
 				return
 			}
-
 			// 像mongodb atlas驗證token並取得playerID 有通過驗證後才處理後續
 			playerID, authErr := mongo.PlayerVerify(authContent.Token)
 			// 驗證失敗
@@ -394,7 +393,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			}
 
 			isAuth = true
-
 			// 建立RedisDB Player
 			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayer.HeroExp))
 			if redisPlayerErr != nil {
@@ -408,7 +406,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					},
 				})
 			}
-
 			// 建立udp socket連線Token
 			newConnToken := generateSecureToken(32)
 
@@ -430,7 +427,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
 				return
 			}
-
 			// 回送client
 			err = packet.SendPack(encoder, &packet.Pack{
 				CMD:    packet.AUTH_TOCLIENT,
@@ -465,6 +461,7 @@ func handleConnectionUDP(player *gSetting.Player, pack packet.UDPReceivePack, st
 
 // 定時更新遊戲狀態給Client
 func updateGameLoop(player *gSetting.Player, stop chan struct{}) {
+	log.Infof("%s (UDP)開始updateGameLoop", logger.LOG_Main)
 	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
 	for {
 		select {

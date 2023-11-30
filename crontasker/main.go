@@ -22,12 +22,14 @@ const (
 var Env string // 環境版本
 
 func main() {
-	// 設定日誌格式為JSON
-	log.SetFormatter(&log.JSONFormatter{})
 	// 設定日誌級別
 	log.SetLevel(log.InfoLevel)
 	// 設定日誌輸出，預設為標準輸出
 	log.SetOutput(os.Stdout)
+	// 自定義時間格式，包含毫秒
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
 
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 
