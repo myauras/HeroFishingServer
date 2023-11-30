@@ -43,6 +43,11 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("Main Crash: %v", r)
+		}
+	}()
 
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
@@ -158,7 +163,7 @@ func main() {
 
 	src := ":" + *port
 	go openConnectTCP(agonesSDK, stopChan, src)
-	go OpenConnectUDP(agonesSDK, stopChan, src)
+	go openConnectUDP(agonesSDK, stopChan, src)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
 
@@ -256,7 +261,7 @@ func openConnectTCP(s *sdk.SDK, stop chan struct{}, src string) {
 }
 
 // 開啟UDP連線
-func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
+func openConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectUDP error: %v.\n", logger.LOG_Main, err)
@@ -324,7 +329,7 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 	}
 }
 
-// 處理TCP連線封包，目前只處理加房驗證，之後遊戲內通訊改由UDP處理
+// 處理TCP連線封包
 func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	remoteAddr := conn.RemoteAddr().String()
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())

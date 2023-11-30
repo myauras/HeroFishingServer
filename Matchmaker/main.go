@@ -31,6 +31,11 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("Main Crash: %v", r)
+		}
+	}()
 
 	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
 	// 設定Port
