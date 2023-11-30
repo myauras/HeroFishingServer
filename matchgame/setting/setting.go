@@ -18,8 +18,8 @@ type Player struct {
 	Index       int                // 玩家在房間的索引(座位)
 	MyHero      *Hero              // 使用中的英雄
 	LeftSecs    float64            // 玩家已離開遊戲房X秒
-	ConnTCP     ConnectionTCP      // TCP連線
-	ConnUDP     net.Conn           // UDP連線
+	ConnTCP     *ConnectionTCP     // TCP連線
+	ConnUDP     *ConnectionUDP     // UDP連線
 }
 
 // 英雄
@@ -57,9 +57,9 @@ func (player *Player) CloseConnection() {
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 	}
-	if player.ConnUDP != nil {
-		player.ConnUDP.Close()
-		player.ConnUDP = nil
+	if player.ConnUDP.Conn != nil {
+		player.ConnUDP.Conn.Close()
+		player.ConnUDP.Conn = nil
 	}
 }
 
@@ -101,6 +101,11 @@ type ConnectionTCP struct {
 	Conn    net.Conn      // TCP連線
 	Encoder *json.Encoder // 連線編碼
 	Decoder *json.Decoder // 連線解碼
+}
+type ConnectionUDP struct {
+	Conn      net.PacketConn // UDP連線
+	Addr      net.Addr       // 玩家連線地址
+	ConnToken string         // 驗證Token
 }
 
 // 伺服器設定

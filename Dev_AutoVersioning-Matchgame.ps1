@@ -15,7 +15,7 @@ if ($match.Success) {
     Write-Host 'Dev_fleet.yaml unmatch'
 }
 
-# 更新 Dev_fleet.yaml 文件的 herofishing-matchgame
+# 更新 Dev_fleet.yaml 文件的 herofishing-matchgame後的imgVersion
 $content = [System.IO.File]::ReadAllText('Dev_fleet.yaml', $utf8WithoutBom)
 $pattern = 'herofishing-matchgame:(\d+\.\d+\.)(\d+)'
 $match = [regex]::Match($content, $pattern)
@@ -32,7 +32,7 @@ if ($match.Success) {
     Write-Host 'No matching herofishing-matchgame version found in Dev_fleet.yaml'
 }
 
-# 更新 Dev_BuildMatchgame.bat 文件的 herofishing-matchgame
+# 更新 Dev_BuildMatchgame.bat 文件的 imgVersion
 $content = [System.IO.File]::ReadAllText('Dev_BuildMatchgame.bat', $utf8WithoutBom)
 $pattern = 'herofishing-matchgame:(\d+\.\d+\.)(\d+)'
 $match = [regex]::Match($content, $pattern)

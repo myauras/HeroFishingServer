@@ -17,7 +17,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: game-server-deployment-30390
+  name: herofishing-matchmaker
   namespace: herofishing-service
 spec:
   selector:
@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.57
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.61
         resources:
           requests:
             memory: "1024Mi"

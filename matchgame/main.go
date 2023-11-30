@@ -32,10 +32,13 @@ const (
 	ENV_RELEASE = "Release"
 )
 
-var connnTokens []string // 連線驗證Token
-var Env string           // 環境版本
+var Env string // 環境版本
 
 func main() {
+	// 設置為到納秒級的時間戳
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: time.RFC3339Nano,
+	})
 	// 設定日誌格式為JSON
 	log.SetFormatter(&log.JSONFormatter{})
 	// 設定日誌級別
@@ -263,26 +266,15 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 	}()
 	conn, err := net.ListenPacket("udp", src)
 	if err != nil {
-		log.Errorf("%s Could not start udp server: %v.\n", logger.LOG_Main, err)
+		log.Errorf("%s (UDP)偵聽失敗: %v.\n", logger.LOG_Main, err)
 	}
 	defer conn.Close()
-	log.Infof("%s UDP server start and listening on %s", logger.LOG_Main, src)
+	log.Infof("%s (UDP)開始偵聽 %s", logger.LOG_Main, src)
 
 	for {
-		buffer := make([]byte, 1024)
-
-		// txt := strings.TrimSpace(string(buffer[:n]))
-		// log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, sender.String(), txt)
-		// hasToken := false
-		// for _, t := range connnTokens {
-		// 	log.Infof("%s 連線Tokens : %s", logger.LOG_Main, t)
-		// 	if t == txt {
-		// 		hasToken = true
-		// 	}
-		// }
-
 		// 取得收到的封包
-		n, sender, readBufferErr := conn.ReadFrom(buffer)
+		buffer := make([]byte, 1024)
+		n, addr, readBufferErr := conn.ReadFrom(buffer)
 		if readBufferErr != nil {
 			log.Errorf("%s (UDP)讀取封包錯誤: %v", logger.LOG_Main, readBufferErr)
 			continue
@@ -294,18 +286,39 @@ func OpenConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 			log.Errorf("%s (UDP)解析封包錯誤: %s", logger.LOG_Main, unmarshalErr.Error())
 			continue
 		}
-		validToken := false
-		for _, t := range connnTokens {
-			log.Infof("%s 連線Tokens : %s", logger.LOG_Main, t)
-			if t == pack.ConnToken {
-				validToken = true
-			}
-		}
-		if !validToken {
-			return
-		}
+		// 玩家驗證
+		player := game.MyRoom.GetPlayerByConnToken(pack.ConnToken)
 
-		handleConnectionUDP(conn, stop, sender, pack)
+		if player == nil {
+			log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
+			continue
+		}
+		log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
+
+		// 執行命令
+		if pack.CMD == packet.UDPAUTH {
+			if player.ConnUDP.Conn != nil {
+				log.Errorf("%s (UDP)此玩家已執行過UDP Auth有正在進行的updateGameLoop", logger.LOG_Main)
+				continue
+			}
+			// 更新連線資料
+			player.ConnUDP.Conn = conn
+			player.ConnUDP.Addr = addr
+			go updateGameLoop(player, stop)
+		} else {
+			if player.ConnUDP.Conn == nil || player.ConnUDP.Addr == nil {
+				log.Errorf("%s (UDP)收到來自 %s(%s) 但尚未進行UDP Auth的命令: %s", logger.LOG_Main, player.DBPlayer.ID, addr, pack.CMD)
+			}
+			// 更新連線資料
+			player.ConnUDP.Conn = conn
+			if player.ConnUDP.Addr != addr { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
+				log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.DBPlayer.ID, player.ConnUDP.Addr.String(), addr.String())
+				// 更新address避免客戶端的網路位置有改變這樣對於Wifi變更的用戶體驗比較好
+				// 但是要注意若之後有使用udp送重要行為 為了避免connToken被封包攔截要讓玩家需要重新通過tcp auth取新的token才是安全的作法
+				player.ConnUDP.Addr = addr
+			}
+			handleConnectionUDP(player, pack, stop)
+		}
 	}
 }
 
@@ -382,10 +395,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 
 			isAuth = true
 
-			// 建立socket連線Token
-			newConnToken := generateSecureToken(32)
-			defer removeConnectionToken(newConnToken)
-
 			// 建立RedisDB Player
 			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayer.HeroExp))
 			if redisPlayerErr != nil {
@@ -400,14 +409,20 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				})
 			}
 
+			// 建立udp socket連線Token
+			newConnToken := generateSecureToken(32)
+
 			// 將玩家加入遊戲房
 			player := gSetting.Player{
 				DBPlayer:    &dbPlayer,
 				RedisPlayer: redisPlayer,
-				ConnTCP: gSetting.ConnectionTCP{
+				ConnTCP: &gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,
 					Decoder: decoder,
+				},
+				ConnUDP: &gSetting.ConnectionUDP{
+					ConnToken: newConnToken,
 				},
 			}
 			joined := game.MyRoom.JoinPlayer(&player)
@@ -415,7 +430,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
 				return
 			}
-			connnTokens = append(connnTokens, newConnToken)
 
 			// 回送client
 			err = packet.SendPack(encoder, &packet.Pack{
@@ -443,40 +457,45 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 }
 
 // 處理UDP連線封包
-func handleConnectionUDP(conn net.PacketConn, stop chan struct{}, addr net.Addr, pack packet.UDPReceivePack) {
+func handleConnectionUDP(player *gSetting.Player, pack packet.UDPReceivePack, stop chan struct{}) {
 	switch {
-	case pack.CMD == packet.AUTH:
-		timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
-		for {
-			select {
-			case <-stop:
-				//被強制終止
-				log.Errorf("強制終止UDP")
-				return
-			case <-timer.C:
-				// 定時送遊戲更新給Client
-				sendData, err := json.Marshal(&packet.Pack{
-					CMD:    packet.UPDATEGAME_TOCLIENT,
-					PackID: -1,
-					Content: &packet.UpdateGame_ToClient{
-						GameTime: game.MyRoom.GameTime,
-					},
-				})
-				if err != nil {
-					log.Errorf("%s (UDP)序列化UPDATEGAME封包錯誤. %s", logger.LOG_Main, err.Error())
-					continue
-				}
-				sendData = append(sendData, '\n')
-				_, sendErr := conn.WriteTo(sendData, addr)
-				if sendErr != nil {
-					log.Errorf("%s (UDP)送UPDATEGAME封包錯誤 %s", logger.LOG_Main, sendErr.Error())
-					continue
-				}
-			}
-		}
 	case pack.CMD == packet.UPDATEGAME:
 	}
+}
 
+// 定時更新遊戲狀態給Client
+func updateGameLoop(player *gSetting.Player, stop chan struct{}) {
+	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
+	for {
+		select {
+		case <-stop:
+			//被強制終止
+			log.Errorf("強制終止UDP")
+			return
+		case <-timer.C:
+			if player == nil || player.ConnUDP.Conn == nil {
+				return
+			}
+			// 定時送遊戲更新給Client
+			sendData, err := json.Marshal(&packet.Pack{
+				CMD:    packet.UPDATEGAME_TOCLIENT,
+				PackID: -1,
+				Content: &packet.UpdateGame_ToClient{
+					GameTime: game.MyRoom.GameTime,
+				},
+			})
+			if err != nil {
+				log.Errorf("%s (UDP)序列化UPDATEGAME封包錯誤. %s", logger.LOG_Main, err.Error())
+				continue
+			}
+			sendData = append(sendData, '\n')
+			_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
+			if sendErr != nil {
+				log.Errorf("%s (UDP)送UPDATEGAME封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+				continue
+			}
+		}
+	}
 }
 
 // 通知Agones關閉server並結束應用程式
@@ -524,20 +543,4 @@ func generateSecureToken(length int) string {
 		return ""
 	}
 	return hex.EncodeToString(b)
-}
-
-// 移除連線驗證Token
-func removeConnectionToken(token string) {
-	index := -1
-	for i, v := range connnTokens {
-		if v == token {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return
-	}
-	after := append(connnTokens[:index], connnTokens[index+1:]...)
-	connnTokens = after
 }

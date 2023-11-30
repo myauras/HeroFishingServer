@@ -15,8 +15,8 @@ import (
 
 // Cron格式參考: https://crontab.cronhub.io/
 const (
-	PLAYER_OFFLINE_CRON = "*/1 * * * *" // 玩家離線檢測Cron
-	RESET_HEROEXP_CRON  = "*/1 * * * *" // 英雄經驗重置Cron
+	PLAYER_OFFLINE_CRON = "*/2 * * * *"  // 玩家離線檢測Cron
+	RESET_HEROEXP_CRON  = "*/10 * * * *" // 英雄經驗重置Cron
 )
 
 var Env string // 環境版本

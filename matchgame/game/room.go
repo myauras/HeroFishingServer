@@ -42,7 +42,7 @@ type Room struct {
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
 	Players                [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
 	RoomName               string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	gameState              GameState                               // 遊戲狀態
+	GameState              GameState                               // 遊戲狀態
 	DBMatchgame            *mongo.DBMatchgame                      // DB遊戲房資料
 	DBmap                  *mongo.DBMap                            // DB地圖設定
 	GameTime               float64                                 // 遊戲開始X秒
@@ -62,7 +62,9 @@ var MyRoom *Room                     // 房間
 var UPDATE_INTERVAL_MS float64 = 100 // 每X毫秒更新一次
 
 func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
-	if MyRoom.RoomName != "" {
+	log.Infof("%s InitGameRoom開始", logger.LOG_Room)
+	if MyRoom != nil {
+		log.Errorf("%s MyRoom已經被初始化過", logger.LOG_Room)
 		return
 	}
 
@@ -70,7 +72,6 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		log.Errorf("%s Error Setting UDP Update interval", logger.LOG_Room)
 		UPDATE_INTERVAL_MS = 100
 	}
-
 	// 依據dbMapID從DB中取dbMap設定
 	log.Infof("%s 取DBMap資料", logger.LOG_Room)
 	var dbMap mongo.DBMap
@@ -80,6 +81,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	}
 	log.Infof("%s 取DBMap資料成功 DBMapID: %s JsonMapID: %v", logger.LOG_Room, dbMap.ID, dbMap.JsonMapID)
 
+	log.Infof("%s 設定dbMatchgame資料", logger.LOG_Room)
 	// 設定dbMatchgame資料
 	var dbMatchgame mongo.DBMatchgame
 	dbMatchgame.ID = roomName
@@ -92,17 +94,21 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	dbMatchgame.PodName = podName
 	dbMatchgame.MatchmakerPodName = matchmakerPodName
 
+	log.Infof("%s 初始化房間設定", logger.LOG_Room)
 	// 初始化房間設定
-	MyRoom.RoomName = roomName
-	MyRoom.gameState = Init
-	MyRoom.DBmap = &dbMap
-	MyRoom.DBMatchgame = &dbMatchgame
-	MyRoom.GameTime = 0
-	MyRoom.MaxAllowDisconnectSecs = MAX_ALLOW_DISCONNECT_SECS
-	MyRoom.MathModel = &gamemath.Model{
-		GameRTP:        dbMap.RTP,            // 遊戲RTP
-		SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
+	MyRoom := &Room{
+		RoomName:               roomName,
+		GameState:              Init,
+		DBmap:                  &dbMap,
+		DBMatchgame:            &dbMatchgame,
+		GameTime:               0,
+		MaxAllowDisconnectSecs: MAX_ALLOW_DISCONNECT_SECS,
+		MathModel: &gamemath.Model{
+			GameRTP:        dbMap.RTP,            // 遊戲RTP
+			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
+		},
 	}
+	log.Infof("%s 初始生怪器", logger.LOG_Room)
 	// 初始生怪器
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
@@ -110,7 +116,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 
 	// 這裡之後要加房間初始化Log到DB
 
-	log.Infof("%s Init room", logger.LOG_Room)
+	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
 	roomChan <- MyRoom
 }
 func (r *Room) WriteGameErrorLog(log string) {
@@ -269,7 +275,7 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 // 透過TCPConn取得玩家座位索引
 func (r *Room) GetPlayerIndexByTCPConn(conn net.Conn) int {
 	for i, v := range r.Players {
-		if v == nil {
+		if v == nil || v.ConnTCP == nil {
 			continue
 		}
 
@@ -280,14 +286,14 @@ func (r *Room) GetPlayerIndexByTCPConn(conn net.Conn) int {
 	return -1
 }
 
-// 透過UDPConn取得玩家座位索引
-func (r *Room) GetPlayerIndexByUDPConn(conn net.Conn) int {
+// 透過ConnToken取得玩家座位索引
+func (r *Room) GetPlayerIndexByConnToken(connToken string) int {
 	for i, v := range r.Players {
-		if v == nil {
+		if v == nil || v.ConnUDP == nil {
 			continue
 		}
 
-		if v.ConnUDP == conn {
+		if v.ConnUDP.ConnToken == connToken {
 			return i
 		}
 	}
@@ -297,7 +303,7 @@ func (r *Room) GetPlayerIndexByUDPConn(conn net.Conn) int {
 // 透過TCPConn取得玩家
 func (r *Room) GetPlayerByTCPConn(conn net.Conn) *gSetting.Player {
 	for _, v := range r.Players {
-		if v == nil {
+		if v == nil || v.ConnTCP == nil {
 			continue
 		}
 
@@ -308,14 +314,13 @@ func (r *Room) GetPlayerByTCPConn(conn net.Conn) *gSetting.Player {
 	return nil
 }
 
-// 透過UDPConn取得玩家
-func (r *Room) GetPlayerByUDPConn(conn net.Conn) *gSetting.Player {
+// 透過ConnToken取得玩家
+func (r *Room) GetPlayerByConnToken(connToken string) *gSetting.Player {
 	for _, v := range r.Players {
-		if v == nil {
+		if v == nil || v.ConnUDP == nil {
 			continue
 		}
-
-		if v.ConnUDP == conn {
+		if v.ConnUDP.ConnToken == connToken {
 			return v
 		}
 	}
@@ -341,7 +346,7 @@ func (r *Room) StuckCheck(stop chan struct{}) {
 	for {
 		<-timer.C
 		elapsed := time.Since(r.lastChangeStateTime)
-		if (elapsed.Minutes()) >= 3 && r.gameState != End {
+		if (elapsed.Minutes()) >= 3 && r.GameState != End {
 			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 			r.WriteGameErrorLog("StuckCheck")
 			stop <- struct{}{}
@@ -358,7 +363,7 @@ func (r *Room) gameStateLooop(stop chan struct{}, endGame chan struct{}) {
 		}
 	}()
 	for {
-		switch r.gameState {
+		switch r.GameState {
 		case Init:
 		case End:
 		}
@@ -373,7 +378,7 @@ func (r *Room) gameStateLooop(stop chan struct{}, endGame chan struct{}) {
 
 // 改變遊戲狀態
 func (r *Room) ChangeState(state GameState) {
-	r.gameState = state
+	r.GameState = state
 }
 
 // 送封包給遊戲房間內所有玩家

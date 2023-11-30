@@ -1,7 +1,7 @@
 # 指定要刪除的pod類型與所在命名空間, 並指定要保留的版本(非指定版本都會刪除)
-$keepVersion = "0.1.177"  
-$type = "herofishing-matchgame"
-$namespace = "herofishing-gameserver"
+$keepVersion = "0.1.13"  
+$type = "herofishing-crontasker"
+$namespace = "herofishing-service"
 
 $removedPodsCount = 0 # 已移除的pod數量
 

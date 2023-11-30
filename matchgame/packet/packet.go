@@ -19,6 +19,7 @@ const (
 	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
+	UDPAUTH               = "UDPAUTH"               // (UDP)身分驗證
 	UPDATEGAME            = "UPDATEGAME"            // (UDP)遊戲狀態更新(太久沒收到回傳會將該玩家從房間踢出)
 	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每TIME_UPDATE_INTERVAL_MS毫秒會送一次)
 
