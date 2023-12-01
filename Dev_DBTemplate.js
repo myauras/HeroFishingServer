@@ -1,4 +1,3 @@
-// 這邊有設定新的Collection Template也要在DBManager那邊設定
 let db = db.getSiblingDB('herofishing');
 
 // 刪除整個template collection
@@ -18,6 +17,10 @@ let playerDoc = db.template.insertMany([
     lastSignoutAt_nowDate: null,
     ban: false,
     deviceUID: "",
+    heroExp: 0,
+    leftGameAt_nowDate: null,
+    inMatchgameID: "",
+    redisSync: true,
   },
   // 模板-玩家狀態
   {

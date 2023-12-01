@@ -2,24 +2,26 @@ package setting
 
 import (
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"herofishingGoModule/gameJson"
 	"herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
 	"herofishingGoModule/utility"
 	"matchgame/logger"
 	"net"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // 玩家
 type Player struct {
-	DBPlayer    *mongo.DBPlayer    // 玩家DB資料
-	RedisPlayer *redis.RedisPlayer // RedisDB玩家實例
-	Index       int                // 玩家在房間的索引(座位)
-	MyHero      *Hero              // 使用中的英雄
-	LeftSecs    float64            // 玩家已離開遊戲房X秒
-	ConnTCP     *ConnectionTCP     // TCP連線
-	ConnUDP     *ConnectionUDP     // UDP連線
+	DBPlayer     *mongo.DBPlayer    // 玩家DB資料
+	RedisPlayer  *redis.RedisPlayer // RedisDB玩家實例
+	Index        int                // 玩家在房間的索引(座位)
+	MyHero       *Hero              // 使用中的英雄
+	LastUpdateAt time.Time          // 上次收到玩家更新封包(心跳)
+	ConnTCP      *ConnectionTCP     // TCP連線
+	ConnUDP      *ConnectionUDP     // UDP連線
 }
 
 // 英雄
@@ -56,10 +58,11 @@ func (player *Player) CloseConnection() {
 	if player.ConnTCP.Conn != nil {
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
+		player.ConnTCP = nil
 	}
 	if player.ConnUDP.Conn != nil {
-		player.ConnUDP.Conn.Close()
 		player.ConnUDP.Conn = nil
+		player.ConnUDP = nil
 	}
 }
 
@@ -110,8 +113,8 @@ type ConnectionUDP struct {
 
 // 伺服器設定
 const (
-	TIME_UPDATE_INTERVAL_MS        = 100 // 每X毫秒更新Server時間
-	AGONES_HEALTH_PIN_INTERVAL_SEC = 2   // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
+	TIME_UPDATE_INTERVAL_MS        = 1000 // 每X毫秒送UPDATEGAME_TOCLIENT封包給client(心跳檢測)
+	AGONES_HEALTH_PIN_INTERVAL_SEC = 2    // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 )
 
 // 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)

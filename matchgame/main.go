@@ -318,7 +318,7 @@ func openConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 			}
 			// 更新連線資料
 			player.ConnUDP.Conn = conn
-			if player.ConnUDP.Addr != addr { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
+			if player.ConnUDP.Addr.String() != addr.String() { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
 				log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.DBPlayer.ID, player.ConnUDP.Addr.String(), addr.String())
 				// 更新address避免客戶端的網路位置有改變這樣對於Wifi變更的用戶體驗比較好
 				// 但是要注意若之後有使用udp送重要行為 為了避免connToken被封包攔截要讓玩家需要重新通過tcp auth取新的token才是安全的作法
@@ -353,7 +353,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		}
 		pack, err := packet.ReadPack(decoder)
 		if err != nil {
-			game.MyRoom.KickPlayer(conn)
+			game.MyRoom.KickPlayer(true, conn)
 			return
 		}
 		log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
@@ -416,8 +416,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 
 			// 將玩家加入遊戲房
 			player := gSetting.Player{
-				DBPlayer:    &dbPlayer,
-				RedisPlayer: redisPlayer,
+				DBPlayer:     &dbPlayer,
+				RedisPlayer:  redisPlayer,
+				LastUpdateAt: time.Now(),
 				ConnTCP: &gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,
@@ -450,7 +451,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			err = game.MyRoom.HandleMessage(conn, pack, stop)
 			if err != nil {
 				log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
-				game.MyRoom.KickPlayer(conn)
+				game.MyRoom.KickPlayer(true, conn)
 				return
 			}
 		}
@@ -461,6 +462,8 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 func handleConnectionUDP(player *gSetting.Player, pack packet.UDPReceivePack, stop chan struct{}) {
 	switch {
 	case pack.CMD == packet.UPDATEGAME:
+		// log.Infof("%s 更新玩家 %s 心跳", logger.LOG_Main, player.DBPlayer.ID)
+		player.LastUpdateAt = time.Now() // 更新心跳
 	}
 }
 

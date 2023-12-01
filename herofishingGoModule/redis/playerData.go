@@ -3,11 +3,11 @@ package redis
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	logger "herofishingGoModule/logger"
 
+	"github.com/mitchellh/mapstructure"
 	redis "github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,9 +25,14 @@ type RedisPlayer struct {
 	pointBalance   int64 //暫存點數修改
 	heroExpBalance int   //暫存經驗修改
 }
+type DBPlayer struct {
+	ID      string
+	Point   chan int64
+	HeroExp chan int
+}
 
 // 將暫存的數據寫入RedisDB
-func (player *RedisPlayer) writePlayerUpdateToRedis() {
+func (player *RedisPlayer) WritePlayerUpdateToRedis() {
 
 	if player.pointBalance != 0 {
 		_, err := rdb.HIncrBy(ctx, player.id, "point", int64(player.pointBalance)).Result()
@@ -47,7 +52,7 @@ func (player *RedisPlayer) writePlayerUpdateToRedis() {
 
 // 關閉玩家channel
 func (player *RedisPlayer) closeChannel() {
-	player.writePlayerUpdateToRedis()
+	player.WritePlayerUpdateToRedis()
 	close(player.pointChan)
 	close(player.heroExpChan)
 }
@@ -100,19 +105,26 @@ func (player *RedisPlayer) ClosePlayer() {
 // 建立玩家資料
 func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
-	_, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
-		"id":      playerID,
-		"point":   point,
-		"heroExp": heroExp,
-	}).Result()
-	if err != nil {
-		return nil, fmt.Errorf("%s createPlayerData錯誤: %v", logger.LOG_Redis, err)
+
+	dbPlayer, err := GetDBData(playerID)
+	if err != nil || dbPlayer.ID == "" {
+		// 建立玩家RedisDB資料
+		_, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
+			"id":      playerID,
+			"point":   point,
+			"heroExp": heroExp,
+		}).Result()
+		if err != nil {
+			return nil, fmt.Errorf("%s createPlayerData錯誤: %v", logger.LOG_Redis, err)
+		}
 	}
+
 	player := RedisPlayer{
 		id:          playerID,
 		pointChan:   make(chan int64),
 		heroExpChan: make(chan int),
 	}
+
 	if _, ok := players[playerID]; !ok {
 		players[playerID] = &player
 	} else {
@@ -144,26 +156,33 @@ func updatePlayer(player *RedisPlayer) {
 		case heroExpChange := <-player.heroExpChan:
 			player.heroExpBalance += heroExpChange
 		case <-ticker.C:
-			player.writePlayerUpdateToRedis()
+			player.WritePlayerUpdateToRedis()
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (player *RedisPlayer) ShowPlayer() {
-	ShowPlayer(player.id)
+// 取得RedisDB中Player資料
+func (player *RedisPlayer) GetDBData() {
+	GetDBData(player.id)
 }
 
-// 顯示Redis Player資料
-func ShowPlayer(playerID string) {
-
+// 取得RedisDB中Player資料, 找不到玩家資料時DBPlayer會返回0值
+func GetDBData(playerID string) (DBPlayer, error) {
+	var player DBPlayer
 	val, err := rdb.HGetAll(ctx, playerID).Result()
 	if err != nil {
-		log.Errorf("ShowPlayer錯誤: %v", err)
+		return player, fmt.Errorf("ShowPlayer錯誤: %v", err)
 	}
-	id := val["id"]
-	point, _ := strconv.ParseInt(val["point"], 10, 64)
-	heroExp, _ := strconv.ParseInt(val["heroExp"], 10, 64)
-	log.Infof("%s playerID: %s point: %d heroExp: %d\n", logger.LOG_Redis, id, point, heroExp)
+	if len(val) == 0 { // 找不到資料回傳0值
+		return player, nil
+	}
+	err = mapstructure.Decode(val, &player)
+	if err != nil {
+		return player, fmt.Errorf("RedisDB Plaeyr 反序列化錯誤: %v", err)
+	}
+	// log.Infof("%s playerID: %s point: %d heroExp: %d\n", logger.LOG_Redis, player.ID, player.Point, player.HeroExp)
+	return player, nil
+
 }

@@ -32,27 +32,27 @@ const (
 )
 
 const (
-	MAX_ALLOW_DISCONNECT_SECS float64 = 20.0 // 最長允許玩家斷線X秒
-	ATTACK_EXPIRED_SECS       float64 = 30   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	KICK_PLAYER_SECS     float64 = 5   // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS  float64 = 30  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	UPDATETIMER_MILISECS int     = 500 // 計時器X毫秒跑一次
 )
 
 type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
-	Players                [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
-	RoomName               string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	GameState              GameState                               // 遊戲狀態
-	DBMatchgame            *mongo.DBMatchgame                      // DB遊戲房資料
-	DBmap                  *mongo.DBMap                            // DB地圖設定
-	GameTime               float64                                 // 遊戲開始X秒
-	MaxAllowDisconnectSecs float64                                 // 最長允許玩家斷線秒數
-	ErrorLogs              []string                                // ErrorLogs
-	MathModel              *gamemath.Model                         // 數學模型
-	MSpawner               *MonsterSpawner                         // 生怪器
-	AttackEvents           map[string]*gSetting.AttackEvent        // 攻擊事件
-	lastChangeStateTime    time.Time                               // 上次更新房間狀態時間
-	MutexLock              sync.Mutex
+	Players             [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
+	RoomName            string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	GameState           GameState                               // 遊戲狀態
+	DBMatchgame         *mongo.DBMatchgame                      // DB遊戲房資料
+	DBmap               *mongo.DBMap                            // DB地圖設定
+	GameTime            float64                                 // 遊戲開始X秒
+	ErrorLogs           []string                                // ErrorLogs
+	MathModel           *gamemath.Model                         // 數學模型
+	MSpawner            *MonsterSpawner                         // 生怪器
+	AttackEvents        map[string]*gSetting.AttackEvent        // 攻擊事件
+	lastChangeStateTime time.Time                               // 上次更新房間狀態時間
+	MutexLock           sync.Mutex
 }
 
 const CHAN_BUFFER = 4
@@ -97,12 +97,11 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	log.Infof("%s 初始化房間設定", logger.LOG_Room)
 	// 初始化房間設定
 	MyRoom = &Room{
-		RoomName:               roomName,
-		GameState:              Init,
-		DBmap:                  &dbMap,
-		DBMatchgame:            &dbMatchgame,
-		GameTime:               0,
-		MaxAllowDisconnectSecs: MAX_ALLOW_DISCONNECT_SECS,
+		RoomName:    roomName,
+		GameState:   Init,
+		DBmap:       &dbMap,
+		DBMatchgame: &dbMatchgame,
+		GameTime:    0,
 		MathModel: &gamemath.Model{
 			GameRTP:        dbMap.RTP,            // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
@@ -205,24 +204,35 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 }
 
 // 將玩家踢出房間
-func (r *Room) KickPlayer(conn net.Conn) {
-	r.MutexLock.Lock()
-	defer r.MutexLock.Unlock()
+func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
+	log.Infof("%s 執行KickPlayer", logger.LOG_Room)
+	if lockRoom {
+		r.MutexLock.Lock()
+		defer r.MutexLock.Unlock()
+	}
 	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
-	if seatIndex < 0 || r.Players[seatIndex] == nil || r.Players[seatIndex].DBPlayer == nil {
+	if seatIndex < 0 || r.Players[seatIndex] == nil {
 		return
 	}
-	r.Players[seatIndex].CloseConnection()
-
-	// 更新玩家DB資料
-	updatePlayerBson := bson.D{
-		{Key: "heroExp", Value: r.Players[seatIndex].DBPlayer.HeroExp},
-		{Key: "leftGameAt", Value: time.Now()},
+	player := r.Players[seatIndex]
+	// 更新玩家DB
+	if r.Players[seatIndex].DBPlayer != nil {
+		log.Infof("%s 踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
+		// 更新玩家DB資料
+		updatePlayerBson := bson.D{
+			{Key: "point", Value: player.DBPlayer.Point},     // 設定玩家點數
+			{Key: "heroExp", Value: player.DBPlayer.HeroExp}, // 設定英雄經驗
+			{Key: "leftGameAt", Value: time.Now()},           // 設定離開遊戲時間
+			{Key: "inMatchgameID", Value: ""},                // 設定玩家不在遊戲房內了
+		}
+		player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
+		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
+		log.Infof("%s 更新玩家 %s DB資料玩家", logger.LOG_Room, player.DBPlayer.ID)
 	}
-	mongo.UpdateDocByID(mongo.ColName.Player, r.Players[seatIndex].DBPlayer.ID, updatePlayerBson)
-
+	player.CloseConnection()
 	r.Players[seatIndex] = nil
 	r.UpdatePlayer()
+	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
@@ -245,7 +255,7 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 		r.SetHero(conn, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
-		r.broadCastPacket(&packet.Pack{ // 廣播封包
+		r.BroadCastPacket(&packet.Pack{ // 廣播封包
 			CMD: packet.SETHERO_TOCLIENT,
 			Content: &packet.SetHero_ToClient{
 				HeroIDs:     heroIDs,
@@ -260,7 +270,7 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
 		}
-		r.KickPlayer(conn) // 將玩家踢出房間
+		r.KickPlayer(true, conn) // 將玩家踢出房間
 
 	// ==========擊中怪物==========
 	case packet.HIT:
@@ -385,8 +395,8 @@ func (r *Room) ChangeState(state GameState) {
 }
 
 // 送封包給遊戲房間內所有玩家
-func (r *Room) broadCastPacket(pack *packet.Pack) {
-	log.Infof("broadCastPacket CMD: %v Content: %v", pack.CMD, pack.Content)
+func (r *Room) BroadCastPacket(pack *packet.Pack) {
+	log.Infof("廣播封包 CMD: %v", pack.CMD)
 	// 送封包給所有房間中的玩家
 	for _, v := range r.Players {
 		if v == nil || v.ConnTCP.Conn == nil {
@@ -394,26 +404,26 @@ func (r *Room) broadCastPacket(pack *packet.Pack) {
 		}
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
-			log.Errorf("%s broadCastPacket錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s 廣播封包錯誤: %v", logger.LOG_Room, err)
 		}
 	}
 }
 
 // 送封包給玩家
-func (r *Room) sendPacketToPlayer(pIndex int, pack *packet.Pack) {
+func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
 		return
 	}
 	err := packet.SendPack(r.Players[pIndex].ConnTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-		r.KickPlayer(r.Players[pIndex].ConnTCP.Conn)
+		r.KickPlayer(true, r.Players[pIndex].ConnTCP.Conn)
 	}
 }
 
 // 送遊戲房中所有玩家狀態封包
 func (r *Room) UpdatePlayer() {
-	r.broadCastPacket(&packet.Pack{
+	r.BroadCastPacket(&packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
 		Content: &packet.UpdatePlayer_ToClient{
@@ -422,28 +432,30 @@ func (r *Room) UpdatePlayer() {
 	})
 }
 
-// 更新玩家離開時間
+// 遊戲計時器
 func (r *Room) UpdateTimer(stop chan struct{}) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("%s UpdatePlayerLeaveTime error: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
+			log.Errorf("%s UpdateTimer錯誤: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
 			stop <- struct{}{}
 		}
 	}()
-	ticker := time.NewTicker(time.Duration(200) * time.Millisecond)
+	ticker := time.NewTicker(time.Duration(UPDATETIMER_MILISECS) * time.Millisecond)
 	for {
 		select {
 		case <-ticker.C:
 			r.MutexLock.Lock()
-			r.GameTime += UPDATE_INTERVAL_MS / 1000
+			r.GameTime += UPDATE_INTERVAL_MS / 1000 // 更新遊戲時間
+			log.Info("UpdateTimer")
 			for _, player := range r.Players {
 				if player == nil {
 					continue
 				}
-				if player.ConnTCP.Conn == nil {
-					player.LeftSecs += UPDATE_INTERVAL_MS / 1000
-				} else {
-					player.LeftSecs = 0
+				nowTime := time.Now()
+				// 玩家無心跳超過5秒就踢出遊戲房
+				log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
+				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
+					MyRoom.KickPlayer(false, player.ConnTCP.Conn)
 				}
 			}
 			r.MutexLock.Unlock()
@@ -597,7 +609,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	// log.Infof("gainPoints: %v \n", gainPoints)
 	// log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
 	// 廣播給client
-	room.broadCastPacket(&packet.Pack{
+	room.BroadCastPacket(&packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
 		PackID: pack.PackID,
 		Content: &packet.Hit_ToClient{
