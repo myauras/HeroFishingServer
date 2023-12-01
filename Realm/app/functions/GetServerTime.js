@@ -5,7 +5,7 @@ exports = async function GetServerTime() {
     return
   }
 
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
 
   let data = {
     serverTime: new Date(),

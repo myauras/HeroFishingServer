@@ -6,7 +6,7 @@ exports = async function Signin() {
     return
   }
 
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
 
   // 如果玩家目前是下線的，改回上線中並更新最後登入時間
   let updateSuccess = await ah.DBManager.DB_UpdateOne(ah.GameSetting.ColName.player, {

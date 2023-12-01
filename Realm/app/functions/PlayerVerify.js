@@ -1,5 +1,5 @@
 exports = async function PlayerTokenVerify(data) {
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
   if (!("Token" in data) || !("Env" in data)) {
     console.log("[PlayerTokenVerify] 格式錯誤");
     return {

@@ -1,5 +1,5 @@
 exports = async function SubTest() {
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
   console.log("SubTest2")
   let myJson = {};
   try {

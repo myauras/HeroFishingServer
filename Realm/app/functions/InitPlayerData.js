@@ -4,7 +4,7 @@ exports = async function InitPlayerData(data) {
     console.log(JSON.stringify(context.user))
     return
   }
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
 
   if (!("AuthType" in data)) {
     console.log("[InitPlayerData] 格式錯誤");

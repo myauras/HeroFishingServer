@@ -6,7 +6,7 @@ exports = async function SyncRedisCheck() {
     return
   }
 
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
   let playerDoc = await ah.DBManager.DB_FindOne(ah.GameSetting.ColName.player, { _id: context.user.id }, { redisSync: 1 });
   if (!playerDoc)
     return JSON.stringify(ah.ReplyData.NewReplyData({}, null));
@@ -16,11 +16,14 @@ exports = async function SyncRedisCheck() {
   if (!redisPlayerDoc)
     return JSON.stringify(ah.ReplyData.NewReplyData({}, null));
 
+  console.log(`玩家 ${context.user.id} 需同步redisDB資料`);
   await ah.DBManager.DB_UpdateOne(ah.GameSetting.ColName.player, { _id: context.user.id }, {
+
     point: redisPlayerDoc.point,
     heroExp: redisPlayerDoc.heroExp,
     redisSync: true,
   }, null)
+  console.log(`玩家 ${context.user.id} redisDB資料同步完成`);
 
   return JSON.stringify(ah.ReplyData.NewReplyData({}, null));
 
