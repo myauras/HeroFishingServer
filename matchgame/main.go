@@ -6,6 +6,7 @@ import (
 	gSetting "matchgame/setting"
 
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -411,6 +412,13 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					},
 				})
 			}
+
+			// 將該玩家monogoDB上的redisSync設為false
+			updatePlayerBson := bson.D{
+				{Key: "redisSync", Value: false},
+			}
+			mongo.UpdateDocByID(mongo.ColName.Player, dbPlayer.ID, updatePlayerBson)
+
 			// 建立udp socket連線Token
 			newConnToken := generateSecureToken(32)
 

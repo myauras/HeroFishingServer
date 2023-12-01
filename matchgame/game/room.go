@@ -224,6 +224,7 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 			{Key: "heroExp", Value: player.DBPlayer.HeroExp}, // 設定英雄經驗
 			{Key: "leftGameAt", Value: time.Now()},           // 設定離開遊戲時間
 			{Key: "inMatchgameID", Value: ""},                // 設定玩家不在遊戲房內了
+			{Key: "redisSync", Value: true},                  // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		}
 		player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
 		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)

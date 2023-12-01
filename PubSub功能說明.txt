@@ -1,4 +1,4 @@
-# 使用Cloud Pub/Sub讓golang server取Json資料，以下是Pub/Sub使用方法與說明
+# 使用Cloud Pub/Sub讓golang server取資料，以下是Pub/Sub使用方法與說明
 
 # 使用方法:
 # 1. 要安裝npm install @google-cloud/pubsub
