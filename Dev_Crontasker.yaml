@@ -12,7 +12,7 @@ spec:
     metadata:
       labels:
         app: herofishing-crontasker
-        type: herofishing-service  # 標示為herofishing-service, 方便之後對版本做刪除等管理
+        type: herofishing-crontasker  # 標示為herofishing-service, 方便之後對版本做刪除等管理
         imgVersion: "0.1.13"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       containers:

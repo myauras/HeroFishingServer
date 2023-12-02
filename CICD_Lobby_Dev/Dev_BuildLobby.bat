@@ -1,4 +1,4 @@
-@echo offdocker
+@echo off
 REM 可在powershell中執行.\批次檔名稱.bat
 REM Build Image並推上google artifact registry, google放image的地方)
 
@@ -28,11 +28,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content lobby\go.mo
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Build image=======
-docker build --no-cache -f lobby/Dockerfile -t asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.1 .
+docker build --no-cache -f lobby/Dockerfile -t asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.2 .
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Push image=======
-docker push asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.1
+docker push asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.2
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Change go.mod back to local setting=======
