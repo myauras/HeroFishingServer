@@ -1,4 +1,14 @@
 # ================================================================
+# ===========================Common===============================
+# ================================================================
+
+# 更新Json到GCS上(只要Json有更新都要重新佈署)
+gamejson:
+	@echo "==============Uploading Json Datas to GCS=============="
+	.\Dev_UploadJsonToServer.bat
+	@echo "==============Upload Finished=============="
+
+# ================================================================
 # ===========================Matchmaker===========================
 # ================================================================
 
@@ -12,25 +22,25 @@ vetMatchmaker:
 # 自動進版matchmaker
 autoVersioning-Matchmaker:
 	@echo "==============AutoVersioning-Matchmaker=============="
-	powershell -ExecutionPolicy Bypass -File .\Dev_AutoVersioning-Matchmaker.ps1
+	powershell -ExecutionPolicy Bypass -File .\CICD_Matchmaker_Dev\Dev_AutoVersioning-Matchmaker.ps1
 	@echo "==============AutoVersioning-Matchmaker Finished=============="
 
 # 建構matchmaker
 buildMatchmaker:
 	@echo "==============Start Building Matchmaker=============="
-	.\Dev_BuildMatchmaker.bat
+	.\CICD_Matchmaker_Dev\Dev_BuildMatchmaker.bat
 	@echo "==============Matchmaker Build Finished=============="
 
 # 部屬matchmaker
 deployMatchmaker:
 	@echo "==============Start Deploy Matchmaker=============="
-	.\Dev_DeployMatchmaker.bat
+	.\CICD_Matchmaker_Dev\Dev_DeployMatchmaker.bat
 	@echo "==============Matchmaker Deploy Finished=============="
 
 
 
 # 建構+部屬matchmaker
-matchmaker: vetMatchmaker autoVersioning-Matchmaker buildMatchmaker deployMatchmaker uploadJsonToServer
+matchmaker: vetMatchmaker autoVersioning-Matchmaker buildMatchmaker deployMatchmaker
 
 
 # ================================================================
@@ -47,26 +57,32 @@ vetCrontasker:
 # 自動進版crontasker
 autoVersioning-Crontasker:
 	@echo "==============AutoVersioning-Crontasker=============="
-	powershell -ExecutionPolicy Bypass -File .\Dev_AutoVersioning-Crontasker.ps1
+	powershell -ExecutionPolicy Bypass -File .\CICD_Crontasker_Dev\Dev_AutoVersioning-Crontasker.ps1
 	@echo "==============AutoVersioning-Crontasker Finished=============="
 
 # 建構crontasker
 buildCrontasker:
 	@echo "==============Start Building Crontasker=============="
-	.\Dev_BuildCrontasker.bat
+	.\CICD_Crontasker_Dev\Dev_BuildCrontasker.bat
 	@echo "==============Crontasker Build Finished=============="
 
 # 部屬crontasker
 deployCrontasker:
 	@echo "==============Start Deploy Crontasker=============="
-	.\Dev_DeployCrontasker.bat
+	.\CICD_Crontasker_Dev\Dev_DeployCrontasker.bat
 	@echo "==============Crontasker Deploy Finished=============="
+
+# 移除crontasker舊版本pods
+deleteCrontaskerOldPods:
+	@echo "==============Start Delete Old Crontasker Pods=============="
+	powershell -ExecutionPolicy Bypass -File .\CICD_Crontasker_Dev\Dev_DeleteAllCrontaskerAndKeepByVersion.ps1
+	@echo "==============Crontasker Delete Finished=============="
 
 
 
 
 # 建構+部屬crontasker
-crontasker: vetCrontasker autoVersioning-Crontasker buildCrontasker deployCrontasker
+crontasker: vetCrontasker autoVersioning-Crontasker buildCrontasker deployCrontasker deleteCrontaskerOldPods
 
 
 
@@ -118,33 +134,27 @@ vetMatchgame:
 # 自動進版matchgame
 autoVersioning-Matchgame:
 	@echo "==============AutoVersioning-Matchgame=============="	
-	powershell -ExecutionPolicy Bypass -File .\Dev_AutoVersioning-Matchgame.ps1
+	powershell -ExecutionPolicy Bypass -File .\CICD_Matchgame_Dev\Dev_AutoVersioning-Matchgame.ps1
 	@echo "==============AutoVersioning-Matchgame Finished=============="
 
 # 建構matchgame
 buildMatchgame:
 	@echo "==============Start Building Matchgame=============="
-	.\Dev_BuildMatchgame.bat
+	.\CICD_Matchgame_Dev\Dev_BuildMatchgame.bat
 	@echo "==============Matchgame Build Finished=============="
 
 # 部屬matchgame
 deployMatchgame:
 	@echo "==============Start Deploy Matchgame=============="
-	.\Dev_DeployMatchgame.bat
+	.\CICD_Matchgame_Dev\Dev_DeployMatchgame.bat
 	@echo "==============Matchgame Deploy Finished=============="
 
 # 移除matchgame舊版本pods
 deleteMatchgameOldPods:
 	@echo "==============Start Delete Old Matchgame Pods=============="
-	powershell -ExecutionPolicy Bypass -File .\Dev_DeleteAllMatchgameAndKeepByVersion.ps1
+	powershell -ExecutionPolicy Bypass -File .\CICD_Matchgame_Dev\Dev_DeleteAllMatchgameAndKeepByVersion.ps1
 	@echo "==============Matchgame Delete Finished=============="
-
-# 更新Json到GCS上
-uploadJsonToServer:
-	@echo "==============Uploading Json Datas to GCS=============="
-	.\Dev_UploadJsonToServer.bat
-	@echo "==============Upload Finished=============="
 
 
 # 建構+部屬matchgame
-matchgame: vetMatchgame autoVersioning-Matchgame buildMatchgame deployMatchgame deleteMatchgameOldPods uploadJsonToServer
+matchgame: vetMatchgame autoVersioning-Matchgame buildMatchgame deployMatchgame deleteMatchgameOldPods

@@ -11,5 +11,5 @@ REM 取得遊戲server的ip與port kubectl get services -n herofishing-service
 @REM gcloud container clusters get-credentials YOUR_CLUSTER_NAME --zone YOUR_ZONE
 @echo on
 call Dev_SwitchProject.bat
-kubectl apply -f Dev_Crontasker.yaml
+kubectl apply -f .\CICD_Crontasker_Dev\Dev_Crontasker.yaml
 @if ERRORLEVEL 1 exit /b 1
