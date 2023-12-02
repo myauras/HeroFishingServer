@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: herofishing-lobby
+  namespace: herofishing-service
+spec:
+  selector:
+    matchLabels:
+      app: herofishing-lobby
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: herofishing-lobby
+        type: herofishing-service  # 標示為herofishing-service, 方便之後對版本做刪除等管理
+        imgVersion: "0.1.13"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+    spec:
+      containers:
+      - name: herofishing-lobby
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.1
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "100m"
+          limits:
+            memory: "2048Mi"
+            cpu: "200m"
+        # 環境變數設定
+        env:
+        - name: "Env"
+          value: "Dev"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name              
+        # mongodb相關
+        - name: MongoAPIPublicKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPublicKey
+        - name: MongoAPIPrivateKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPrivateKey
+        - name: MongoUser
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoUser
+        - name: MongoPW
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoPW

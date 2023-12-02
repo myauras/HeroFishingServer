@@ -13,7 +13,7 @@ exports = async function OnUserCreation(user) {
     .db("herofishing")
     .collection("playerCustom");
 
-  const ah = require("aurafortest-herofishing");
+  const ah = require("aura-herofishing");
   let role = ah.GameSetting.PlayerCustomRole.Player;
   // 建立玩家資料
   let writePlayerCustomData = {

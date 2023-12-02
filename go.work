@@ -5,6 +5,7 @@ use (
 	./fortest/goredis
 	./gofortest
 	./herofishingGoModule
+	./lobby
 	./matchgame
 	./matchmaker
 )

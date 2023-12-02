@@ -112,6 +112,8 @@ type DBPlayer struct {
 	Ban           bool      `bson:"ban"`
 	InMatchgameID string    `bson:"inMatchgameID"`
 	HeroExp       int32     `bson:"heroExp"`
+	RedisSync     bool      `bson:"redisSync"`
+	LeftGameAt    time.Time `bson:"leftGameAt"`
 
 	// 用不到的資料放這
 	// AuthType      string    `bson:"authType"`

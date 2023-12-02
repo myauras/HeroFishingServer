@@ -71,6 +71,40 @@ crontasker: vetCrontasker autoVersioning-Crontasker buildCrontasker deployCronta
 
 
 # ================================================================
+# ===========================Lobby================================
+# ================================================================
+
+# Vet專案進行錯誤檢測
+vetLobby:
+	@echo "==============Vet Lobby Module=============="
+	go vet lobby/...
+	go vet herofishingGoModule/...
+	@echo "==============Vet Lobby Module Finished=============="
+
+# 自動進版lobby
+autoVersioning-Lobby:
+	@echo "==============AutoVersioning-Lobby=============="
+	powershell -ExecutionPolicy Bypass -File .\CICD_Lobby_Dev\Dev_AutoVersioning-Lobby.ps1
+	@echo "==============AutoVersioning-Lobby Finished=============="
+
+# 建構lobby
+buildLobby:
+	@echo "==============Start Building Lobby=============="
+	.\CICD_Lobby_Dev\Dev_BuildLobby.bat
+	@echo "==============Lobby Build Finished=============="
+
+# 部屬lobby
+deployLobby:
+	@echo "==============Start Deploy Lobby=============="
+	.\CICD_Lobby_Dev\Dev_DeployLobby.bat
+	@echo "==============Lobby Deploy Finished=============="
+
+
+# 建構+部屬lobby
+lobby: vetLobby autoVersioning-Lobby buildLobby deployLobby
+
+
+# ================================================================
 # ===========================Matchgame============================
 # ================================================================
 

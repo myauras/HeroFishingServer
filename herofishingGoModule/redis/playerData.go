@@ -106,7 +106,7 @@ func (player *RedisPlayer) ClosePlayer() {
 func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
-	dbPlayer, err := GetDBData(playerID)
+	dbPlayer, err := GetPlayerDBData(playerID)
 	if err != nil || dbPlayer.ID == "" {
 		// 建立玩家RedisDB資料
 		_, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
@@ -164,12 +164,12 @@ func updatePlayer(player *RedisPlayer) {
 }
 
 // 取得RedisDB中Player資料
-func (player *RedisPlayer) GetDBData() {
-	GetDBData(player.id)
+func (player *RedisPlayer) GetPlayerDBData() {
+	GetPlayerDBData(player.id)
 }
 
 // 取得RedisDB中Player資料, 找不到玩家資料時DBPlayer會返回0值
-func GetDBData(playerID string) (DBPlayer, error) {
+func GetPlayerDBData(playerID string) (DBPlayer, error) {
 	var player DBPlayer
 	val, err := rdb.HGetAll(ctx, playerID).Result()
 	if err != nil {
