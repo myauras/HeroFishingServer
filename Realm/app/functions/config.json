@@ -33,10 +33,5 @@
         "name": "PlayerVerify",
         "private": false,
         "run_as_system": true
-    },
-    {
-        "name": "SyncRedisCheck",
-        "private": false,
-        "run_as_system": true
     }
 ]

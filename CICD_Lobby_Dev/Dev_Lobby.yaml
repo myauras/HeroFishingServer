@@ -1,3 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: herofishing-lobby-service
+  namespace: herofishing-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: herofishing-lobby
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,11 +27,11 @@ spec:
       labels:
         app: herofishing-lobby
         type: herofishing-lobby  # 標示為herofishing-service, 方便之後對版本做刪除等管理
-        imgVersion: "0.1.2"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+        imgVersion: "0.1.14"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       containers:
       - name: herofishing-lobby
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.2
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-lobby:0.1.14
         resources:
           requests:
             memory: "1024Mi"
@@ -54,3 +68,46 @@ spec:
             secretKeyRef:
               name: mongodb-secret
               key: MongoPW
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: herofishing-lobby-autoscaler
+  namespace: herofishing-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: herofishing-lobby
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: herofishing-ingress
+  namespace: herofishing-service
+spec:
+  tls:
+  - hosts:
+    - aurafordev.com
+    secretName: herofishing-service-tls
+  rules:
+  - host: aurafordev.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: herofishing-lobby-service
+            port:
+              number: 80
+              

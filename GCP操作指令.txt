@@ -20,6 +20,8 @@ gcloud container clusters resize cluster-herofishing  --num-nodes=1 --zone=asia-
 kubectl delete pod herofishing-matchgame-bbhbg-w8n82 -n herofishing-gameserver
 # 查看pod資訊
 kubectl describe pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver
+# 查看所有服務
+kubectl get svc --all-namespaces
 # 查看pod的label資訊
 kubectl get pod herofishing-matchgame-b7sqm-zkndn -n herofishing-gameserver -o=jsonpath='{.metadata.labels}'
 # 新增namespace

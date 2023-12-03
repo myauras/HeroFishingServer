@@ -29,11 +29,14 @@ func main() {
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
 
-	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
+	log.Infof("%s ==============Lobby 啟動==============", logger.LOG_Main)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/player/syncredischeck", handleSyncRedisCheck).Methods("POST")
+
+	log.Infof("%s ==============Lobby 啟動完成==============", logger.LOG_Main)
 	log.Fatal(http.ListenAndServe(":8080", router))
+
 }
 
 // 處理 /player/syncredischeck 路由的 POST 請求

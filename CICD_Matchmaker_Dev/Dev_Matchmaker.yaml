@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.63
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.64
         resources:
           requests:
             memory: "1024Mi"
@@ -79,7 +79,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: game-server-deployment-30390
+    name: herofishing-matchmaker
   minReplicas: 1
   maxReplicas: 5
   metrics:

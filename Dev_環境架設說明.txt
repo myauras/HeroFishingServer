@@ -56,7 +56,7 @@ gcloud services enable artifactregistry.googleapis.com  cloudbuild.googleapis.co
 # --async是讓建立過程不用等待並可透過cli查看建立進度
 gcloud artifacts repositories create herofishing --repository-format=docker --location=asia-east1 --description="herofishing的image儲存庫" --async
 # 使用以下語法查詢artifacts repo的發布結果(repo id要改成剛剛建立)
-gcloud artifacts operations describe [repo id] --location=asia-east1
+gcloud artifacts operations describe <repo id> --location=asia-east1
 # 配置Docker客戶端使用Google Cloud身份進行認證，這樣就可以推送和拉取image，而不會遇到權限問題
 gcloud auth configure-docker asia-east1-docker.pkg.dev
 
@@ -64,10 +64,48 @@ gcloud auth configure-docker asia-east1-docker.pkg.dev
 # =========建立Secret步驟=========
 # 使用k8s secret建立mongo需要的敏感資料並在建置yaml檔案中取
 kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
-# 以下為範例 matchserver跟gameserver都要建立
+# 以下為範例 herofishing-service跟herofishing-gameserver都要建立
 kubectl create secret generic mongodb-secret -n herofishing-service --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 kubectl create secret generic mongodb-secret -n herofishing-gameserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 # 查看secret方法
 kubectl get secrets -n herofishing-service
 # 刪除secret方法
-kubectl delete secret [SECRET_NAME] --namespace=[NAMESPACE]
+kubectl delete secret <SECRET_NAME> --namespace=<NAMESPACE>
+
+# =========SSL/TLS證書取得步驟=========
+# 要先安裝Cert-Manager讓server有SSL/TLS證書可用才能提供https連線
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+# 安裝CRDs(CustomResourceDefinitions)
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.2/cert-manager.crds.yaml
+# 安裝Cert-Manager 參考: https://cert-manager.io/docs/installation/helm/
+kubectl create namespace cert-manager
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.2 --debug
+# 之前安裝會超時導致失敗但使用kubectl get pods -n cert-manager查看後4個核心的cert-manager元件都有正常跑所以暫是不理會
+# 要刪除Cert-Manager使用helm uninstall cert-manager -n cert-manager
+
+# 在k8s安裝ingress-nginx
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install herofishing-ingress ingress-nginx/ingress-nginx --namespace herofishing-service
+
+# 如果要刪除可以用helm delete herofishing-ingress -n herofishing-service
+kubectl apply -f .\CICD_Common_Dev\cert-manager.yaml
+在google workspace設定ingress對應的外部ip, 使用kubectl get svc -n herofishing-service找外部ip(因為herofishing-lobby-service的ingress資源使用LoadBalancer分配的外部ip)
+主機名稱: 留空
+類型: A
+資料: 對外ip
+
+接著要先查看挑戰token, 使用kubectl describe challenge -n <命名空間> 來查看, 並將token輸入到google workspace的自訂紀錄那(domains供應商)
+主機名稱: _acme-challenge.aurafordev.com
+類型: TXT
+資料: token
+
+# 可以使用以下語法來查看證書頒發狀態(這個頒發過程可能需要好幾十分鐘的時間)
+kubectl describe certificate herofishing-certification -n herofishing-service # 查看證書頒發狀況
+kubectl get certificaterequest -n herofishing-service # 查看證書頒發請求
+kubectl describe certificaterequest <請求名稱> -n herofishing-service # 查看請求的細節資訊
+# 查看請求的細節資訊時如果看到訂單是pending狀態通常就是正在等待頒發, 這時候也可以用以下語法查看訂單狀況與challenge狀況
+# 例如: Waiting on certificate issuance from order herofishing-service/herofishing-certification-tdrcr-455658989: "pending"
+kubectl describe order <訂單名稱> -n herofishing-service # 查看訂單狀態, 訂單名稱通常是長這樣子herofishing-certification-tdrcr-455658989
+kubectl describe challenge -n <命名空間> # 查看challenge狀況, 訂單一直在pendding就需要查看問題出在哪
