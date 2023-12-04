@@ -12,17 +12,3 @@ spec:
     - http01:
         ingress:
           class: nginx
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: herofishing-certification
-  namespace: herofishing-service
-spec:
-  secretName: herofishing-service-tls
-  issuerRef:
-    name: herofishing-cert-issuer
-    kind: ClusterIssuer
-  commonName: 'aurafordev.com'
-  dnsNames:
-  - 'aurafordev.com'
