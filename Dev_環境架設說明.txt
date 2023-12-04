@@ -22,16 +22,20 @@ gcloud container clusters update cluster-herofishing --zone=asia-east1-c --workl
 kubectl create namespace herofishing-service
 kubectl create namespace herofishing-gameserver
 
+gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --format="value(workloadIdentityConfig.workloadPool)"
+kubectl annotate serviceaccount --namespace herofishing-service [SERVICE_ACCOUNT_NAME] iam.gke.io/gcp-service-account=[GCP_SERVICE_ACCOUNT_EMAIL]
+
+
+
 # =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
-# 為命名空間添加Annotation(註解), 註解是key-value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcs-editor@herofishing-dev.iam.gserviceaccount.com
+# 為命名空間添加Annotation(註解), 註解是key=value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcs-editor@herofishing-dev.iam.gserviceaccount.com
 kubectl annotate namespace herofishing-service "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
 kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcs-editor@herofishing-dev.iam.gserviceaccount.com"
 # 為 herofishing-service 命名空間的 default 服務帳戶綁定 IAM 策略
 gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-service/default]"
 # 為 herofishing-gameserver 命名空間的 default 服務帳戶綁定 IAM 策略
 gcloud iam service-accounts add-iam-policy-binding gcs-editor@herofishing-dev.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:herofishing-dev.svc.id.goog[herofishing-gameserver/default]"
-
-
+gcloud iam service-accounts describe gcs-editor@herofishing-dev.iam.gserviceaccount.com
 
 # =========安裝Agones步驟=========
 # 使用helm安裝agones, 參考官方文件: https://agones.dev/site/docs/installation/install-agones/helm/
@@ -63,7 +67,7 @@ gcloud auth configure-docker asia-east1-docker.pkg.dev
 
 # =========建立Secret步驟=========
 # 使用k8s secret建立mongo需要的敏感資料並在建置yaml檔案中取
-kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
+# 建立secret指令為kubectl create secret generic secretName --from-literal=key1=value1 --from-literal=key2=value2
 # 以下為範例 herofishing-service跟herofishing-gameserver都要建立
 kubectl create secret generic mongodb-secret -n herofishing-service --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
 kubectl create secret generic mongodb-secret -n herofishing-gameserver --from-literal=MongoAPIPublicKey=kzqcjiya --from-literal=MongoAPIPrivateKey=a0995b0e-c8c1-4607-8161-d8c3d9676b86 --from-literal=MongoUser=aura --from-literal=MongoPW=dw0ivy2ljTXuoZGW
@@ -88,8 +92,8 @@ helm install cert-manager jetstack/cert-manager --namespace cert-manager --creat
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
 helm install herofishing-ingress ingress-nginx/ingress-nginx --namespace herofishing-service
-
 # 如果要刪除可以用helm delete herofishing-ingress -n herofishing-service
+
 kubectl apply -f .\CICD_Common_Dev\cert-manager.yaml
 在google workspace設定ingress對應的外部ip, 使用kubectl get svc -n herofishing-service找外部ip(因為herofishing-lobby-service的ingress資源使用LoadBalancer分配的外部ip)
 主機名稱: 留空

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"herofishingGoModule/gameJson"
 	"herofishingGoModule/setting"
 	logger "matchmaker/logger"
 	"matchmaker/packet"
@@ -70,6 +71,8 @@ func main() {
 	log.Infof("%s MongoUser: %s", logger.LOG_Main, mongoUser)
 	log.Infof("%s mongoPW: %s", logger.LOG_Main, mongoPW)
 
+	InitGameJson() // 初始化遊戲Json資料
+
 	// 初始化MongoDB設定
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
@@ -113,6 +116,16 @@ func main() {
 			log.Errorf("%s Connection error %s.\n", logger.LOG_Main, err)
 		}
 		go handleConnectionTCP(conn)
+	}
+}
+
+// 初始化遊戲Json資料
+func InitGameJson() {
+	log.Infof("%s 開始初始化GameJson", logger.LOG_Main)
+	err := gameJson.Init(Env)
+	if err != nil {
+		log.Errorf("%s 初始化GameJson失敗: %v", logger.LOG_Main, err)
+		return
 	}
 }
 

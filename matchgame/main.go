@@ -196,15 +196,9 @@ func InitGameJson() {
 	log.Infof("%s 開始初始化GameJson", logger.LOG_Main)
 	err := gameJson.Init(Env)
 	if err != nil {
-		log.Infof("%s 初始化GameJson失敗: %v", logger.LOG_Main, err)
+		log.Errorf("%s 初始化GameJson失敗: %v", logger.LOG_Main, err)
 		return
 	}
-	// hero1, err := gameJson.GetHeroByID("1")
-	// if err != nil {
-	// 	fmt.Printf("取資料錯誤: %v", err)
-	// }
-	// fmt.Printf(hero1.RoleCategory)
-
 }
 func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
 	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Main)
