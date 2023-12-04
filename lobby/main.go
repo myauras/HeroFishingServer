@@ -14,9 +14,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+var Env string // 環境版本
+
+// 請求
 type RequestData struct {
-	CMD   string `json:"cmd"`
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	ValueJson string `json:"valueJson"`
 }
 
 func main() {
@@ -30,6 +33,14 @@ func main() {
 	})
 
 	log.Infof("%s ==============Lobby 啟動==============", logger.LOG_Main)
+	Env = os.Getenv("Env")
+
+	// 初始化MongoDB設定
+	mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
+	mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
+	mongoUser := os.Getenv("MongoUser")
+	mongoPW := os.Getenv("MongoPW")
+	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/player/syncredischeck", handleSyncRedisCheck).Methods("POST")
@@ -37,6 +48,17 @@ func main() {
 	log.Infof("%s ==============Lobby 啟動完成==============", logger.LOG_Main)
 	log.Fatal(http.ListenAndServe(":8080", router))
 
+}
+
+// 初始化MongoDB設定
+func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string, pw string) {
+	log.Infof("%s 初始化mongo開始", logger.LOG_Main)
+	mongo.Init(mongo.InitData{
+		Env:           Env,
+		APIPublicKey:  mongoAPIPublicKey,
+		APIPrivateKey: mongoAPIPrivateKey,
+	}, user, pw)
+	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
 }
 
 // 處理 /player/syncredischeck 路由的 POST 請求
@@ -47,6 +69,8 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	log.Infof("handleSyncRedisCheck收到msg: %+v", requestData)
 
 	playerID, err := verifyPlayer(requestData.Token)
 	if err != nil {
@@ -92,7 +116,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 func verifyPlayer(token string) (string, error) {
 	playerID, err := mongo.PlayerVerify(token)
 	if err != nil {
-		return "", fmt.Errorf("無效的的Token, 驗證失敗")
+		return "", fmt.Errorf("無效的的Token: %s", token)
 	}
 	return playerID, nil
 }
