@@ -110,7 +110,6 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*gSetting.AttackEvent)
-	MyRoom.MSpawner.Start() // 開始生怪
 
 	// 這裡之後要加房間初始化Log到DB
 
@@ -198,6 +197,7 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 	// 設定玩家
 	player.Index = index
 	r.Players[index] = player
+	r.OnRoomPlayerChange()
 	log.Info("JoinPlayer Finished")
 	return true
 }
