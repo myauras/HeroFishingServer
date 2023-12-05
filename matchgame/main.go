@@ -168,8 +168,8 @@ func main() {
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
 
-	// 開始遊戲房主循環
-	room.StartRun(stopChan, endGameChan)
+	// 開始遊戲房計時器
+	go room.RoomTimer(stopChan)
 
 	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
 

@@ -12,9 +12,7 @@ import (
 	"matchgame/packet"
 	gSetting "matchgame/setting"
 	"net"
-	"os"
 	"runtime/debug"
-	"runtime/pprof"
 	"strconv"
 	"sync"
 	"time"
@@ -112,6 +110,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*gSetting.AttackEvent)
+	MyRoom.MSpawner.Start() // 開始生怪
 
 	// 這裡之後要加房間初始化Log到DB
 
@@ -232,22 +231,25 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 	}
 	player.CloseConnection()
 	r.Players[seatIndex] = nil
-	r.EmptyRoomCheck()
+	r.OnRoomPlayerChange()
 	r.UpdatePlayer()
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
-// 空遊戲房檢查
-func (r *Room) EmptyRoomCheck() {
+// 房間人數有異動處理
+func (r *Room) OnRoomPlayerChange() {
 	if r == nil {
 		return
 	}
 	for _, player := range r.Players { // 有玩家存在就不是空房間
 		if player != nil {
+			r.MSpawner.Start()
 			return
 		}
 	}
-	// 空房間處理
+	// 如果是空房間處理
+	r.MSpawner.Stop()
+
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
@@ -355,55 +357,6 @@ func (r *Room) GetPlayerByConnToken(connToken string) *gSetting.Player {
 	return nil
 }
 
-// 開始遊戲房主循環
-func (r *Room) StartRun(stop chan struct{}, endGame chan struct{}) {
-	go r.gameStateLooop(stop, endGame)
-	go r.UpdateTimer(stop)
-	go r.StuckCheck(stop)
-}
-
-func (r *Room) StuckCheck(stop chan struct{}) {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Errorf("%s StuckCheck error: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
-			stop <- struct{}{}
-		}
-	}()
-	timer := time.NewTicker(15 * time.Second)
-	r.lastChangeStateTime = time.Now()
-	for {
-		<-timer.C
-		elapsed := time.Since(r.lastChangeStateTime)
-		if (elapsed.Minutes()) >= 3 && r.GameState != End {
-			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-			r.WriteGameErrorLog("StuckCheck")
-			stop <- struct{}{}
-		}
-	}
-}
-
-// 遊戲狀態循環
-func (r *Room) gameStateLooop(stop chan struct{}, endGame chan struct{}) {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Errorf("%s gameUpdate error: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
-			stop <- struct{}{}
-		}
-	}()
-	for {
-		switch r.GameState {
-		case Init:
-		case End:
-		}
-		r.lastChangeStateTime = time.Now()
-		select {
-		case <-stop:
-			r.ChangeState(End)
-		default:
-		}
-	}
-}
-
 // 改變遊戲狀態
 func (r *Room) ChangeState(state GameState) {
 	r.GameState = state
@@ -448,7 +401,7 @@ func (r *Room) UpdatePlayer() {
 }
 
 // 遊戲計時器
-func (r *Room) UpdateTimer(stop chan struct{}) {
+func (r *Room) RoomTimer(stop chan struct{}) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s UpdateTimer錯誤: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
@@ -461,7 +414,6 @@ func (r *Room) UpdateTimer(stop chan struct{}) {
 		case <-ticker.C:
 			r.MutexLock.Lock()
 			r.GameTime += UPDATE_INTERVAL_MS / 1000 // 更新遊戲時間
-			log.Info("UpdateTimer")
 			for _, player := range r.Players {
 				if player == nil {
 					continue

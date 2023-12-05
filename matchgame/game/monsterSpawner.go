@@ -44,6 +44,8 @@ type MonsterSpawner struct {
 	BossExist     bool             // BOSS是否存在場上的標記
 	spawnTimerMap map[int]int      // <MonsterSpawn表ID,出怪倒數秒數>
 	Monsters      map[int]*Monster // 目前場上的怪物列表
+	controlChan   chan bool
+	isRunning     bool
 	mutex         sync.Mutex
 }
 
@@ -80,17 +82,47 @@ func (ms *MonsterSpawner) InitMonsterSpawner(mapJsonID int32) {
 		}
 		ms.spawnTimerMap[id] = spawnSecs
 	}
-	log.Infof("%s 生怪器初始化完成, 開始跑生怪循環", logger.LOG_MonsterSpawner)
-	// 開始生怪計時器
-	go ms.ScheduleMonster()
+	log.Infof("%s 生怪器初始化完成", logger.LOG_MonsterSpawner)
+}
+
+// 開始生怪
+func (ms *MonsterSpawner) Start() {
+	log.Infof("%s 開始生怪", logger.LOG_MonsterSpawner)
+	ms.mutex.Lock()
+	if !ms.isRunning {
+		ms.controlChan = make(chan bool)
+		go ms.scheduleMonster()
+		ms.isRunning = true
+	}
+	ms.mutex.Unlock()
+}
+
+// 停止生怪
+func (ms *MonsterSpawner) Stop() {
+	log.Infof("%s 停止生怪", logger.LOG_MonsterSpawner)
+	ms.mutex.Lock()
+	if ms.isRunning {
+		close(ms.controlChan)
+		ms.isRunning = false
+	}
+	ms.mutex.Unlock()
 }
 
 // 生怪計時器, 執行生怪倒數, Spawner倒數結束就生怪
-func (ms *MonsterSpawner) ScheduleMonster() {
-	time.Sleep(5000 * time.Millisecond) // X秒後再開始生怪
+func (ms *MonsterSpawner) scheduleMonster() {
+
+	// 已經在生怪中就返回
+	ms.mutex.Lock()
+	if ms.isRunning {
+		ms.mutex.Unlock()
+		return
+	}
+	ms.isRunning = true
+	ms.mutex.Unlock()
+
 	for {
 
-		time.Sleep(2000 * time.Millisecond) // 每秒檢查一次
+		time.Sleep(2000 * time.Millisecond) // 每X豪秒檢查一次
 		for spawnID, timer := range ms.spawnTimerMap {
 			spawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(spawnID)) // 這邊不用檢查err因為會加入spawnTimerMap都是檢查過的
 			if ms.BossExist && spawnData.SpawnType == gameJson.Boss {
@@ -152,6 +184,11 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 				ms.spawnTimerMap[spawnID] = spawnSecs
 				ms.mutex.Unlock()
 			}
+		}
+		select {
+		case <-ms.controlChan: // 停止生怪
+			return
+		default: // 繼續
 		}
 	}
 }

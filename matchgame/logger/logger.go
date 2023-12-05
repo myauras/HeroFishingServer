@@ -3,6 +3,7 @@ package logger
 const (
 	LOG_Main           = "[Main]"
 	LOG_Room           = "[Room]"
+	LOG_Monster        = "[Monster]"
 	LOG_Pack           = "[Pake]"
 	LOG_Setting        = "[Setting]"
 	LOG_MonsterSpawner = "[MonsterSpawner]"
