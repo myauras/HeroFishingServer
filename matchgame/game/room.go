@@ -32,9 +32,9 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS     float64 = 5   // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS  float64 = 30  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
-	UPDATETIMER_MILISECS int     = 500 // 計時器X毫秒跑一次
+	KICK_PLAYER_SECS     float64 = 9999 // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS  float64 = 30   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	UPDATETIMER_MILISECS int     = 500  // 計時器X毫秒跑一次
 )
 
 type Room struct {
@@ -232,8 +232,22 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 	}
 	player.CloseConnection()
 	r.Players[seatIndex] = nil
+	r.EmptyRoomCheck()
 	r.UpdatePlayer()
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
+}
+
+// 空遊戲房檢查
+func (r *Room) EmptyRoomCheck() {
+	if r == nil {
+		return
+	}
+	for _, player := range r.Players { // 有玩家存在就不是空房間
+		if player != nil {
+			return
+		}
+	}
+	// 空房間處理
 }
 
 func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
