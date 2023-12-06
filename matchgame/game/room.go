@@ -39,18 +39,17 @@ type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
-	Players             [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
-	RoomName            string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	GameState           GameState                               // 遊戲狀態
-	DBMatchgame         *mongo.DBMatchgame                      // DB遊戲房資料
-	DBmap               *mongo.DBMap                            // DB地圖設定
-	GameTime            float64                                 // 遊戲開始X秒
-	ErrorLogs           []string                                // ErrorLogs
-	MathModel           *gamemath.Model                         // 數學模型
-	MSpawner            *MonsterSpawner                         // 生怪器
-	AttackEvents        map[string]*gSetting.AttackEvent        // 攻擊事件
-	lastChangeStateTime time.Time                               // 上次更新房間狀態時間
-	MutexLock           sync.Mutex
+	Players      [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
+	RoomName     string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	GameState    GameState                               // 遊戲狀態
+	DBMatchgame  *mongo.DBMatchgame                      // DB遊戲房資料
+	DBmap        *mongo.DBMap                            // DB地圖設定
+	GameTime     float64                                 // 遊戲開始X秒
+	ErrorLogs    []string                                // ErrorLogs
+	MathModel    *gamemath.Model                         // 數學模型
+	MSpawner     *MonsterSpawner                         // 生怪器
+	AttackEvents map[string]*gSetting.AttackEvent        // 攻擊事件
+	MutexLock    sync.Mutex
 }
 
 const CHAN_BUFFER = 4
@@ -116,8 +115,21 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
 	roomChan <- MyRoom
 }
+
 func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
+}
+
+// 取得房間玩家數
+func (r *Room) PlayerCount() int {
+	count := 0
+	for _, v := range r.Players {
+		if v == nil {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 // 設定遊戲房內玩家使用英雄ID
@@ -241,14 +253,13 @@ func (r *Room) OnRoomPlayerChange() {
 	if r == nil {
 		return
 	}
-	for _, player := range r.Players { // 有玩家存在就不是空房間
-		if player != nil {
-			r.MSpawner.Start()
-			return
-		}
+	// 不是空房間處理
+	if r.PlayerCount() != 0 {
+		r.MSpawner.Start() // 開始生怪
+		return
 	}
 	// 如果是空房間處理
-	r.MSpawner.Stop()
+	r.MSpawner.Stop() // 停止生怪
 
 }
 
@@ -568,7 +579,8 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		player.AddPoint(totalGainPoint)
 	}
 	// 從怪物清單中移除被擊殺的怪物
-	utility.RemoveFromMapByKeys(room.MSpawner.Monsters, killMonsterIdxs)
+	room.MSpawner.RemoveMonster(killMonsterIdxs)
+
 	// 玩家英雄增加經驗
 	player.AddHeroExp(utility.SliceSum(gainHeroExps))
 

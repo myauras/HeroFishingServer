@@ -300,11 +300,6 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			sendCreateRoomCMD_Reply(*player, pack, "Join quick match room failed")
 			return
 		}
-		// 建立遊戲(Matchgame Server)
-		err := player.room.CreateGame()
-		if err != nil {
-			return
-		}
 		gs := player.room.gameServer
 		// 回送封包
 		packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
@@ -312,7 +307,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			PackID: pack.PackID,
 			Content: &packet.CreateRoom_ToClient{
 				CreaterID:     player.room.creater.id,
-				PlayerIDs:     player.room.getPlayerIDs(),
+				PlayerIDs:     player.room.GetPlayerIDs(),
 				DBMapID:       player.room.dbMapID,
 				DBMatchgameID: player.room.dbMatchgameID,
 				IP:            gs.Status.Address,

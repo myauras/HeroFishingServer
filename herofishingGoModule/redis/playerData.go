@@ -1,29 +1,26 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	logger "herofishingGoModule/logger"
 
 	"github.com/mitchellh/mapstructure"
-	redis "github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
 
 var dbWriteMinMiliSecs = 1000
-var rdb *redis.Client
-var ctx context.Context
-var cancel context.CancelFunc
+
 var players map[string]*RedisPlayer
 
 type RedisPlayer struct {
-	id             string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
-	pointChan      chan int64
-	heroExpChan    chan int
-	pointBalance   int64 //暫存點數修改
-	heroExpBalance int   //暫存經驗修改
+	id                  string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
+	pointChan           chan int64
+	heroExpChan         chan int
+	pointBalance        int64     // 暫存點數修改
+	heroExpBalance      int       // 暫存經驗修改
+	inGameUpdateControl chan bool // 資料定時更新上RedisDB程序開關
 }
 type DBPlayer struct {
 	ID      string
@@ -57,19 +54,6 @@ func (player *RedisPlayer) closeChannel() {
 	close(player.heroExpChan)
 }
 
-// 初始化RedisDB, 已經初始化過會直接return
-func Init() {
-	if rdb != nil {
-		return
-	}
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
-		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
-		DB:       0,
-	})
-	ctx, cancel = context.WithCancel(context.Background())
-	players = make(map[string]*RedisPlayer)
-}
 func Ping() error {
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
@@ -130,8 +114,17 @@ func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, er
 	} else {
 		return nil, fmt.Errorf("%s createPlayerData錯誤 玩家 %s 已存在map中", logger.LOG_Redis, playerID)
 	}
-	go updatePlayer(&player)
 	return &player, nil
+}
+
+// 開始跑玩家資料定時更新上RedisDB程序
+func (rPlayer *RedisPlayer) StartInGameUpdatePlayer() {
+	rPlayer.inGameUpdateControl <- true
+}
+
+// 停止跑玩家資料定時更新上RedisDB程序
+func (rPlayer *RedisPlayer) StopInGameUpdatePlayer() {
+	rPlayer.inGameUpdateControl <- false
 }
 
 // 增加點數
@@ -145,20 +138,36 @@ func (player *RedisPlayer) AddHeroExp(value int) {
 }
 
 // 暫存資料寫入並每X毫秒更新上RedisDB
-func updatePlayer(player *RedisPlayer) {
+func updatePlayer(player *RedisPlayer, control chan bool) {
 	ticker := time.NewTicker(time.Duration(dbWriteMinMiliSecs) * time.Millisecond)
 	defer ticker.Stop()
+	running := false
 
 	for {
 		select {
-		case pointChange := <-player.pointChan:
-			player.pointBalance += pointChange
-		case heroExpChange := <-player.heroExpChan:
-			player.heroExpBalance += heroExpChange
-		case <-ticker.C:
-			player.WritePlayerUpdateToRedis()
-		case <-ctx.Done():
-			return
+		case isOn := <-control:
+			if isOn {
+				running = true
+				fmt.Println("Started.")
+			} else {
+				running = false
+				fmt.Println("Stopped.")
+			}
+		default:
+			if !running {
+				continue
+			}
+			select {
+			case pointChange := <-player.pointChan:
+				player.pointBalance += pointChange
+			case heroExpChange := <-player.heroExpChan:
+				player.heroExpBalance += heroExpChange
+			case <-ticker.C:
+				player.WritePlayerUpdateToRedis()
+			case <-ctx.Done():
+				return
+			}
+
 		}
 	}
 }

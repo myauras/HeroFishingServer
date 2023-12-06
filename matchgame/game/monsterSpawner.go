@@ -19,12 +19,6 @@ type ScheduledSpawn struct {
 	RouteJsonID    int
 	IsBoss         bool
 }
-type Monster struct {
-	MonsterJson gameJson.MonsterJsonData // 怪物表Json
-	MonsterIdx  int                      // 怪物唯一索引, 在怪物被Spawn後由server產生
-	RouteJson   gameJson.RouteJsonData   // 路徑表Json
-	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
-}
 
 var spawnAccumulator = utility.NewAccumulator() // 產生一個生怪累加器
 
@@ -211,15 +205,9 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 			continue
 		}
 
-		spawn.MonsterIdxs[i] = monsterIdx // 設定怪物唯一索引
+		spawn.MonsterIdxs[i] = monsterIdx                 // 設定怪物唯一索引
+		ms.AddMonster(monsterIdx, monsterJson, routeJson) // 新增怪物到清單
 
-		// 加入怪物清單
-		ms.Monsters[monsterIdx] = &Monster{
-			MonsterJson: monsterJson,
-			MonsterIdx:  monsterIdx,
-			RouteJson:   routeJson,
-			SpawnTime:   MyRoom.GameTime,
-		}
 	}
 
 	// 廣播給所有玩家
@@ -233,4 +221,20 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 			SpawnTime:   MyRoom.GameTime,
 		},
 	})
+}
+
+// 新增怪物到生怪器清單中
+func (ms *MonsterSpawner) AddMonster(idx int, mJson gameJson.MonsterJsonData, rJson gameJson.RouteJsonData) {
+	// 加入怪物清單
+	ms.Monsters[idx] = &Monster{
+		MonsterJson: mJson,
+		MonsterIdx:  idx,
+		RouteJson:   rJson,
+		SpawnTime:   MyRoom.GameTime,
+	}
+}
+
+// 從怪物從清單中移除
+func (ms *MonsterSpawner) RemoveMonster(monsterIdx []int) {
+	utility.RemoveFromMapByKeys(ms.Monsters, monsterIdx)
 }
