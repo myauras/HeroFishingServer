@@ -1,9 +1,10 @@
 package game
 
 import (
-	log "github.com/sirupsen/logrus"
 	"herofishingGoModule/gameJson"
 	"matchgame/logger"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Monster struct {
@@ -13,6 +14,7 @@ type Monster struct {
 	SpawnTime   float64                  // 在遊戲時間第X秒時被產生的
 }
 
-func (monster *Monster) MonsterDie() {
-	log.Infof("%s 怪物死亡 Index: %v ID: %s", logger.LOG_Monster, monster.MonsterIdx, monster.MonsterJson.ID)
+// 移除怪物
+func (monster *Monster) RemoveMonster() {
+	log.Infof("%s 移除怪物 Idx: %v ID: %s", logger.LOG_Monster, monster.MonsterIdx, monster.MonsterJson.ID)
 }

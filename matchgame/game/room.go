@@ -579,7 +579,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		player.AddPoint(totalGainPoint)
 	}
 	// 從怪物清單中移除被擊殺的怪物
-	room.MSpawner.RemoveMonster(killMonsterIdxs)
+	room.MSpawner.RemoveMonsters(killMonsterIdxs)
 
 	// 玩家英雄增加經驗
 	player.AddHeroExp(utility.SliceSum(gainHeroExps))

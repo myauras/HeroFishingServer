@@ -62,17 +62,10 @@ func Ping() error {
 	return nil
 }
 
-// 關閉Redis
-func CloseAll() {
-	cancel()
-	for _, p := range players {
-		p.closeChannel()
-	}
-}
-
 // 關閉玩家
 func ClosePlayer(playerID string) {
 	if _, ok := players[playerID]; ok {
+		players[playerID].StopInGameUpdatePlayer()
 		players[playerID].closeChannel()
 		delete(players, playerID) // 從 map 中移除
 	} else {

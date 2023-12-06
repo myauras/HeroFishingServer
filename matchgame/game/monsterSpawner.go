@@ -205,9 +205,15 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 			continue
 		}
 
-		spawn.MonsterIdxs[i] = monsterIdx                 // 設定怪物唯一索引
-		ms.AddMonster(monsterIdx, monsterJson, routeJson) // 新增怪物到清單
+		spawn.MonsterIdxs[i] = monsterIdx // 設定怪物唯一索引
 
+		// 加入怪物清單
+		ms.Monsters[monsterIdx] = &Monster{
+			MonsterJson: monsterJson,
+			MonsterIdx:  monsterIdx,
+			RouteJson:   routeJson,
+			SpawnTime:   MyRoom.GameTime,
+		}
 	}
 
 	// 廣播給所有玩家
@@ -223,18 +229,12 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	})
 }
 
-// 新增怪物到生怪器清單中
-func (ms *MonsterSpawner) AddMonster(idx int, mJson gameJson.MonsterJsonData, rJson gameJson.RouteJsonData) {
-	// 加入怪物清單
-	ms.Monsters[idx] = &Monster{
-		MonsterJson: mJson,
-		MonsterIdx:  idx,
-		RouteJson:   rJson,
-		SpawnTime:   MyRoom.GameTime,
+// 從怪物清單中移除被擊殺的怪物
+func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
+	for _, v := range killMonsterIdxs {
+		if m, ok := ms.Monsters[v]; ok {
+			m.RemoveMonster()
+		}
 	}
-}
-
-// 從怪物從清單中移除
-func (ms *MonsterSpawner) RemoveMonster(monsterIdx []int) {
-	utility.RemoveFromMapByKeys(ms.Monsters, monsterIdx)
+	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs)
 }
