@@ -126,10 +126,9 @@ func (r *Room) WriteGameErrorLog(log string) {
 func (r *Room) PlayerCount() int {
 	count := 0
 	for _, v := range r.Players {
-		if v == nil {
-			continue
+		if v != nil {
+			count++
 		}
-		count++
 	}
 	return count
 }
@@ -193,8 +192,7 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 		return false
 	}
 	log.Infof("%s 玩家 %s 嘗試加入房間", logger.LOG_Room, player.DBPlayer.ID)
-	r.MutexLock.Lock()
-	defer r.MutexLock.Unlock()
+
 	index := -1
 	for i, v := range r.Players {
 		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
@@ -211,8 +209,10 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 		return false
 	}
 	// 設定玩家
+	r.MutexLock.Lock()
 	player.Index = index
 	r.Players[index] = player
+	r.MutexLock.Unlock()
 	r.OnRoomPlayerChange()
 	log.Infof("%s 玩家%s 已加入房間(%v/%v) 房間資訊: %+v", logger.LOG_Room, player.DBPlayer.ID, r.PlayerCount(), setting.PLAYER_NUMBER, r)
 	return true
@@ -232,7 +232,7 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 	player := r.Players[seatIndex]
 	// 更新玩家DB
 	if r.Players[seatIndex].DBPlayer != nil {
-		log.Infof("%s 踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
+		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
 		// 更新玩家DB資料
 		updatePlayerBson := bson.D{
 			{Key: "point", Value: player.DBPlayer.Point},     // 設定玩家點數
@@ -241,7 +241,8 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 			{Key: "inMatchgameID", Value: ""},                // 設定玩家不在遊戲房內了
 			{Key: "redisSync", Value: true},                  // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		}
-		player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
+		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
+		player.RedisPlayer.ClosePlayer()       // 關閉該玩家的RedisDB
 		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
 		log.Infof("%s 更新玩家 %s DB資料玩家", logger.LOG_Room, player.DBPlayer.ID)
 	}
@@ -249,7 +250,6 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 	r.Players[seatIndex] = nil
 	r.OnRoomPlayerChange()
 	r.UpdatePlayer()
-	r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
@@ -270,25 +270,21 @@ func (r *Room) PubPlayerLeftMsg(playerID string) {
 	if publishErr != nil {
 		log.Errorf("%s PubPlayerLeftMsg錯誤: %s", logger.LOG_Room, publishErr)
 	}
-	log.Infof("%s 送玩家離開訊息給Matchmaker: %+v", logger.LOG_Room, msg)
+	log.Infof("%s 送玩家離開訊息給到Matchmaker(%s): %+v", logger.LOG_Room, publishChannelName, msg)
 }
 
 // 房間人數有異動處理
 func (r *Room) OnRoomPlayerChange() {
-	log.Info("OnRoomPlayerChange")
 	if r == nil {
 		return
 	}
-	log.Info("aa")
 	// 不是空房間處理
 	if r.PlayerCount() != 0 {
 		r.MSpawner.SpawnSwitch(true) // 開始生怪
 		return
 	}
-	log.Info("bb")
 	// 如果是空房間處理
 	r.MSpawner.SpawnSwitch(false) // 停止生怪
-	log.Info("cc")
 
 }
 
@@ -452,7 +448,6 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			r.MutexLock.Lock()
 			r.GameTime += UPDATE_INTERVAL_MS / 1000 // 更新遊戲時間
 			for _, player := range r.Players {
 				if player == nil {
@@ -465,7 +460,6 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 					MyRoom.KickPlayer(false, player.ConnTCP.Conn)
 				}
 			}
-			r.MutexLock.Unlock()
 		case <-stop:
 			return
 		}

@@ -166,9 +166,10 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 
 // 訂閱Redis房間訊息
 func (r *room) SubRoomMsg() {
-	log.Infof("%s 訂閱Redis房間訊息", logger.LOG_ROOM)
+	channelName := "Game" + r.dbMatchgameID
+	log.Infof("%s 訂閱Redis房間(%s)", logger.LOG_ROOM, channelName)
 	msgChan := make(chan interface{})
-	err := redis.Subscribe(r.dbMatchgameID, msgChan)
+	err := redis.Subscribe(channelName, msgChan)
 	if err != nil {
 		log.Errorf("%s 訂閱錯誤: %s", logger.LOG_ROOM, err)
 		return

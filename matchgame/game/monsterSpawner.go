@@ -81,9 +81,7 @@ func (ms *MonsterSpawner) InitMonsterSpawner(mapJsonID int32) {
 
 // 生怪開關控制
 func (ms *MonsterSpawner) SpawnSwitch(setOn bool) {
-	ms.mutex.Lock()
 	ms.controlChan <- setOn
-	ms.mutex.Unlock()
 	if setOn {
 		log.Infof("%s 開始生怪", logger.LOG_MonsterSpawner)
 	} else {
