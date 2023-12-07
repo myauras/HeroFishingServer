@@ -1,10 +1,12 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
+	"herofishingGoModule/redis"
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
 	"matchgame/gamemath"
@@ -30,9 +32,9 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS     float64 = 9999 // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS  float64 = 30   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
-	UPDATETIMER_MILISECS int     = 500  // 計時器X毫秒跑一次
+	KICK_PLAYER_SECS     float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS  float64 = 30  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	UPDATETIMER_MILISECS int     = 500 // 計時器X毫秒跑一次
 )
 
 type Room struct {
@@ -186,10 +188,13 @@ func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBE
 
 // 把玩家加到房間中, 成功時回傳true
 func (r *Room) JoinPlayer(player *gSetting.Player) bool {
-	log.Info("JoinPlayer")
+	if player == nil {
+		log.Errorf("%s JoinPlayer傳入nil Player", logger.LOG_Room)
+		return false
+	}
+	log.Infof("%s 玩家 %s 嘗試加入房間", logger.LOG_Room, player.DBPlayer.ID)
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
-	log.Infof("r.Players: %v", r.Players)
 	index := -1
 	for i, v := range r.Players {
 		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
@@ -197,20 +202,19 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 			break
 		}
 		if v.DBPlayer.ID == player.DBPlayer.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
-			log.Errorf("%s PlayerJoin failed, room exist the same playerID: %v.\n", logger.LOG_Room, player.DBPlayer.ID)
+			log.Errorf("%s 加入房間失敗, 嘗試加入同樣的玩家: %s.\n", logger.LOG_Room, player.DBPlayer.ID)
 			return false
 		}
 	}
-
 	if index == -1 { // 沒有找到座位代表房間滿人
-		log.Errorf("%s PlayerJoin failed, room is full", logger.LOG_Room)
+		log.Errorf("%s 房間已滿", logger.LOG_Room)
 		return false
 	}
 	// 設定玩家
 	player.Index = index
 	r.Players[index] = player
 	r.OnRoomPlayerChange()
-	log.Info("JoinPlayer Finished")
+	log.Infof("%s 玩家%s 已加入房間(%v/%v) 房間資訊: %+v", logger.LOG_Room, player.DBPlayer.ID, r.PlayerCount(), setting.PLAYER_NUMBER, r)
 	return true
 }
 
@@ -245,21 +249,46 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 	r.Players[seatIndex] = nil
 	r.OnRoomPlayerChange()
 	r.UpdatePlayer()
+	r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
+}
+
+// 送玩家離開訊息給Matchmaker
+func (r *Room) PubPlayerLeftMsg(playerID string) {
+	publishChannelName := "Game" + r.RoomName
+	msg := redis.RedisPubSubPack{
+		CMD: redis.CMD_PLAYERLEFT,
+		Content: redis.PlayerLeft{
+			PlayerID: playerID,
+		},
+	}
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		log.Errorf("%s PubPlayerLeftMsg序列化錯誤: %s", logger.LOG_Room, err.Error())
+	}
+	publishErr := redis.Publish(publishChannelName, jsonData)
+	if publishErr != nil {
+		log.Errorf("%s PubPlayerLeftMsg錯誤: %s", logger.LOG_Room, publishErr)
+	}
+	log.Infof("%s 送玩家離開訊息給Matchmaker: %+v", logger.LOG_Room, msg)
 }
 
 // 房間人數有異動處理
 func (r *Room) OnRoomPlayerChange() {
+	log.Info("OnRoomPlayerChange")
 	if r == nil {
 		return
 	}
+	log.Info("aa")
 	// 不是空房間處理
 	if r.PlayerCount() != 0 {
-		r.MSpawner.Start() // 開始生怪
+		r.MSpawner.SpawnSwitch(true) // 開始生怪
 		return
 	}
+	log.Info("bb")
 	// 如果是空房間處理
-	r.MSpawner.Stop() // 停止生怪
+	r.MSpawner.SpawnSwitch(false) // 停止生怪
+	log.Info("cc")
 
 }
 
@@ -430,7 +459,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 					continue
 				}
 				nowTime := time.Now()
-				// 玩家無心跳超過5秒就踢出遊戲房
+				// 玩家無心跳超過X秒就踢出遊戲房
 				log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
 				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
 					MyRoom.KickPlayer(false, player.ConnTCP.Conn)

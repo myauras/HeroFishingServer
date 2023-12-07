@@ -54,14 +54,6 @@ func (player *RedisPlayer) closeChannel() {
 	close(player.heroExpChan)
 }
 
-func Ping() error {
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // 關閉玩家
 func ClosePlayer(playerID string) {
 	if _, ok := players[playerID]; ok {
@@ -97,10 +89,12 @@ func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, er
 	}
 
 	player := RedisPlayer{
-		id:          playerID,
-		pointChan:   make(chan int64),
-		heroExpChan: make(chan int),
+		id:                  playerID,
+		pointChan:           make(chan int64),
+		heroExpChan:         make(chan int),
+		inGameUpdateControl: make(chan bool),
 	}
+	go player.updatePlayer()
 
 	if _, ok := players[playerID]; !ok {
 		players[playerID] = &player
@@ -131,21 +125,15 @@ func (player *RedisPlayer) AddHeroExp(value int) {
 }
 
 // 暫存資料寫入並每X毫秒更新上RedisDB
-func updatePlayer(player *RedisPlayer, control chan bool) {
+func (player *RedisPlayer) updatePlayer() {
 	ticker := time.NewTicker(time.Duration(dbWriteMinMiliSecs) * time.Millisecond)
 	defer ticker.Stop()
 	running := false
 
 	for {
 		select {
-		case isOn := <-control:
-			if isOn {
-				running = true
-				fmt.Println("Started.")
-			} else {
-				running = false
-				fmt.Println("Stopped.")
-			}
+		case isOn := <-player.inGameUpdateControl:
+			running = isOn
 		default:
 			if !running {
 				continue

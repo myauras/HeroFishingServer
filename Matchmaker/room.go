@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mongo "herofishingGoModule/mongo"
+	"herofishingGoModule/redis"
 	"herofishingGoModule/setting"
 	logger "matchmaker/logger"
 	mSetting "matchmaker/setting"
@@ -163,6 +164,43 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 
 }
 
+// 訂閱Redis房間訊息
+func (r *room) SubRoomMsg() {
+	log.Infof("%s 訂閱Redis房間訊息", logger.LOG_ROOM)
+	msgChan := make(chan interface{})
+	err := redis.Subscribe(r.dbMatchgameID, msgChan)
+	if err != nil {
+		log.Errorf("%s 訂閱錯誤: %s", logger.LOG_ROOM, err)
+		return
+	}
+
+	for msg := range msgChan {
+		log.Info("收到msgChan")
+		var data redis.RedisPubSubPack
+		byteMsg, ok := msg.([]byte)
+		if !ok {
+			log.Println("RedisPubSubPack msg格式錯誤")
+			continue
+		}
+		err := json.Unmarshal(byteMsg, &data)
+		if err != nil {
+			log.Printf("解析RedisPubSubPack錯誤: %s", err)
+			continue
+		}
+
+		switch data.CMD {
+		case redis.CMD_PLAYERLEFT: // 玩家離開
+			playerLeftData, ok := data.Content.(redis.PlayerLeft)
+			if !ok {
+				log.Println("SubRoomMsg Content類型錯誤")
+				continue
+			}
+			r.RemovePlayer(playerLeftData.PlayerID) // 將該玩家從房間中移除
+			log.Printf("%s 玩家離開: %s", logger.LOG_ROOM, playerLeftData.PlayerID)
+		}
+	}
+}
+
 // 檢查此房間是否已經存在該玩家ID
 func (r *room) IsIDExist(playerID string) bool {
 	for _, v := range r.players {
@@ -187,6 +225,16 @@ func (r *room) AddPlayer(player *roomPlayer) bool {
 	player.room = r                       // 將玩家的房間設定為此房間
 	r.players = append(r.players, player) // 將房間的玩家清單加入此玩家
 	return true
+}
+
+// 將玩家從房間中移除
+func (r *room) RemovePlayer(playerID string) {
+	for i, v := range r.players {
+		if v != nil && v.id == playerID {
+			r.players[i] = nil
+			break
+		}
+	}
 }
 
 // 建立遊戲
@@ -247,6 +295,8 @@ func (r *room) CreateGame() error {
 		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_ROOM)
 	}
 
+	go r.SubRoomMsg() // 訂閱房間資訊
+
 	return err
 }
 
@@ -286,40 +336,4 @@ func (r *room) PlayerCount() int {
 		count++
 	}
 	return count
-}
-func (p roomPlayer) PlayerLeaveRoom() {
-	if p.room == nil {
-		return
-	}
-	// 將玩家從房間中移除
-	p.room.RemovePlayer(p)
-}
-
-// 將玩家從房間中移除
-func (r *room) RemovePlayer(p roomPlayer) {
-	tarIdx := -1
-	for i, player := range r.players {
-		if player == nil {
-			continue
-		}
-		if player.connTCP == p.connTCP {
-			tarIdx = i
-		}
-	}
-	if tarIdx >= 0 {
-		newPlayers := []*roomPlayer{}
-		for i, v := range r.players {
-			if v == nil {
-				continue
-			}
-			if i != tarIdx {
-				newPlayers = append(newPlayers, v)
-			}
-		}
-		r.players = newPlayers
-	}
-	// 如果房間沒人就清除房間
-	if len(r.players) <= 0 {
-		p.room.clearRoom()
-	}
 }

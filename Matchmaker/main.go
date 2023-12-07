@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"herofishingGoModule/gameJson"
+	"herofishingGoModule/k8s"
+	mongo "herofishingGoModule/mongo"
+	"herofishingGoModule/redis"
 	"herofishingGoModule/setting"
 	logger "matchmaker/logger"
 	"matchmaker/packet"
@@ -11,9 +14,6 @@ import (
 	"net"
 	"os"
 	"time"
-
-	"herofishingGoModule/k8s"
-	mongo "herofishingGoModule/mongo"
 
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -70,6 +70,9 @@ func main() {
 	mongoPW := os.Getenv("MongoPW")
 	log.Infof("%s MongoUser: %s", logger.LOG_Main, mongoUser)
 	log.Infof("%s mongoPW: %s", logger.LOG_Main, mongoPW)
+
+	// 初始化redisDB
+	redis.Init()
 
 	InitGameJson() // 初始化遊戲Json資料
 
@@ -273,19 +276,6 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 
 	player.id = createRoomCMD.CreaterID
 	player.dbMapID = dbMap.ID
-
-	canCreate := true
-	if !canCreate {
-		packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-			CMD:    packet.CREATEROOM_TOCLIENT,
-			PackID: pack.PackID,
-			Content: &packet.CreateRoom_ToClient{
-				IP:   "",
-				Port: -1,
-			},
-			ErrMsg: "創建房間失敗原因",
-		})
-	}
 
 	// 根據DB地圖設定來開遊戲房
 	switch dbMap.MatchType {

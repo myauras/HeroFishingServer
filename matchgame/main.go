@@ -67,14 +67,7 @@ func main() {
 	InitGameJson() // 初始化遊戲Json資料
 
 	// 初始化redisDB
-	log.Infof("%s 開始初始化RedisDB", logger.LOG_Main)
 	redis.Init()
-	redisErr := redis.Ping()
-	if redisErr != nil {
-		log.Errorf("%s 初始化RedisDB發生錯誤: %v", logger.LOG_Main, redisErr)
-	} else {
-		log.Infof("%s 初始化RedisDB完成", logger.LOG_Main)
-	}
 
 	roomChan := make(chan *game.Room)
 	roomInit := false
@@ -115,7 +108,7 @@ func main() {
 			roomName := gs.ObjectMeta.Labels["RoomName"]
 			podName := gs.ObjectMeta.Name
 			nodeName := os.Getenv("NodeName")
-			log.Infof("%s ==============InitGameRoom==============", logger.LOG_Main)
+			log.Infof("%s ==============第一位玩家加入 開始初始化房間==============", logger.LOG_Main)
 			log.Infof("%s podName: %v", logger.LOG_Main, podName)
 			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
 			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
@@ -126,7 +119,7 @@ func main() {
 			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
 			game.InitGameRoom(dbMapID, playerIDs, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
-			log.Infof("%s Init Game Room Success", logger.LOG_Main)
+			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
 		} else {
 			if matchmakerPodName != "" && gs.ObjectMeta.Labels["MatchmakerPodName"] != "" && matchmakerPodName != gs.ObjectMeta.Labels["MatchmakerPodName"] {
 				log.Errorf("%s Agones has allocate error in parelle", logger.LOG_Main)
@@ -146,7 +139,7 @@ func main() {
 		log.Fatalf("Could not send ready message")
 		return
 	} else {
-		log.Infof("%s Matchgame準備就緒 可被Agones Allocation服務分配", logger.LOG_Main)
+		log.Infof("%s Matchgame已可被Agones Allocation服務分配", logger.LOG_Main)
 	}
 
 	stopChan := make(chan struct{})
@@ -157,21 +150,22 @@ func main() {
 
 	// 等拿到房間資料後才開啟socket連線
 	room := <-roomChan
-	log.Infof("%s Got room data", logger.LOG_Main)
+
 	close(roomChan)
 
 	// 開啟連線
-
 	src := ":" + *port
 	go openConnectTCP(agonesSDK, stopChan, src)
 	go openConnectUDP(agonesSDK, stopChan, src)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
-
 	// 開始遊戲房計時器
 	go room.RoomTimer(stopChan)
+	// 開始生怪
+	go room.MSpawner.ScheduleMonster()
+	room.MSpawner.SpawnSwitch(true)
 
-	log.Infof("%s ==============MATCHGAME準備就緒==============", logger.LOG_Main)
+	log.Infof("%s ==============房間準備就緒==============", logger.LOG_Main)
 
 	select {
 	case <-stopChan:
