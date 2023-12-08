@@ -12,7 +12,7 @@ import (
 	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
-	gSetting "matchgame/setting"
+	// gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
 	"strconv"
@@ -41,17 +41,27 @@ type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
-	Players      [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
-	RoomName     string                                  // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	GameState    GameState                               // 遊戲狀態
-	DBMatchgame  *mongo.DBMatchgame                      // DB遊戲房資料
-	DBmap        *mongo.DBMap                            // DB地圖設定
-	GameTime     float64                                 // 遊戲開始X秒
-	ErrorLogs    []string                                // ErrorLogs
-	MathModel    *gamemath.Model                         // 數學模型
-	MSpawner     *MonsterSpawner                         // 生怪器
-	AttackEvents map[string]*gSetting.AttackEvent        // 攻擊事件
+	Players      [setting.PLAYER_NUMBER]*Player // 玩家陣列
+	RoomName     string                         // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	GameState    GameState                      // 遊戲狀態
+	DBMatchgame  *mongo.DBMatchgame             // DB遊戲房資料
+	DBmap        *mongo.DBMap                   // DB地圖設定
+	GameTime     float64                        // 遊戲開始X秒
+	ErrorLogs    []string                       // ErrorLogs
+	MathModel    *gamemath.Model                // 數學模型
+	MSpawner     *MonsterSpawner                // 生怪器
+	AttackEvents map[string]*AttackEvent        // 攻擊事件
 	MutexLock    sync.Mutex
+}
+
+// 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)
+// 攻擊事件一段時間清空並存到資料庫中
+type AttackEvent struct {
+	// 攻擊AttackID格式為 [玩家房間index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
+	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
+	AttackID    string  // 攻擊ID
+	ExpiredTime float64 // 過期時間, 房間中的GameTime超過此值就會視為此技能已經結束
+	MonsterIdxs [][]int // [波次]-[擊中怪物索引清單]
 }
 
 const CHAN_BUFFER = 4
@@ -110,7 +120,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	// 初始生怪器
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
-	MyRoom.AttackEvents = make(map[string]*gSetting.AttackEvent)
+	MyRoom.AttackEvents = make(map[string]*AttackEvent)
 
 	// 這裡之後要加房間初始化Log到DB
 
@@ -149,9 +159,9 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 		return
 	}
 	spellJsons := heroJson.GetSpellJsons()
-	heroSpells := [3]*gSetting.HeroSpell{}
+	heroSpells := [3]*HeroSpell{}
 	for i := 0; i < 3; i++ {
-		heroSpells[i] = &gSetting.HeroSpell{
+		heroSpells[i] = &HeroSpell{
 			Charge:    0,
 			SpellJson: spellJsons[i],
 		}
@@ -159,7 +169,7 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 	if player.MyHero != nil {
 		heroEXP = player.MyHero.HeroEXP
 	}
-	player.MyHero = &gSetting.Hero{
+	player.MyHero = &Hero{
 		HeroID:     heroID,
 		HeroSkinID: heroSkinID,
 		HeroEXP:    heroEXP,
@@ -186,7 +196,7 @@ func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBE
 }
 
 // 把玩家加到房間中, 成功時回傳true
-func (r *Room) JoinPlayer(player *gSetting.Player) bool {
+func (r *Room) JoinPlayer(player *Player) bool {
 	if player == nil {
 		log.Errorf("%s JoinPlayer傳入nil Player", logger.LOG_Room)
 		return false
@@ -373,7 +383,7 @@ func (r *Room) GetPlayerIndexByConnToken(connToken string) int {
 }
 
 // 透過TCPConn取得玩家
-func (r *Room) GetPlayerByTCPConn(conn net.Conn) *gSetting.Player {
+func (r *Room) GetPlayerByTCPConn(conn net.Conn) *Player {
 	for _, v := range r.Players {
 		if v == nil || v.ConnTCP == nil {
 			continue
@@ -387,7 +397,7 @@ func (r *Room) GetPlayerByTCPConn(conn net.Conn) *gSetting.Player {
 }
 
 // 透過ConnToken取得玩家
-func (r *Room) GetPlayerByConnToken(connToken string) *gSetting.Player {
+func (r *Room) GetPlayerByConnToken(connToken string) *Player {
 	for _, v := range r.Players {
 		if v == nil || v.ConnUDP == nil {
 			continue
@@ -437,9 +447,25 @@ func (r *Room) UpdatePlayer() {
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
 		Content: &packet.UpdatePlayer_ToClient{
-			Players: r.Players,
+			Players: r.GetPacketPlayers(),
 		},
 	})
+}
+
+// 取得要送封包的玩家陣列
+func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
+	var players [setting.PLAYER_NUMBER]*packet.Player
+	for i, v := range r.Players {
+		if v == nil {
+			players[i] = nil
+			continue
+		}
+		players[i] = &packet.Player{
+			ID:    v.DBPlayer.ID,
+			Index: v.Index,
+		}
+	}
+	return players
 }
 
 // 遊戲計時器
@@ -578,7 +604,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		}
 		idxs := make([][]int, 1)
 		idxs[0] = hitMonsterIdxs
-		attackEvent := gSetting.AttackEvent{
+		attackEvent := AttackEvent{
 			AttackID:    hitCMD.AttackID,
 			ExpiredTime: room.GameTime + ATTACK_EXPIRED_SECS,
 			MonsterIdxs: idxs,

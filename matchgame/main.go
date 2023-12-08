@@ -412,7 +412,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			newConnToken := generateSecureToken(32)
 
 			// 將玩家加入遊戲房
-			player := gSetting.Player{
+			player := game.Player{
 				DBPlayer:     &dbPlayer,
 				RedisPlayer:  redisPlayer,
 				LastUpdateAt: time.Now(),
@@ -456,7 +456,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 }
 
 // 處理UDP連線封包
-func handleConnectionUDP(player *gSetting.Player, pack packet.UDPReceivePack, stop chan struct{}) {
+func handleConnectionUDP(player *game.Player, pack packet.UDPReceivePack, stop chan struct{}) {
 	switch {
 	case pack.CMD == packet.UPDATEGAME:
 		// log.Infof("%s 更新玩家 %s 心跳", logger.LOG_Main, player.DBPlayer.ID)
@@ -465,7 +465,7 @@ func handleConnectionUDP(player *gSetting.Player, pack packet.UDPReceivePack, st
 }
 
 // 定時更新遊戲狀態給Client
-func updateGameLoop(player *gSetting.Player, stop chan struct{}) {
+func updateGameLoop(player *game.Player, stop chan struct{}) {
 	log.Infof("%s (UDP)開始updateGameLoop", logger.LOG_Main)
 	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
 	for {

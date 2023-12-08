@@ -1,12 +1,15 @@
 package packet
 
 import (
-	"herofishingGoModule/setting"
-	gSetting "matchgame/setting"
+// "herofishingGoModule/setting"
 )
 
 type UpdatePlayer_ToClient struct {
 	CMDContent
-	Players [setting.PLAYER_NUMBER]*gSetting.Player // 玩家陣列
+	Players [4]*Player // 玩家陣列
 
+}
+type Player struct {
+	ID    string
+	Index int
 }
