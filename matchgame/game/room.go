@@ -219,19 +219,17 @@ func (r *Room) JoinPlayer(player *gSetting.Player) bool {
 }
 
 // 將玩家踢出房間
-func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
+func (r *Room) KickPlayer(conn net.Conn) {
 	log.Infof("%s 執行KickPlayer", logger.LOG_Room)
-	if lockRoom {
-		r.MutexLock.Lock()
-		defer r.MutexLock.Unlock()
-	}
+	r.MutexLock.Lock()
+	defer r.MutexLock.Unlock()
 	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
 	if seatIndex < 0 || r.Players[seatIndex] == nil {
 		return
 	}
 	player := r.Players[seatIndex]
 	// 更新玩家DB
-	if r.Players[seatIndex].DBPlayer != nil {
+	if player.DBPlayer != nil {
 		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
 		// 更新玩家DB資料
 		updatePlayerBson := bson.D{
@@ -242,10 +240,10 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 			{Key: "redisSync", Value: true},                  // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		}
 		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
-		player.RedisPlayer.ClosePlayer()       // 關閉該玩家的RedisDB
 		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
 		log.Infof("%s 更新玩家 %s DB資料玩家", logger.LOG_Room, player.DBPlayer.ID)
 	}
+	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
 	player.CloseConnection()
 	r.Players[seatIndex] = nil
 	r.OnRoomPlayerChange()
@@ -255,22 +253,30 @@ func (r *Room) KickPlayer(lockRoom bool, conn net.Conn) {
 
 // 送玩家離開訊息給Matchmaker
 func (r *Room) PubPlayerLeftMsg(playerID string) {
-	publishChannelName := "Game" + r.RoomName
+	publishChannelName := "Game-" + r.RoomName
+	playerLeftContent := redis.PlayerLeft{
+		PlayerID: playerID,
+	}
+	contentBytes, err := json.Marshal(playerLeftContent)
+	if err != nil {
+		log.Errorf("%s PubPlayerLeftMsg序列化PlayerLeft錯誤: %v", logger.LOG_Room, err)
+		return
+	}
 	msg := redis.RedisPubSubPack{
-		CMD: redis.CMD_PLAYERLEFT,
-		Content: redis.PlayerLeft{
-			PlayerID: playerID,
-		},
+		CMD:     redis.CMD_PLAYERLEFT,
+		Content: json.RawMessage(contentBytes),
 	}
 	jsonData, err := json.Marshal(msg)
 	if err != nil {
-		log.Errorf("%s PubPlayerLeftMsg序列化錯誤: %s", logger.LOG_Room, err.Error())
+		log.Errorf("%s PubPlayerLeftMsg序列化RedisPubSubPack錯誤: %s", logger.LOG_Room, err.Error())
+		return
 	}
 	publishErr := redis.Publish(publishChannelName, jsonData)
 	if publishErr != nil {
-		log.Errorf("%s PubPlayerLeftMsg錯誤: %s", logger.LOG_Room, publishErr)
+		log.Errorf("%s PubPlayerLeftMsg错误: %s", logger.LOG_Room, publishErr)
+		return
 	}
-	log.Infof("%s 送玩家離開訊息給到Matchmaker(%s): %+v", logger.LOG_Room, publishChannelName, msg)
+	log.Infof("%s 送完加離開訊息到 %s Msg: %+v", logger.LOG_Room, publishChannelName, msg)
 }
 
 // 房間人數有異動處理
@@ -323,7 +329,7 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("Parse %s Failed", pack.CMD)
 		}
-		r.KickPlayer(true, conn) // 將玩家踢出房間
+		r.KickPlayer(conn) // 將玩家踢出房間
 
 	// ==========擊中怪物==========
 	case packet.HIT:
@@ -421,7 +427,7 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	err := packet.SendPack(r.Players[pIndex].ConnTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-		r.KickPlayer(true, r.Players[pIndex].ConnTCP.Conn)
+		r.KickPlayer(r.Players[pIndex].ConnTCP.Conn)
 	}
 }
 
@@ -457,7 +463,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 				// 玩家無心跳超過X秒就踢出遊戲房
 				log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
 				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
-					MyRoom.KickPlayer(false, player.ConnTCP.Conn)
+					MyRoom.KickPlayer(player.ConnTCP.Conn)
 				}
 			}
 		case <-stop:

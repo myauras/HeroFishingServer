@@ -35,3 +35,8 @@ func RemoveFromMapByKeys[K comparable, V any](myMap map[K]*V, keys []K) {
 		delete(myMap, key)
 	}
 }
+
+// 從一個 slice 中移除指定索引的元素
+func RemoveFromSlice[T any](slice []T, idx int) []T {
+	return append(slice[:idx], slice[idx+1:]...)
+}

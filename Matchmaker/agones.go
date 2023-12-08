@@ -17,20 +17,42 @@ const (
 	gameserversNamespace = "herofishing-gameserver"
 )
 
-func CreateGameServer(roomName string, playerIDs []string, createrID string, dbMapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
+var agonesClient *versioned.Clientset
+
+// 初始化Agones Client
+func InitAgones() error {
+	log.Infof("%s 開始初始化Agones API Client", logger.LOG_Agones)
+	var err error
 	// 取目前pod所在k8s cluster的config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Errorf("%s Could not create in cluster config: %v", logger.LOG_Agones, err)
-		return nil, err
+		log.Errorf("%s 取cluster的config錯誤: %v", logger.LOG_Agones, err)
+		return err
 	}
-
 	// 與agones連接
-	agonesClient, err := versioned.NewForConfig(config)
+	agonesClient, err = versioned.NewForConfig(config)
 	if err != nil {
-		log.Errorf("%s Could not create the agones api clientset: %v", logger.LOG_Agones, err)
-		return nil, err
+		log.Errorf("%s 建立 agones api client錯誤: %v", logger.LOG_Agones, err)
+		return err
 	}
+	log.Infof("%s 初始化Agones API Client完成", logger.LOG_Agones)
+	return nil
+}
+
+// 取得Agones API Client
+func GetAgonesClient() *versioned.Clientset {
+	if agonesClient == nil {
+		log.Infof("%s 尚未建立 agones api client, 嘗試建立", logger.LOG_Agones)
+		err := InitAgones()
+		if err != nil {
+			return nil
+		}
+	}
+	return agonesClient
+}
+
+// 建立一個新的Matchgame Server
+func CreateGameServer(roomName string, playerIDs []string, createrID string, dbMapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
 
 	// 建立遊戲房伺服器標籤
 	myLabels := map[string]string{
@@ -93,4 +115,25 @@ func CreateGameServer(roomName string, playerIDs []string, createrID string, dbM
 	log.Infof("%s New game servers name: %s    address: %s   port: %v", logger.LOG_Agones, newGS.ObjectMeta.Name, newGS.Status.Address, newGS.Status.Ports[0].Port)
 	return newGS, err
 
+}
+
+// 檢查該Matchgame server是正常運作
+func CheckGameServer(roomName string) error {
+	gameServers, err := agonesClient.AgonesV1().GameServers(gameserversNamespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("取得Matchgame列表失敗: %v", err)
+		return err
+	}
+
+	for _, gs := range gameServers.Items {
+		if gs.Labels["RoomName"] == roomName {
+			if gs.Status.State == agonesv1.GameServerStateReady {
+				log.Infof("%s 已確認目標Matchgame server正常運作", logger.LOG_Agones)
+				return nil
+			} else {
+				return fmt.Errorf("%s Matchgame(%s)掛了", logger.LOG_Agones, roomName)
+			}
+		}
+	}
+	return fmt.Errorf("%s Matchgame(%s)不存在", logger.LOG_Agones, roomName)
 }

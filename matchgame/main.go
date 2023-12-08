@@ -325,7 +325,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("%s (TCP)處理封包錯誤: %v.", logger.LOG_Main, err)
+			log.Errorf("%s (TCP)handleConnectionTCP錯誤: %v.", logger.LOG_Main, err)
 		}
 	}()
 	isAuth := false
@@ -342,7 +342,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		}
 		pack, err := packet.ReadPack(decoder)
 		if err != nil {
-			game.MyRoom.KickPlayer(true, conn)
+			game.MyRoom.KickPlayer(conn)
 			return
 		}
 		log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
@@ -448,7 +448,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			err = game.MyRoom.HandleMessage(conn, pack, stop)
 			if err != nil {
 				log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
-				game.MyRoom.KickPlayer(true, conn)
+				game.MyRoom.KickPlayer(conn)
 				return
 			}
 		}
@@ -475,7 +475,7 @@ func updateGameLoop(player *gSetting.Player, stop chan struct{}) {
 			log.Errorf("強制終止UDP")
 			return
 		case <-timer.C:
-			if player == nil || player.ConnUDP.Conn == nil {
+			if player == nil || player.ConnUDP == nil {
 				return
 			}
 			// 定時送遊戲更新給Client
@@ -522,16 +522,17 @@ func delayShutdownServer(delay time.Duration, sdk *sdk.SDK, stop chan struct{}) 
 	stop <- struct{}{}
 }
 
-// 伺服器健康狀態檢測
+// 送定時送Agones健康ping通知agones server遊戲房還活著
+// Agones的超時為periodSeconds設定的秒數 參考官方: https://agones.dev/site/docs/guides/health-checking/
 func agonesHealthPin(agonesSDK *sdk.SDK, stop <-chan struct{}) {
 	tick := time.Tick(gSetting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
 	for {
 		if err := agonesSDK.Health(); err != nil {
-			log.Errorf("%s Could not send health ping: %v", logger.LOG_Main, err)
+			log.Errorf("%s ping agones server錯誤: %v", logger.LOG_Main, err)
 		}
 		select {
 		case <-stop:
-			log.Infof("%s Health pings stopped", logger.LOG_Main)
+			log.Infof("%s Health pings 意外停止", logger.LOG_Main)
 			return
 		case <-tick:
 		}

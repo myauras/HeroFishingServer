@@ -6,6 +6,7 @@ import (
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
 	"herofishingGoModule/setting"
+	"herofishingGoModule/utility"
 	logger "matchmaker/logger"
 	mSetting "matchmaker/setting"
 	"net"
@@ -28,7 +29,7 @@ type Usher struct {
 type room struct {
 	gameServer    *agonesv1.GameServer
 	dbMapID       string        // DB地圖ID
-	dbMatchgameID string        // 由Matchmaker產生，格視為[玩家ID]_[累加數字]_[日期時間]
+	dbMatchgameID string        // 就是RoomName由Matchmaker產生，格視為[玩家ID]_[累加數字]_[日期時間]
 	matchType     string        // 配對類型
 	players       []*roomPlayer // 房間內的玩家
 	creater       *roomPlayer   // 開房者
@@ -68,7 +69,7 @@ func (r *room) clearRoom() {
 
 	log.WithFields(log.Fields{
 		"players": r.players,
-	}).Infof("%s ClearRoom", logger.LOG_ROOM)
+	}).Infof("%s ClearRoom", logger.LOG_Room)
 	// 清除房間
 	for i, v := range r.players {
 		if v == nil {
@@ -112,19 +113,27 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 			continue
 		}
 
+		// 確認目Matchgame是否還活著, 掛掉就繼續找下一個
+		err := CheckGameServer(room.dbMatchgameID)
+		if err != nil {
+			utility.RemoveFromSlice(usher.rooms, roomIdx) // 移除掛掉的房間
+			log.Errorf("%s 目標遊戲房已掛: %v", logger.LOG_Room, err)
+			continue
+		}
+
 		log.WithFields(log.Fields{
 			"playerID":  player.id,
 			"dbMapID":   dbMap.ID,
 			"roomIdx":   roomIdx,
 			"room":      room,
 			"dbMapData": dbMap,
-		}).Infof("%s Player join an exist room", logger.LOG_ROOM)
+		}).Infof("%s Player join an exist room", logger.LOG_Room)
 
-		log.Infof("%s 玩家 %s 加入房間(%v/%v) 房間資料: %+v", logger.LOG_Main, player.id, room.PlayerCount(), setting.PLAYER_NUMBER, room)
+		log.Infof("%s 玩家 %s 加入房間(%v/%v) 房間資料: %+v", logger.LOG_Room, player.id, room.PlayerCount(), setting.PLAYER_NUMBER, room)
 		return room
 	}
 
-	log.Infof("%s 玩家 %s 找不到可加入的房間, 創建一個新房間(%v/%v): %+v", logger.LOG_Main, player.id, 1, setting.PLAYER_NUMBER, dbMap)
+	log.Infof("%s 玩家 %s 找不到可加入的房間, 創建一個新房間(%v/%v): %+v", logger.LOG_Room, player.id, 1, setting.PLAYER_NUMBER, dbMap)
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
@@ -148,7 +157,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 	// 建立遊戲(Matchgame Server)
 	err := player.room.CreateGame()
 	if err != nil {
-		log.Errorf("%s 建立Matchgame server失敗: %v", logger.LOG_ROOM, err)
+		log.Errorf("%s 建立Matchgame server失敗: %v", logger.LOG_Room, err)
 		return nil
 	}
 
@@ -158,7 +167,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 		"roomIdx":    roomIdx,
 		"room":       newRoom,
 		"dbRoomData": dbMap,
-	}).Infof("%s Player create a new room", logger.LOG_ROOM)
+	}).Infof("%s Player create a new room", logger.LOG_Room)
 
 	return &newRoom
 
@@ -166,38 +175,34 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 
 // 訂閱Redis房間訊息
 func (r *room) SubRoomMsg() {
-	channelName := "Game" + r.dbMatchgameID
-	log.Infof("%s 訂閱Redis房間(%s)", logger.LOG_ROOM, channelName)
+	channelName := "Game-" + r.dbMatchgameID
+	log.Infof("%s 訂閱Redis房間(%s)", logger.LOG_Room, channelName)
 	msgChan := make(chan interface{})
 	err := redis.Subscribe(channelName, msgChan)
 	if err != nil {
-		log.Errorf("%s 訂閱錯誤: %s", logger.LOG_ROOM, err)
+		log.Errorf("%s 訂閱錯誤: %s", logger.LOG_Room, err)
 		return
 	}
 
 	for msg := range msgChan {
-		log.Info("收到msgChan")
 		var data redis.RedisPubSubPack
-		byteMsg, ok := msg.([]byte)
-		if !ok {
-			log.Println("RedisPubSubPack msg格式錯誤")
-			continue
-		}
+		byteMsg := []byte(msg.(string))
 		err := json.Unmarshal(byteMsg, &data)
 		if err != nil {
-			log.Printf("解析RedisPubSubPack錯誤: %s", err)
+			log.Errorf("%s JSON解析錯誤: %s", logger.LOG_Room, err)
 			continue
 		}
 
 		switch data.CMD {
 		case redis.CMD_PLAYERLEFT: // 玩家離開
-			playerLeftData, ok := data.Content.(redis.PlayerLeft)
-			if !ok {
-				log.Println("SubRoomMsg Content類型錯誤")
+			var playerLeftData redis.PlayerLeft
+			err := json.Unmarshal(data.Content, &playerLeftData)
+			if err != nil {
+				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, redis.CMD_PLAYERLEFT, err)
 				continue
 			}
 			r.RemovePlayer(playerLeftData.PlayerID) // 將該玩家從房間中移除
-			log.Printf("%s 玩家離開: %s", logger.LOG_ROOM, playerLeftData.PlayerID)
+			log.Printf("%s 玩家離開: %s", logger.LOG_Room, playerLeftData.PlayerID)
 		}
 	}
 }
@@ -242,7 +247,7 @@ func (r *room) RemovePlayer(playerID string) {
 func (r *room) CreateGame() error {
 	var err error
 	if r == nil {
-		err = fmt.Errorf("%s CreateGame Room的r為nil", logger.LOG_ROOM)
+		err = fmt.Errorf("%s CreateGame Room的r為nil", logger.LOG_Room)
 		return err
 	}
 	var createGameOK bool
@@ -254,8 +259,8 @@ func (r *room) CreateGame() error {
 
 		log.WithFields(log.Fields{
 			"room": r,
-		}).Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
-		err = fmt.Errorf("%s Generate Room Name Failed", logger.LOG_ROOM)
+		}).Errorf("%s Generate Room Name Failed", logger.LOG_Room)
+		err = fmt.Errorf("%s Generate Room Name Failed", logger.LOG_Room)
 		return err
 	}
 
@@ -263,7 +268,7 @@ func (r *room) CreateGame() error {
 	log.WithFields(log.Fields{
 		"room":     r,
 		"roomName": roomName,
-	}).Infof("%s Generate Room Name \n", logger.LOG_ROOM)
+	}).Infof("%s Generate Room Name \n", logger.LOG_Room)
 
 	// 建立遊戲房
 	retryTimes := 0
@@ -275,7 +280,7 @@ func (r *room) CreateGame() error {
 			createGameOK = true
 			break
 		}
-		log.Errorf("%s CreateGameServer第%v次失敗: %v", logger.LOG_Main, i, err)
+		log.Errorf("%s CreateGameServer第%v次失敗: %v", logger.LOG_Room, i, err)
 		<-timer.C
 	}
 	timer.Stop()
@@ -286,14 +291,14 @@ func (r *room) CreateGame() error {
 			log.WithFields(log.Fields{
 				"retryTimes": retryTimes,
 				"error:":     err.Error(),
-			}).Infof("%s Create gameServer with retry: \n", logger.LOG_ROOM)
+			}).Infof("%s Create gameServer with retry: \n", logger.LOG_Room)
 		}
 	} else {
 		log.WithFields(log.Fields{
 			"retryTimes": mSetting.RETRY_CREATE_GAMESERVER_TIMES,
 			"error:":     err.Error(),
-		}).Errorf("%s Create gameServer error: \n", logger.LOG_ROOM)
-		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_ROOM)
+		}).Errorf("%s Create gameServer error: \n", logger.LOG_Room)
+		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_Room)
 	}
 
 	go r.SubRoomMsg() // 訂閱房間資訊

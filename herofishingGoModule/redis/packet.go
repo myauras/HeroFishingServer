@@ -1,6 +1,6 @@
 package redis
 
-import ()
+import "encoding/json"
 
 // 命令類型
 const (
@@ -10,10 +10,9 @@ const (
 type CMDContent interface {
 }
 type RedisPubSubPack struct {
-	CMD     string
-	Content CMDContent
+	CMD     string          `json:"CMD"`
+	Content json.RawMessage `json:"Content"`
 }
 type PlayerLeft struct {
-	CMDContent
-	PlayerID string // 玩家ID
+	PlayerID string `json:"PlayerID"` // 玩家ID
 }

@@ -79,6 +79,9 @@ func main() {
 	// 初始化MongoDB設定
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
+	// 初始化Agones
+	InitAgones()
+
 	// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
 	log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
 	for {

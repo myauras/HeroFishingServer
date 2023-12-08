@@ -114,7 +114,7 @@ type ConnectionUDP struct {
 // 伺服器設定
 const (
 	TIME_UPDATE_INTERVAL_MS        = 1000 // 每X毫秒送UPDATEGAME_TOCLIENT封包給client(心跳檢測)
-	AGONES_HEALTH_PIN_INTERVAL_SEC = 2    // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
+	AGONES_HEALTH_PIN_INTERVAL_SEC = 1    // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 )
 
 // 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)

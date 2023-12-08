@@ -9,22 +9,28 @@ spec:
     metadata:
       labels:
         type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-        imgVersion: "0.1.232" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+        imgVersion: "0.1.249" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       ports:
       - name: default
         containerPort: 7654
         portPolicy: Dynamic
         protocol: TCPUDP
+      # server健康檢查參數, 可參考官方文件: https://agones.dev/site/docs/guides/health-checking/ 官方配置: https://github.com/googleforgames/agones/blob/release-1.36.0/examples/gameserver.yaml
+      health:
+        disabled: false
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        failureThreshold: 3
       template:
         metadata:
           labels:
             type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-            imgVersion: "0.1.232" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
+            imgVersion: "0.1.249" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchgame:0.1.232
+            image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchgame:0.1.249
             resources:
               requests:
                 memory: "32Mi"
@@ -41,7 +47,6 @@ spec:
               value: "7654"
             - name: "Version"
               value: "Dev"
-            # mongodb相關
             - name: MongoAPIPublicKey
               valueFrom:
                 secretKeyRef:
