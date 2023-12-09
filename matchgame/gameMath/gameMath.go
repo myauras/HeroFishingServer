@@ -13,9 +13,9 @@ type Model struct {
 }
 
 // 取得普攻擊殺率
-func (model *Model) GetAttackKP(targetOdds float64, spellMaxHit int, spellShare bool) float64 {
+func (model *Model) GetAttackKP(targetOdds float64, spellMaxHit int, chargeShareRTP bool) float64 {
 	attackRTP := model.GameRTP
-	if spellShare { // 需要把普通攻擊的部分RTP分給技能充能掉落時
+	if chargeShareRTP { // 需要把普通攻擊的部分RTP分給技能充能掉落時
 		attackRTP -= model.SpellSharedRTP
 	}
 	if attackRTP <= 0 {

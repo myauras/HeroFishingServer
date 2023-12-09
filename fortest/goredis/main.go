@@ -33,19 +33,19 @@ func main() {
 
 	defer cancel()
 
-	goldChanges := make(chan int)
+	pointChanges := make(chan int)
 
-	go updateGold(ctx, rdb, goldChanges)
-	// 金幣寫入
-	goldChanges <- -1
-	goldChanges <- 100
-	goldChanges <- -1
+	go updatePoint(ctx, rdb, pointChanges)
+	// 點數寫入
+	pointChanges <- -1
+	pointChanges <- 100
+	pointChanges <- -1
 
 	time.Sleep(1 * time.Second)
 	showPlayerInfo(ctx, rdb) // 顯示最新DB資料
 
 	cancel()
-	close(goldChanges)
+	close(pointChanges)
 }
 
 func showPlayerInfo(ctx context.Context, rdb *redis.Client) {
@@ -61,8 +61,8 @@ func showPlayerInfo(ctx context.Context, rdb *redis.Client) {
 	fmt.Printf("playerID: %s gold: %d heroLV: %d\n", playerID, gold, heroLV)
 }
 
-// 暫存金幣寫入並每X毫秒更新上RedisDB
-func updateGold(ctx context.Context, rdb *redis.Client, goldChanges <-chan int) {
+// 暫存點數寫入並每X毫秒更新上RedisDB
+func updatePoint(ctx context.Context, rdb *redis.Client, goldChanges <-chan int) {
 	var balance int
 	ticker := time.NewTicker(time.Duration(dbWriteMinMiliSecs) * time.Millisecond)
 	defer ticker.Stop()

@@ -12,6 +12,7 @@ import (
 	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
+
 	// gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
@@ -167,13 +168,13 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 		}
 	}
 	if player.MyHero != nil {
-		heroEXP = player.MyHero.HeroEXP
+		heroEXP = player.MyHero.EXP
 	}
 	player.MyHero = &Hero{
-		HeroID:     heroID,
-		HeroSkinID: heroSkinID,
-		HeroEXP:    heroEXP,
-		Spells:     heroSpells,
+		ID:     heroID,
+		SkinID: heroSkinID,
+		EXP:    heroEXP,
+		Spells: heroSpells,
 	}
 }
 
@@ -189,8 +190,8 @@ func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBE
 			heroSkinIDs[i] = ""
 			continue
 		}
-		heroIDs[i] = player.MyHero.HeroID
-		heroSkinIDs[i] = player.MyHero.HeroSkinID
+		heroIDs[i] = player.MyHero.ID
+		heroSkinIDs[i] = player.MyHero.SkinID
 	}
 	return heroIDs, heroSkinIDs
 }
@@ -514,16 +515,28 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	}
 	// 取rtp
 	rtp := spellJson.RTP
+	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+	// 如果是技能攻擊, 檢查是否可以施放該技能
+	if isSpellAttack {
+		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+		if err != nil {
+			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
+		}
+		if player.MyHero.CheckCanSpell(spellIdx) {
+			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
+			return
+		}
+	}
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 	// 花費點數
 	spendPoint := int64(0)
 
 	hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
-	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單
-	gainPoints := make([]int64, 0)     // 獲得點數清單
-	gainSpellCharges := make([]int, 0) // 獲得技能充能清單
-	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單
+	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
+	gainPoints := make([]int64, 0)     // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
+	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
 
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	hitCMD.MonsterIdxs = utility.RemoveDuplicatesFromSlice(hitCMD.MonsterIdxs) // 移除重複的命中索引
@@ -557,13 +570,13 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 			// 計算是否造成擊殺
 			kill := false
 			rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
-			if rtp == 0 { // 此攻擊為普攻, RTP為0都歸類在普攻
+			if !isSpellAttack { // 普攻
 				spendPoint = -int64(room.DBmap.Bet)
 				// 擊殺判定
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
 				kill = utility.GetProbResult(attackKP)
 				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v ", hitCMD.AttackID, spellMaxHits, odds, attackKP, kill)
-			} else { // 此攻擊為技能攻擊
+			} else { // 技能攻擊
 				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
 				kill = utility.GetProbResult(attackKP)
 				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", hitCMD.AttackID, spellMaxHits, rtp, odds, attackKP, kill)
@@ -576,11 +589,11 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 				if rndUnchargedSpell != nil {
 					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
-						spellIndex, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)
+						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
 						if err != nil {
 							log.Errorf("%s utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
 						}
-						gainSpellCharges = append(gainSpellCharges, spellIndex)
+						gainSpellCharges = append(gainSpellCharges, dropSpellIdx)
 					}
 				}
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
@@ -628,16 +641,21 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 		}
 		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 	}
+
 	// 玩家點數變化
 	totalGainPoint := spendPoint + utility.SliceSum(gainPoints) // 總點數變化是消耗點數+獲得點數
 	if totalGainPoint != 0 {
 		player.AddPoint(totalGainPoint)
 	}
+	// 英雄增加經驗
+	player.AddHeroExp(utility.SliceSum(gainHeroExps))
+	// 英雄技能充能
+	for _, v := range gainSpellCharges {
+		player.MyHero.AddHeroSpellCharge(v, 1)
+	}
+
 	// 從怪物清單中移除被擊殺的怪物
 	room.MSpawner.RemoveMonsters(killMonsterIdxs)
-
-	// 玩家英雄增加經驗
-	player.AddHeroExp(utility.SliceSum(gainHeroExps))
 
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)

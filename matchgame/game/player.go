@@ -15,6 +15,7 @@ type Player struct {
 	RedisPlayer  *redis.RedisPlayer      // RedisDB玩家實例
 	Index        int                     // 玩家在房間的索引(座位)
 	MyHero       *Hero                   // 使用中的英雄
+	GainPoint    int64                   // 此玩家在遊戲房總共贏得點數
 	LastUpdateAt time.Time               // 上次收到玩家更新封包(心跳)
 	ConnTCP      *gSetting.ConnectionTCP // TCP連線
 	ConnUDP      *gSetting.ConnectionUDP // UDP連線
@@ -24,6 +25,7 @@ type Player struct {
 func (player *Player) AddPoint(value int64) {
 	player.RedisPlayer.AddPoint(value)
 	player.DBPlayer.Point += int64(value)
+	player.GainPoint += value
 }
 
 // 英雄經驗增減

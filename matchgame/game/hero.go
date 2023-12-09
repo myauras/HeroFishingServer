@@ -8,10 +8,10 @@ import (
 )
 
 type Hero struct {
-	HeroID     int           // 英雄ID
-	HeroSkinID string        // SkinID
-	HeroEXP    int           // 英雄經驗
-	Spells     [3]*HeroSpell // 英雄技能
+	ID     int           // 英雄ID
+	SkinID string        // SkinID
+	EXP    int           // 英雄經驗
+	Spells [3]*HeroSpell // 英雄技能
 }
 
 // 取得此英雄隨機尚未充滿能的技能
@@ -36,4 +36,24 @@ func (hero *Hero) GetUnchargedSpells() []*HeroSpell {
 		}
 	}
 	return spells
+}
+
+// 英雄施法充能增減
+func (hero *Hero) AddHeroSpellCharge(idx int, value int) {
+	if idx >= len(hero.Spells) {
+		return
+	}
+	hero.Spells[idx].Charge += value
+}
+
+// 檢查是否可以施法
+func (hero *Hero) CheckCanSpell(idx int) bool {
+	if idx >= len(hero.Spells) {
+		return false
+	}
+	if hero.Spells[idx].Charge < hero.Spells[idx].SpellJson.Cost {
+		return false
+	}
+	hero.AddHeroSpellCharge(idx, -hero.Spells[idx].SpellJson.Cost)
+	return true
 }
