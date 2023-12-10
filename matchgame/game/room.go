@@ -537,6 +537,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	gainPoints := make([]int64, 0)     // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
 	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
 	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
+	gainDrops := make([]int, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
 
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	hitCMD.MonsterIdxs = utility.RemoveDuplicatesFromSlice(hitCMD.MonsterIdxs) // 移除重複的命中索引
@@ -564,8 +565,26 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 				return
 			}
 
-			// 計算實際怪物死掉獲得點數數
-			rewardPoint := int64(odds * float64(room.DBmap.Bet))
+			// 取得怪物掉落道具
+			dropJsons := monster.MonsterJson.GetDropJsonDatas()
+			dropAddOdds := 0.0 // 掉落道具增加的總RTP
+			for _, v := range dropJsons {
+				addOdds, err := strconv.ParseFloat(v.GainRTP, 64)
+				if err != nil {
+					log.Errorf("%s drop表(ID : %s)的GainRTP轉float錯誤: %v", logger.LOG_Room, v.ID, err)
+					continue
+				}
+				dropID, err := strconv.ParseInt(v.ID, 10, 32)
+				if err != nil {
+					log.Errorf("%s drop表(ID : %s)的ID轉int錯誤: %v", logger.LOG_Room, v.ID, err)
+					continue
+				}
+				dropAddOdds += addOdds
+				gainDrops := append(gainDrops, int(dropID))
+			}
+
+			// 計算實際怪物死掉獲得點數
+			rewardPoint := int64((odds + dropAddOdds) * float64(room.DBmap.Bet))
 
 			// 計算是否造成擊殺
 			kill := false
@@ -669,7 +688,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 			GainPoints:       gainPoints,
 			GainHeroExps:     gainHeroExps,
 			GainSpellCharges: gainSpellCharges,
-			GainDrops:        make([]int, 0),
+			GainDrops:        gainDrops,
 		}},
 	)
 }

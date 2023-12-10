@@ -3,14 +3,20 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	"herofishingGoModule/logger"
+	"herofishingGoModule/utility"
+	"strconv"
+
+	"github.com/google/martian/log"
 )
 
 // Monster JSON
 type MonsterJsonData struct {
-	ID   string `json:"ID"`
-	Ref  string `json:"Ref"`
-	Odds string `json:"Odds"`
-	EXP  string `json:"EXP"`
+	ID      string `json:"ID"`
+	Ref     string `json:"Ref"`
+	Odds    string `json:"Odds"`
+	EXP     string `json:"EXP"`
+	DropIDs string `json:"DropIDs"`
 	// Radius       string `json:"Radius"`
 	// Speed        string `json:"Speed"`
 	MonsterType string `json:"MonsterType"`
@@ -65,4 +71,32 @@ func GetMonsterByID(id string) (MonsterJsonData, error) {
 	}
 
 	return MonsterJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.Monster)
+}
+
+// 取得掉落IDs
+func (mJson MonsterJsonData) GetDropIds() []int {
+	if mJson.DropIDs == "" {
+		return nil
+	}
+	ids, err := utility.StrToIntSlice(mJson.DropIDs, ",")
+	if err != nil {
+		log.Errorf("%s 怪物表(ID: %s)的DropIDs欄位格式錯誤: %v", logger.LOG_GameJson, mJson.ID, err)
+		return nil
+	}
+	return ids
+}
+
+// 取得DropJsonDatas
+func (mJson MonsterJsonData) GetDropJsonDatas() []DropJsonData {
+	dropIds := mJson.GetDropIds()
+	dropJsonDatas := make([]DropJsonData, 0)
+	for _, v := range dropIds {
+		dropJson, err := GetDropByID(strconv.Itoa(v))
+		if err != nil {
+			log.Errorf("%s GetDropByID(strconv.Itoa(v)) v: %s 發生錯誤: %v", logger.LOG_GameJson, v, err)
+			continue
+		}
+		dropJsonDatas = append(dropJsonDatas, dropJson)
+	}
+	return dropJsonDatas
 }
