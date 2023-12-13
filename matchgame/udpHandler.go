@@ -81,24 +81,30 @@ func openConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 				// 但是要注意若之後有使用udp送重要行為 為了避免connToken被封包攔截要讓玩家需要重新通過tcp auth取新的token才是安全的作法
 				player.ConnUDP.Addr = addr
 			}
-			handleConnectionUDP(player, pack, stop)
-		}
-	}
-}
+			switch pack.CMD {
 
-// 處理UDP連線封包
-func handleConnectionUDP(player *game.Player, pack packet.UDPReceivePack, stop chan struct{}) {
-	switch {
-	case pack.CMD == packet.UPDATEGAME:
-		// log.Infof("%s 更新玩家 %s 心跳", logger.LOG_Main, player.DBPlayer.ID)
-		player.LastUpdateAt = time.Now() // 更新心跳
+			// ==========更新遊戲狀態==========
+			case packet.UPDATEGAME:
+				// log.Infof("%s 更新玩家 %s 心跳", logger.LOG_Main, player.DBPlayer.ID)
+				player.LastUpdateAt = time.Now() // 更新心跳
+
+			// ==========發動攻擊==========
+			case packet.ATTACK:
+				content := packet.Attack{}
+				if ok := content.Parse(pack.Content); !ok {
+					log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+					continue
+				}
+				game.MyRoom.HandleAttack(player, pack, content)
+			}
+		}
 	}
 }
 
 // 定時更新遊戲狀態給Client
 func updateGameLoop(player *game.Player, stop chan struct{}) {
 	log.Infof("%s (UDP)開始updateGameLoop", logger.LOG_Main)
-	timer := time.NewTicker(gSetting.TIME_UPDATE_INTERVAL_MS * time.Millisecond)
+	timer := time.NewTicker(gSetting.GAMEUPDATE_MS * time.Millisecond)
 	for {
 		select {
 		case <-stop:

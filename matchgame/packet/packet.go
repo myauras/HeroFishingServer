@@ -15,13 +15,16 @@ const (
 	SETHERO               = "SETHERO"               // (TCP)設定玩家英雄
 	SETHERO_TOCLIENT      = "SETHERO_TOCLIENT"      // (TCP)設定玩家英雄-送Client
 	LEAVE                 = "LEAVE"                 // (TCP)離開遊戲房
+	ATTACK                = "ATTACK"                // (UDP)攻擊
+	ATTACK_TOCLIENT       = "ATTACK_TOCLIENT"       // (UDP)攻擊-送Client
 	HIT                   = "HIT"                   // (TCP)擊中
 	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
 	UDPAUTH               = "UDPAUTH"               // (UDP)身分驗證
 	UPDATEGAME            = "UPDATEGAME"            // (UDP)遊戲狀態更新(太久沒收到回傳會將該玩家從房間踢出)
-	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每TIME_UPDATE_INTERVAL_MS毫秒會送一次)
+	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每GAMEUPDATE_MS毫秒會送一次)
+	UPDATESCENE_TOCLIENT  = "UPDATESCENE_TOCLIENT"  // (UDP)場景狀態更新-送Client(每SCENEUPDATE_MS毫秒會送一次)
 
 )
 
@@ -35,7 +38,7 @@ type UDPReceivePack struct {
 	CMD       string
 	PackID    int
 	ErrMsg    string
-	ConnToken string
+	ConnToken string // 收到的UPD CMD除了UDPAUTH以外都會包含ConnToken
 	Content   CMDContent
 }
 

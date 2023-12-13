@@ -7,10 +7,10 @@ import (
 
 // 伺服器設定
 const (
-	TIME_UPDATE_INTERVAL_MS        = 1000 // 每X毫秒送UPDATEGAME_TOCLIENT封包給client(心跳檢測)
-	AGONES_HEALTH_PIN_INTERVAL_SEC = 1    // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
+	GAMEUPDATE_MS                  = 1000  // 每X毫秒送UPDATEGAME_TOCLIENT封包給client(遊戲狀態更新並心跳檢測)
+	SCENEUPDATE_MS                 = 10000 // 每X毫秒送UPDATESCENE_TOCLIENT封包給client(場景狀態更新)
+	AGONES_HEALTH_PIN_INTERVAL_SEC = 1     // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 )
-
 
 type ConnectionTCP struct {
 	Conn    net.Conn      // TCP連線

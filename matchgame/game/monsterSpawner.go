@@ -199,7 +199,7 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 	}
 
 	// 廣播給所有玩家
-	MyRoom.BroadCastPacket(&packet.Pack{
+	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD: packet.SPAWN_TOCLIENT,
 		Content: &packet.Spawn_ToClient{
 			IsBoss:      spawn.IsBoss,

@@ -305,7 +305,8 @@ func (r *Room) OnRoomPlayerChange() {
 
 }
 
-func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}) error {
+// 處理TCP訊息
+func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	seatIndex := r.GetPlayerIndexByTCPConn(conn)
 	if seatIndex == -1 {
 		log.Errorf("%s HandleMessage fialed, Player is not in connection list", logger.LOG_Room)
@@ -319,13 +320,13 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	case packet.SETHERO:
 		content := packet.SetHero{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
-			return fmt.Errorf("Parse %s Failed", pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		r.SetHero(conn, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
-		r.BroadCastPacket(&packet.Pack{ // 廣播封包
+		r.BroadCastPacket(-1, &packet.Pack{ // 廣播封包
 			CMD: packet.SETHERO_TOCLIENT,
 			Content: &packet.SetHero_ToClient{
 				HeroIDs:     heroIDs,
@@ -337,8 +338,8 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	case packet.LEAVE: //離開遊戲房
 		content := packet.Leave{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
-			return fmt.Errorf("Parse %s Failed", pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		r.KickPlayer(conn) // 將玩家踢出房間
 
@@ -346,10 +347,10 @@ func (r *Room) HandleMessage(conn net.Conn, pack packet.Pack, stop chan struct{}
 	case packet.HIT:
 		content := packet.Hit{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s Parse %s Failed", logger.LOG_Main, pack.CMD)
-			return fmt.Errorf("Parse %s Failed", pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		MyRoom.HandleAttackEvent(conn, pack, content)
+		MyRoom.HandleHit(conn, pack, content)
 	}
 
 	return nil
@@ -415,11 +416,14 @@ func (r *Room) ChangeState(state GameState) {
 	r.GameState = state
 }
 
-// 送封包給遊戲房間內所有玩家
-func (r *Room) BroadCastPacket(pack *packet.Pack) {
-	log.Infof("廣播封包 CMD: %v", pack.CMD)
+// 送封包給遊戲房間內所有玩家(TCP), 除了指定索引(exceptPlayerIdx)的玩家, 如果要所有玩家就傳入-1就可以
+func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
+	log.Infof("廣播封包給其他玩家 CMD: %v", pack.CMD)
 	// 送封包給所有房間中的玩家
-	for _, v := range r.Players {
+	for i, v := range r.Players {
+		if i == exceptPlayerIdx {
+			continue
+		}
 		if v == nil || v.ConnTCP.Conn == nil {
 			continue
 		}
@@ -430,7 +434,7 @@ func (r *Room) BroadCastPacket(pack *packet.Pack) {
 	}
 }
 
-// 送封包給玩家
+// 送封包給玩家(TCP)
 func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
 		return
@@ -444,7 +448,7 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 
 // 送遊戲房中所有玩家狀態封包
 func (r *Room) UpdatePlayer() {
-	r.BroadCastPacket(&packet.Pack{
+	r.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
 		Content: &packet.UpdatePlayer_ToClient{
@@ -467,6 +471,44 @@ func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 		}
 	}
 	return players
+}
+
+// 送封包給玩家(UDP)
+func (r *Room) SendPacketToPlayer_UDP(pIndex int, sendData []byte) {
+	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
+		return
+	}
+	if sendData == nil {
+		return
+	}
+	player := r.Players[pIndex]
+	sendData = append(sendData, '\n')
+	_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
+	if sendErr != nil {
+		log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+		return
+	}
+}
+
+// 送封包給遊戲房間內所有玩家(UDP), 除了指定索引(exceptPlayerIdx)的玩家, 如果要所有玩家就傳入-1就可以
+func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
+	if sendData == nil {
+		return
+	}
+	for i, v := range r.Players {
+		if exceptPlayerIdx == i {
+			continue
+		}
+		if v == nil || v.ConnTCP.Conn == nil {
+			continue
+		}
+		sendData = append(sendData, '\n')
+		_, sendErr := v.ConnUDP.Conn.WriteTo(sendData, v.ConnUDP.Addr)
+		if sendErr != nil {
+			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+			return
+		}
+	}
 }
 
 // 遊戲計時器
@@ -499,8 +541,94 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 	}
 }
 
-// 處理收到的攻擊事件
-func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) {
+// 處理收到的攻擊事件(UDP)
+func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, content packet.Attack) {
+	needPoint := int64(room.DBmap.Bet)
+	// 取技能表
+	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
+	if err != nil {
+		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+		return
+	}
+	// 取rtp
+	rtp := spellJson.RTP
+	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+	// 是否為合法攻擊檢查
+	if isSpellAttack { // 如果是技能攻擊, 檢查是否可以施放該技能
+		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+		if err != nil {
+			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
+		}
+		if player.MyHero.CheckCanSpell(spellIdx) {
+			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
+			return
+		}
+	} else { // 如果是普攻, 檢查是否有足夠點數
+		if player.DBPlayer.Point < needPoint {
+			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
+			return
+		}
+	}
+	// 廣播給client
+	room.BroadCastPacket(player.Index, &packet.Pack{
+		CMD:    packet.ATTACK_TOCLIENT,
+		PackID: pack.PackID,
+		Content: &packet.Attack_ToClient{
+			PlayerIdx:   player.Index,
+			SpellJsonID: content.SpellJsonID,
+			MonsterIdx:  content.MonsterIdx,
+		}},
+	)
+}
+
+// // 處理收到的攻擊事件(TCP方法先保留, 未來需要可以改回去)
+// func (room *Room) HandleAttack_TCP(conn net.Conn, pack packet.Pack, content packet.Attack) {
+// 	// 取玩家
+// 	player := room.GetPlayerByTCPConn(conn)
+// 	if player == nil {
+// 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
+// 		return
+// 	}
+// 	needPoint := int64(room.DBmap.Bet)
+// 	// 取技能表
+// 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
+// 	if err != nil {
+// 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+// 		return
+// 	}
+// 	// 取rtp
+// 	rtp := spellJson.RTP
+// 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+// 	// 是否為合法攻擊檢查
+// 	if isSpellAttack { // 如果是技能攻擊, 檢查是否可以施放該技能
+// 		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+// 		if err != nil {
+// 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
+// 		}
+// 		if player.MyHero.CheckCanSpell(spellIdx) {
+// 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
+// 			return
+// 		}
+// 	} else { // 如果是普攻, 檢查是否有足夠點數
+// 		if player.DBPlayer.Point < needPoint {
+// 			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
+// 			return
+// 		}
+// 	}
+// 	// 廣播給client
+// 	room.BroadCastPacket(&packet.Pack{
+// 		CMD:    packet.ATTACK_TOCLIENT,
+// 		PackID: pack.PackID,
+// 		Content: &packet.Attack_ToClient{
+// 			PlayerIdx:   player.Index,
+// 			SpellJsonID: content.SpellJsonID,
+// 			MonsterIdx:  content.MonsterIdx,
+// 		}},
+// 	)
+// }
+
+// 處理收到的擊中事件
+func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) {
 	// 取玩家
 	player := room.GetPlayerByTCPConn(conn)
 	if player == nil {
@@ -580,7 +708,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 					continue
 				}
 				dropAddOdds += addOdds
-				gainDrops := append(gainDrops, int(dropID))
+				gainDrops = append(gainDrops, int(dropID))
 			}
 
 			// 計算實際怪物死掉獲得點數
@@ -680,7 +808,7 @@ func (room *Room) HandleAttackEvent(conn net.Conn, pack packet.Pack, hitCMD pack
 	// log.Infof("gainPoints: %v \n", gainPoints)
 	// log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
 	// 廣播給client
-	room.BroadCastPacket(&packet.Pack{
+	room.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
 		PackID: pack.PackID,
 		Content: &packet.Hit_ToClient{
