@@ -6,27 +6,26 @@ import (
 	"matchgame/logger"
 	"matchgame/packet"
 	"strconv"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type ScheduledSpawn struct {
-	SpawnID        int
-	MonsterJsonIDs []int
-	MonsterIdxs    []int //怪物唯一索引清單
-	RouteJsonID    int
-	IsBoss         bool
+type Spawn struct {
+	SpawnJsonID    int   // 生怪JsonID
+	MonsterJsonIDs []int // 怪物JsonID清單
+	MonsterIdxs    []int // 怪物唯一索引清單
+	RouteJsonID    int   // 路徑JsonID
+	IsBoss         bool  // 此生怪是否為BOSS生怪
 }
 
 var spawnAccumulator = utility.NewAccumulator() // 產生一個生怪累加器
 
-func NewScheduledSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBoss bool) *ScheduledSpawn {
+func NewSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBoss bool) *Spawn {
 	// log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
 	monsterIdxs := make([]int, len(monsterJsonIDs))
-	return &ScheduledSpawn{
-		SpawnID:        spawnID,
+	return &Spawn{
+		SpawnJsonID:    spawnID,
 		MonsterJsonIDs: monsterJsonIDs,
 		MonsterIdxs:    monsterIdxs,
 		RouteJsonID:    routeJsonID,
@@ -37,15 +36,16 @@ func NewScheduledSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBos
 type MonsterSpawner struct {
 	BossExist     bool             // BOSS是否存在場上的標記
 	spawnTimerMap map[int]int      // <MonsterSpawn表ID,出怪倒數秒數>
-	Monsters      map[int]*Monster // 目前場上的怪物列表
+	Monsters      map[int]*Monster // 目前場上存活的怪物列表
+	Spawns        []packet.Spawn   // 生怪清單(如果該生怪中的怪物都死光就會從此清單中移除), 玩家剛加入遊戲時 與 定時同步場景用
 	controlChan   chan bool        // 生怪開關Chan
-	mutex         sync.Mutex
 }
 
 func NewMonsterSpawner() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
 		Monsters:      make(map[int]*Monster),
+		Spawns:        make([]packet.Spawn, 0),
 		controlChan:   make(chan bool),
 	}
 }
@@ -90,7 +90,7 @@ func (ms *MonsterSpawner) SpawnSwitch(setOn bool) {
 }
 
 // 生怪計時器, 執行生怪倒數, Spawner倒數結束就生怪
-func (ms *MonsterSpawner) ScheduleMonster() {
+func (ms *MonsterSpawner) SpawnTimer() {
 
 	running := false
 
@@ -102,19 +102,30 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 			if !running {
 				continue
 			}
-			time.Sleep(2000 * time.Millisecond) // 每X豪秒檢查一次
+			time.Sleep(1000 * time.Millisecond) // 每X豪秒檢查一次
+
+			// 怪物移除檢查
+			needRemoveMonsterIdxs := make([]int, 0)
+			for _, monster := range ms.Monsters {
+				if MyRoom.GameTime > monster.LeaveTime {
+					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
+				}
+			}
+			if len(needRemoveMonsterIdxs) != 0 {
+				ms.RemoveMonsters(needRemoveMonsterIdxs)
+			}
+
+			// 生怪檢查
 			for spawnID, timer := range ms.spawnTimerMap {
 				spawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(spawnID)) // 這邊不用檢查err因為會加入spawnTimerMap都是檢查過的
 				if ms.BossExist && spawnData.SpawnType == gameJson.Boss {
 					continue // BOSS還活著就不會加入BOSS類型的出怪表ID
 				}
 				timer -= 1
-				ms.mutex.Lock()
 				ms.spawnTimerMap[spawnID] = timer
-				ms.mutex.Unlock()
 
 				if timer <= 0 {
-					var spawn *ScheduledSpawn
+					var spawn *Spawn
 					switch spawnData.SpawnType {
 					case gameJson.RandomGroup:
 
@@ -141,7 +152,7 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 							log.Errorf("%s newSpawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 							continue
 						}
-						spawn = NewScheduledSpawn(rndSpawnID, monsterJsonIDs, routJsonID, newSpawnData.SpawnType == gameJson.Boss)
+						spawn = NewSpawn(rndSpawnID, monsterJsonIDs, routJsonID, newSpawnData.SpawnType == gameJson.Boss)
 						ms.Spawn(spawn)
 					case gameJson.Minion, gameJson.Boss:
 						monsterJsonIDs, err := spawnData.GetMonsterJsonIDs()
@@ -153,16 +164,14 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 							log.Errorf("%s spawnData.GetRandRoutID()錯誤: %v", logger.LOG_MonsterSpawner, err)
 							continue
 						}
-						spawn = NewScheduledSpawn(spawnID, monsterJsonIDs, routJsonID, spawnData.SpawnType == gameJson.Boss)
+						spawn = NewSpawn(spawnID, monsterJsonIDs, routJsonID, spawnData.SpawnType == gameJson.Boss)
 						ms.Spawn(spawn)
 					}
-					ms.mutex.Lock()
 					spawnSecs, err := spawnData.GetRandSpawnSec()
 					if err != nil {
 						log.Errorf("%s spawnData.GetRandSpawnSec()錯誤: %v", logger.LOG_MonsterSpawner, err)
 					}
 					ms.spawnTimerMap[spawnID] = spawnSecs
-					ms.mutex.Unlock()
 				}
 			}
 		}
@@ -170,33 +179,67 @@ func (ms *MonsterSpawner) ScheduleMonster() {
 }
 
 // 生怪並把怪物加入怪物清單 並 廣播給所有玩家
-func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
-	ms.mutex.Lock()
-	defer ms.mutex.Unlock()
+func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 	// log.Infof("%s 生怪IDs: %v", logger.LOG_MonsterSpawner, spawn.MonsterIDs)
+	routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteJsonID))
+	if err != nil {
+		log.Errorf("%s gameJson.GetRouteByID(strconv.Itoa(spawn.RouteJsonID))錯誤: %v", logger.LOG_MonsterSpawner, err)
+		return
+	}
+	routeJsonID, err := strconv.ParseInt(routeJson.ID, 10, 64)
+	if err != nil {
+		log.Errorf("%s strconv.ParseInt(routeJson.ID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+		return
+	}
+	monsters := make([]packet.Monster, 0)
+
+	// 遍歷生怪中的怪物
 	for i, monsterID := range spawn.MonsterJsonIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
 		if err != nil {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
 			continue
 		}
-		monsterIdx := spawnAccumulator.GetNextIndex("monster", 1)
-		routeJson, err := gameJson.GetRouteByID(strconv.Itoa(spawn.RouteJsonID))
+		monsterJsonID, err := strconv.ParseInt(monsterJson.ID, 10, 64)
 		if err != nil {
-			log.Errorf("%s gameJson.GetRouteByID: %v", logger.LOG_MonsterSpawner, spawn.RouteJsonID)
+			log.Errorf("%s strconv.ParseInt(monsterJson.ID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, monsterID)
 			continue
 		}
 
-		spawn.MonsterIdxs[i] = monsterIdx // 設定怪物唯一索引
+		// 設定怪物唯一索引
+		monsterIdx := spawnAccumulator.GetNextIdx("monster")
+		spawn.MonsterIdxs[i] = monsterIdx
 
 		// 加入怪物清單
+		leaveTime, err := strconv.ParseFloat(monsterJson.LeaveSec, 64)
+		if err != nil {
+			log.Errorf("%s strconv.ParseFloat(monsterJson.LeaveSec, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+			continue
+		}
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,
 			RouteJson:   routeJson,
 			SpawnTime:   MyRoom.GameTime,
+			LeaveTime:   leaveTime,
 		}
+
+		// 紀錄怪物清單
+		monsters = append(monsters, packet.Monster{
+			JsonID:  int(monsterJsonID),
+			Idx:     monsterIdx,
+			Death:   false,
+			Effects: nil,
+		})
+
 	}
+	// 紀錄生怪清單
+	ms.Spawns = append(ms.Spawns, packet.Spawn{
+		RouteJsonID: int(routeJsonID),
+		SpawnTime:   MyRoom.GameTime,
+		IsBoss:      spawn.IsBoss,
+		Monsters:    monsters,
+	})
 
 	// 廣播給所有玩家
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
@@ -212,11 +255,44 @@ func (ms *MonsterSpawner) Spawn(spawn *ScheduledSpawn) {
 }
 
 // 從怪物清單中移除被擊殺的怪物
+// 從Spawn清單中把死亡的Death設定為true
+// 如果某個Spawn的怪物清單都死亡就移除該Spawn
 func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
+	killSet := make(map[int]bool)
 	for _, v := range killMonsterIdxs {
+		killSet[v] = true
 		if m, ok := ms.Monsters[v]; ok {
 			m.RemoveMonster()
 		}
 	}
-	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs)
+
+	needRemoveSpawnIdxs := make([]int, 0)
+	for i, spawn := range ms.Spawns {
+		if spawn.Monsters == nil {
+			needRemoveSpawnIdxs = append(needRemoveSpawnIdxs, i)
+			continue
+		}
+
+		noAliveMonster := true // 此Spawn是否沒有怪物存活了
+		for _, monster := range spawn.Monsters {
+			if _, exists := killSet[monster.Idx]; exists {
+				monster.Death = true // 設定為已死亡
+
+			}
+			if !monster.Death {
+				noAliveMonster = false
+			}
+		}
+		// 如果此Spawn沒有任何怪物存活就把此Spawn加到要移除清單中
+		if noAliveMonster {
+			needRemoveSpawnIdxs = append(needRemoveSpawnIdxs, i)
+		}
+
+	}
+	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs) // 從怪物清單中移除被擊殺的怪物
+	if len(needRemoveSpawnIdxs) > 0 {                         // 如果有Spawn的怪物都死亡就移除該Spawn
+		log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
+		utility.RemoveFromSliceBySlice(ms.Spawns, needRemoveSpawnIdxs)
+	}
+
 }

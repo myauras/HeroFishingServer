@@ -258,7 +258,14 @@ func (r *Room) KickPlayer(conn net.Conn) {
 	player.CloseConnection()
 	r.Players[seatIndex] = nil
 	r.OnRoomPlayerChange()
-	r.UpdatePlayer()
+	// 更新玩家狀態
+	r.BroadCastPacket(seatIndex, &packet.Pack{
+		CMD:    packet.UPDATEPLAYER_TOCLIENT,
+		PackID: -1,
+		Content: &packet.UpdatePlayer_ToClient{
+			Players: r.GetPacketPlayers(),
+		},
+	})
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
@@ -446,17 +453,6 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	}
 }
 
-// 送遊戲房中所有玩家狀態封包
-func (r *Room) UpdatePlayer() {
-	r.BroadCastPacket(-1, &packet.Pack{
-		CMD:    packet.UPDATEPLAYER_TOCLIENT,
-		PackID: -1,
-		Content: &packet.UpdatePlayer_ToClient{
-			Players: r.GetPacketPlayers(),
-		},
-	})
-}
-
 // 取得要送封包的玩家陣列
 func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 	var players [setting.PLAYER_NUMBER]*packet.Player
@@ -466,8 +462,9 @@ func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 			continue
 		}
 		players[i] = &packet.Player{
-			ID:    v.DBPlayer.ID,
-			Index: v.Index,
+			ID:         v.DBPlayer.ID,
+			Idx:        v.Index,
+			GainPoints: v.GainPoint,
 		}
 	}
 	return players
@@ -475,7 +472,7 @@ func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 
 // 送封包給玩家(UDP)
 func (r *Room) SendPacketToPlayer_UDP(pIndex int, sendData []byte) {
-	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
+	if r.Players[pIndex] == nil || r.Players[pIndex].ConnUDP.Conn == nil {
 		return
 	}
 	if sendData == nil {
@@ -499,7 +496,7 @@ func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
 		if exceptPlayerIdx == i {
 			continue
 		}
-		if v == nil || v.ConnTCP.Conn == nil {
+		if v == nil || v.ConnUDP.Conn == nil {
 			continue
 		}
 		sendData = append(sendData, '\n')

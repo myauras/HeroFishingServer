@@ -116,7 +116,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 		// 確認目Matchgame是否還活著, 掛掉就繼續找下一個
 		err := CheckGameServer(room.dbMatchgameID)
 		if err != nil {
-			utility.RemoveFromSlice(usher.rooms, roomIdx) // 移除掛掉的房間
+			utility.RemoveFromSliceByIdx(usher.rooms, roomIdx) // 移除掛掉的房間
 			log.Errorf("%s 目標遊戲房已掛: %v", logger.LOG_Room, err)
 			continue
 		}

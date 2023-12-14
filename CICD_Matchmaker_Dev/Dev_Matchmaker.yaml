@@ -32,7 +32,7 @@ spec:
       serviceAccountName: default # 指定使用default serviceAccount
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.89
+        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.91
         resources:
           requests:
             memory: "1024Mi"

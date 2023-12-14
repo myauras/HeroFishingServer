@@ -156,7 +156,7 @@ func main() {
 	// 開始遊戲房計時器
 	go room.RoomTimer(stopChan)
 	// 開始生怪
-	go room.MSpawner.ScheduleMonster()
+	go room.MSpawner.SpawnTimer()
 	room.MSpawner.SpawnSwitch(true)
 
 	log.Infof("%s ==============房間準備就緒==============", logger.LOG_Main)

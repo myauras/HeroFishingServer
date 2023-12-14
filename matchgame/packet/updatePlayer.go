@@ -1,7 +1,7 @@
 package packet
 
 import (
-// "herofishingGoModule/setting"
+	"time"
 )
 
 type UpdatePlayer_ToClient struct {
@@ -10,6 +10,12 @@ type UpdatePlayer_ToClient struct {
 
 }
 type Player struct {
-	ID    string
-	Index int
+	ID         string
+	Idx        int   // 玩家索引(座位)
+	GainPoints int64 // 玩家總獲得點數
+}
+type PlayerBuffer struct {
+	Name     string    // 效果名稱
+	AtTime   time.Time // 在遊戲時間第X秒觸發
+	Duration float64   // 效果持續X秒
 }
