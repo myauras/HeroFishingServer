@@ -6,6 +6,7 @@ import (
 	"matchgame/logger"
 	"matchgame/packet"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -39,6 +40,7 @@ type MonsterSpawner struct {
 	Monsters      map[int]*Monster // 目前場上存活的怪物列表
 	Spawns        []packet.Spawn   // 生怪清單(如果該生怪中的怪物都死光就會從此清單中移除), 玩家剛加入遊戲時 與 定時同步場景用
 	controlChan   chan bool        // 生怪開關Chan
+	MutexLock     sync.Mutex
 }
 
 func NewMonsterSpawner() *MonsterSpawner {
@@ -193,6 +195,13 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 	}
 	monsters := make([]packet.Monster, 0)
 
+	// 如果是Boss生怪就將BOSS已存在設定為true
+	if spawn.IsBoss {
+		ms.MutexLock.Lock()
+		ms.BossExist = true
+		ms.MutexLock.Unlock()
+	}
+
 	// 遍歷生怪中的怪物
 	for i, monsterID := range spawn.MonsterJsonIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
@@ -262,6 +271,12 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 	for _, v := range killMonsterIdxs {
 		killSet[v] = true
 		if m, ok := ms.Monsters[v]; ok {
+			// 如果死亡的是Boss就將BOSS已存在設定回false
+			if m.MonsterJson.MonsterType == "Boss" {
+				ms.MutexLock.Lock()
+				ms.BossExist = false
+				ms.MutexLock.Unlock()
+			}
 			m.RemoveMonster()
 		}
 	}
@@ -277,7 +292,6 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 		for _, monster := range spawn.Monsters {
 			if _, exists := killSet[monster.Idx]; exists {
 				monster.Death = true // 設定為已死亡
-
 			}
 			if !monster.Death {
 				noAliveMonster = false
