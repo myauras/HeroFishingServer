@@ -13,15 +13,14 @@ import (
 	logger "matchgame/logger"
 	"matchgame/packet"
 
-	// gSetting "matchgame/setting"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
+	gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -34,7 +33,7 @@ const (
 
 const (
 	KICK_PLAYER_SECS     float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS  float64 = 30  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	ATTACK_EXPIRED_SECS  float64 = 10  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 	UPDATETIMER_MILISECS int     = 500 // 計時器X毫秒跑一次
 )
 
@@ -122,11 +121,35 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
-
+	go RoomLoop() // 開始房間循環
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
 	roomChan <- MyRoom
+}
+
+// 房間循環
+func RoomLoop() {
+	ticker := time.NewTicker(gSetting.ROOMLOOP_MS * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		MyRoom.RemoveExpiredAttackEvents() // 移除過期的攻擊事件
+	}
+}
+
+// 移除過期的攻擊事件
+func (r *Room) RemoveExpiredAttackEvents() {
+	toRemoveKeys := make([]string, 0)
+	for k, v := range r.AttackEvents {
+		if r.GameTime > v.ExpiredTime {
+			toRemoveKeys = append(toRemoveKeys, k)
+		}
+	}
+	if len(toRemoveKeys) > 0 {
+		utility.RemoveFromMapByKeys(r.AttackEvents, toRemoveKeys)
+		log.Infof("%s 移除不需要的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
+	}
 }
 
 func (r *Room) WriteGameErrorLog(log string) {
@@ -666,6 +689,9 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	spellMaxHits := spellJson.MaxHits
 	// 花費點數
 	spendPoint := int64(0)
+	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
+	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
+	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(hitCMD.AttackID)
 
 	hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
 	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
@@ -725,15 +751,14 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			kill := false
 			rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
 			if !isSpellAttack { // 普攻
-				spendPoint = -int64(room.DBmap.Bet)
 				// 擊殺判定
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
 				kill = utility.GetProbResult(attackKP)
-				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v ", hitCMD.AttackID, spellMaxHits, odds, attackKP, kill)
+				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v ", attackID, spellMaxHits, odds, attackKP, kill)
 			} else { // 技能攻擊
 				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
 				kill = utility.GetProbResult(attackKP)
-				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", hitCMD.AttackID, spellMaxHits, rtp, odds, attackKP, kill)
+				log.Infof("======attackID: %s, spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", attackID, spellMaxHits, rtp, odds, attackKP, kill)
 			}
 
 			// 如果有擊殺就加到清單中
@@ -762,8 +787,8 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		return
 	}
 
-	// 以client傳來的AttackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
-	if _, ok := room.AttackEvents[hitCMD.AttackID]; !ok {
+	// 以attackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
+	if _, ok := room.AttackEvents[attackID]; !ok {
 		// 檢查擊中怪物數量是否超過此技能的最大擊中數量
 		if len(hitMonsterIdxs) > int(spellMaxHits) {
 			log.Errorf("%s 收到的擊中數量超過此技能最大擊中數量: %v", logger.LOG_Room, err)
@@ -772,15 +797,19 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		idxs := make([][]int, 1)
 		idxs[0] = hitMonsterIdxs
 		attackEvent := AttackEvent{
-			AttackID:    hitCMD.AttackID,
+			AttackID:    attackID,
 			ExpiredTime: room.GameTime + ATTACK_EXPIRED_SECS,
 			MonsterIdxs: idxs,
 		}
-		room.AttackEvents[hitCMD.AttackID] = &attackEvent
+		room.AttackEvents[attackID] = &attackEvent
+		// 普攻的話要扣點數
+		if !isSpellAttack {
+			spendPoint = -int64(room.DBmap.Bet)
+		}
 	} else {
-		attackEvent := room.AttackEvents[hitCMD.AttackID]
+		attackEvent := room.AttackEvents[attackID]
 		if attackEvent == nil {
-			log.Errorf("%s room.AttackEvents[hitCMD.AttackID]為nil", logger.LOG_Room)
+			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Room)
 			return
 		}
 		// 目前此技能收到的總擊中數量
@@ -792,8 +821,11 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		if curHits > int(spellMaxHits) {
 			log.Errorf("%s 收到的擊中數量超過此技能最大可擊中數量: %v", logger.LOG_Room, err)
 			return
+		} else if curHits == int(spellMaxHits) { // 如果是此攻擊的最後一波命中就移除此Attack
+			delete(room.AttackEvents, attackID)
+		} else { // 將此波命中加入攻擊中
+			attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 		}
-		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 	}
 
 	// 玩家點數變化
