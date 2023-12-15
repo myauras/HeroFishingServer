@@ -135,7 +135,6 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 			game.MyRoom.SendPacketToPlayer_UDP(player.Index, sendData)
 		// ==========更新玩家狀態==========
 		case <-playerUpdateTimer.C:
-			log.Info("==========更新玩家狀態==========")
 			sendData, err := json.Marshal(&packet.Pack{
 				CMD:    packet.UPDATEPLAYER_TOCLIENT,
 				PackID: -1,

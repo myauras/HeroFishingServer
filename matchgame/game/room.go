@@ -527,7 +527,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 				}
 				nowTime := time.Now()
 				// 玩家無心跳超過X秒就踢出遊戲房
-				log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
+				// log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
 				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
 					MyRoom.KickPlayer(player.ConnTCP.Conn)
 				}
@@ -540,6 +540,16 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 
 // 處理收到的攻擊事件(UDP)
 func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, content packet.Attack) {
+	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
+	if content.MonsterIdx >= 0 {
+		if monster, ok := room.MSpawner.Monsters[content.MonsterIdx]; ok {
+			if monster == nil {
+				return
+			}
+		} else {
+			return
+		}
+	}
 	needPoint := int64(room.DBmap.Bet)
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
