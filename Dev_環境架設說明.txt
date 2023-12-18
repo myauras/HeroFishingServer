@@ -1,3 +1,8 @@
+# 熟悉Docker(先get started簡單跑過) https://docs.docker.com/guides/get-started/
+# 熟悉k8s(概念跟getting started簡單跑過) https://kubernetes.io/docs/home/
+# 熟悉agones(getting started簡單跑過) https://kubernetes.io/docs/home/
+# 測試時建議開一個新的google帳戶有免費額度可以用(機器有點小貴)
+
 # 使用此批次檔執行Agones服務 在powershell中執行.\Dev_RunAgonesSystem.bat
 # 詳細的Agones服務建立可以參考官方文件 https://agones.dev/site/docs/installation/install-agones/helm/
 
