@@ -13,14 +13,15 @@ import (
 	logger "matchgame/logger"
 	"matchgame/packet"
 
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 	gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -727,21 +728,19 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			}
 
 			// 取得怪物掉落道具
-			dropJsons := monster.MonsterJson.GetDropJsonDatas()
 			dropAddOdds := 0.0 // 掉落道具增加的總RTP
-			for _, v := range dropJsons {
-				addOdds, err := strconv.ParseFloat(v.GainRTP, 64)
+			if monster.MonsterJson.DropID != "" {
+				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
-					log.Errorf("%s drop表(ID : %s)的GainRTP轉float錯誤: %v", logger.LOG_Room, v.ID, err)
-					continue
+					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Room, err)
+					return
 				}
-				dropID, err := strconv.ParseInt(v.ID, 10, 32)
+				addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
 				if err != nil {
-					log.Errorf("%s drop表(ID : %s)的ID轉int錯誤: %v", logger.LOG_Room, v.ID, err)
-					continue
+					log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
+					return
 				}
 				dropAddOdds += addOdds
-				gainDrops = append(gainDrops, int(dropID))
 			}
 
 			// 計算實際怪物死掉獲得點數
@@ -765,19 +764,36 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			if kill {
 				// 技能充能掉落
 				dropChargeP := 0.0
+				log.Info("aaaaaaaaaaaaaaa")
+				gainSpellCharges = append(gainSpellCharges, -1)
+				gainDrops = append(gainDrops, -1)
+				log.Info("bbbbbbbbbbbb")
 				if rndUnchargedSpell != nil {
 					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
 						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
 						if err != nil {
-							log.Errorf("%s utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
+							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
 						}
-						gainSpellCharges = append(gainSpellCharges, dropSpellIdx)
+						log.Info("cccccccccccccc")
+						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
+						log.Info("ddddddddddddd")
 					}
 				}
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
+				log.Info("eeeeeeeeeeeeeeeee")
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
+				log.Info("ffffffffffffff")
+				if monster.MonsterJson.DropID != "" {
+					dropID64, err := strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
+					if err != nil {
+						log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Room, err)
+						return
+					}
+					gainDrops[len(gainDrops)-1] = int(dropID64)
+				}
+				log.Infof("gainSpellCharges: %v  , gainDrops: %v ", gainSpellCharges, gainDrops)
 			}
 		}
 	}
@@ -842,10 +858,13 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 
 	// 從怪物清單中移除被擊殺的怪物
 	room.MSpawner.RemoveMonsters(killMonsterIdxs)
+	log.Infof("/////////////////////////////////")
+	log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
+	log.Infof("gainPoints: %v \n", gainPoints)
+	log.Infof("gainHeroExps: %v \n", gainHeroExps)
+	log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
+	log.Infof("gainDrops: %v \n", gainDrops)
 
-	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
-	// log.Infof("gainPoints: %v \n", gainPoints)
-	// log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
 	// 廣播給client
 	room.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
