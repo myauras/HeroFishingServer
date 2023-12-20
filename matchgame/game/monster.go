@@ -14,7 +14,3 @@ type Monster struct {
 	LeaveTime   float64                  // 在遊戲時間第X秒時要被移除
 }
 
-// 移除怪物
-func (monster *Monster) RemoveMonster() {
-	// log.Infof("%s 移除怪物 Idx: %v ID: %s", logger.LOG_Monster, monster.MonsterIdx, monster.MonsterJson.ID)
-}

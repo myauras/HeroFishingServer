@@ -32,9 +32,10 @@ func Init() {
 }
 func newRedisClient() {
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
-		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
-		DB:       0,
+		Addr:            "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
+		Password:        "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
+		DB:              0,
+		ConnMaxIdleTime: 3 * time.Minute, // 閒置斷線時間, 超過這個時間不使用就自動與DB斷連
 	})
 }
 

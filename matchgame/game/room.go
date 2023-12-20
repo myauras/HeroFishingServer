@@ -449,7 +449,10 @@ func (r *Room) ChangeState(state GameState) {
 
 // 送封包給遊戲房間內所有玩家(TCP), 除了指定索引(exceptPlayerIdx)的玩家, 如果要所有玩家就傳入-1就可以
 func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
-	log.Infof("廣播封包給其他玩家 CMD: %v", pack.CMD)
+	if pack.CMD != packet.SPAWN_TOCLIENT {
+		log.Infof("廣播封包給其他玩家 CMD: %v", pack.CMD)
+	}
+
 	// 送封包給所有房間中的玩家
 	for i, v := range r.Players {
 		if i == exceptPlayerIdx {
@@ -590,7 +593,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 		if err != nil {
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
 		}
-		if player.MyHero.CheckCanSpell(spellIdx) {
+		if player.MyHero.CanSpell(spellIdx) {
 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
 		}
@@ -669,20 +672,21 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)
 	if err != nil {
-		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+		room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤", pack))
+		log.Errorf("%s HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
 		return
 	}
 	// 取rtp
 	rtp := spellJson.RTP
 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
-	// 如果是技能攻擊, 檢查是否可以施放該技能
+	spellIdx := 0             // 釋放第幾個技能, 0就代表是普攻
+	// 如果是技能攻擊, 設定spellIdx(第幾招技能)
 	if isSpellAttack {
-		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+		spellIdx = idx
 		if err != nil {
+			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取施法技能索引錯誤", pack))
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
-		}
-		if player.MyHero.CheckCanSpell(spellIdx) {
-			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
 		}
 	}
@@ -700,14 +704,18 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
 	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
 	gainDrops := make([]int, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	hitCMD.MonsterIdxs = utility.RemoveDuplicatesFromSlice(hitCMD.MonsterIdxs) // 移除重複的命中索引
 	for _, monsterIdx := range hitCMD.MonsterIdxs {
 		// 確認怪物索引存在清單中, 不存在代表已死亡或是client送錯怪物索引
-		if monster, ok := room.MSpawner.Monsters[monsterIdx]; ok {
-
+		if monster, ok := room.MSpawner.Monsters[monsterIdx]; !ok {
+			errStr := fmt.Sprintf("目標不存在(或已死亡) monsterIdx:%d", monsterIdx)
+			room.SendPacketToPlayer(player.Index, newHitErrorPack(errStr, pack))
+			log.Errorf("%s %s", logger.LOG_Room, errStr)
+			continue
+		} else {
 			if monster == nil {
+				room.SendPacketToPlayer(player.Index, newHitErrorPack("room.MSpawner.Monsters中的monster is null", pack))
 				log.Errorf("%s room.MSpawner.Monsters中的monster is null", logger.LOG_Room)
 				continue
 			}
@@ -717,12 +725,14 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			// 取得怪物賠率
 			odds, err := strconv.ParseFloat(monster.MonsterJson.Odds, 64)
 			if err != nil {
+				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物賠率錯誤", pack))
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
 			// 取得怪物經驗
 			monsterExp, err := strconv.ParseFloat(monster.MonsterJson.EXP, 64)
 			if err != nil {
+				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物經驗錯誤", pack))
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Room, err)
 				return
 			}
@@ -732,11 +742,13 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			if monster.MonsterJson.DropID != "" {
 				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
+					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表錯誤", pack))
 					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Room, err)
 					return
 				}
 				addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
 				if err != nil {
+					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
 					log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
 					return
 				}
@@ -769,9 +781,11 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 				if rndUnchargedSpell != nil {
 					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
-						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 						if err != nil {
 							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
+							room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時解析第X技能索引錯誤", pack))
+							return
 						}
 						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
 					}
@@ -783,6 +797,7 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 					dropID64, err := strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
 					if err != nil {
 						log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Room, err)
+						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時parse dropID錯誤", pack))
 						return
 					}
 					gainDrops[len(gainDrops)-1] = int(dropID64)
@@ -790,16 +805,15 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			}
 		}
 	}
-
 	// 此波攻擊沒命中任何怪物
 	if len(hitMonsterIdxs) == 0 {
 		return
 	}
-
 	// 以attackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
 	if _, ok := room.AttackEvents[attackID]; !ok {
 		// 檢查擊中怪物數量是否超過此技能的最大擊中數量
 		if len(hitMonsterIdxs) > int(spellMaxHits) {
+			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時收到的擊中數量超過此技能最大擊中數量", pack))
 			log.Errorf("%s 收到的擊中數量超過此技能最大擊中數量: %v", logger.LOG_Room, err)
 			return
 		}
@@ -810,14 +824,22 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			ExpiredTime: room.GameTime + ATTACK_EXPIRED_SECS,
 			MonsterIdxs: idxs,
 		}
-		room.AttackEvents[attackID] = &attackEvent
 		// 普攻的話要扣點數
 		if !isSpellAttack {
 			spendPoint = -int64(room.DBmap.Bet)
+		} else { // 技能的話要檢查是否能量足夠, 不足夠要返回, 足夠的話就重置充能
+			if !player.MyHero.CanSpell(spellIdx) {
+				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時該玩家充能不足, 無法使用技能才對", pack))
+				log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
+				return
+			}
+			player.MyHero.ResetHeroSpellCharge(spellIdx)
 		}
+		room.AttackEvents[attackID] = &attackEvent // 將此攻擊事件加入清單
 	} else {
 		attackEvent := room.AttackEvents[attackID]
 		if attackEvent == nil {
+			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時room.AttackEvents[attackID]為nil", pack))
 			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Room)
 			return
 		}
@@ -828,6 +850,7 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		}
 		// 檢查擊中數量是否超過此技能的最大擊中數量
 		if curHits > int(spellMaxHits) {
+			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時收到的擊中數量超過此技能最大可擊中數量", pack))
 			log.Errorf("%s 收到的擊中數量超過此技能最大可擊中數量: %v", logger.LOG_Room, err)
 			return
 		} else if curHits == int(spellMaxHits) { // 如果是此攻擊的最後一波命中就移除此Attack
@@ -836,11 +859,10 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitCMD.MonsterIdxs)
 		}
 	}
-
-	// 此波攻擊沒擊殺任何怪物
-	if len(killMonsterIdxs) == 0 {
-		return
-	}
+	// // 此波攻擊沒擊殺任何怪物
+	// if len(killMonsterIdxs) == 0 {
+	// 	return
+	// }
 
 	// 玩家點數變化
 	totalGainPoint := spendPoint + utility.SliceSum(gainPoints) // 總點數變化是消耗點數+獲得點數
@@ -859,12 +881,12 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 
 	// 從怪物清單中移除被擊殺的怪物
 	room.MSpawner.RemoveMonsters(killMonsterIdxs)
-	log.Infof("/////////////////////////////////")
-	log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
-	log.Infof("gainPoints: %v \n", gainPoints)
-	log.Infof("gainHeroExps: %v \n", gainHeroExps)
-	log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
-	log.Infof("gainDrops: %v \n", gainDrops)
+	// log.Infof("/////////////////////////////////")
+	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
+	// log.Infof("gainPoints: %v \n", gainPoints)
+	// log.Infof("gainHeroExps: %v \n", gainHeroExps)
+	// log.Infof("gainSpellCharges: %v \n", gainSpellCharges)
+	// log.Infof("gainDrops: %v \n", gainDrops)
 
 	// 廣播給client
 	room.BroadCastPacket(-1, &packet.Pack{
@@ -878,4 +900,14 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			GainDrops:        gainDrops,
 		}},
 	)
+}
+
+// 取得hitError封包
+func newHitErrorPack(errStr string, pack packet.Pack) *packet.Pack {
+	return &packet.Pack{
+		CMD:     packet.HIT_TOCLIENT,
+		PackID:  pack.PackID,
+		ErrMsg:  errStr,
+		Content: &packet.Hit_ToClient{},
+	}
 }
