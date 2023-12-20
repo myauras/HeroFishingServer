@@ -764,10 +764,8 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			if kill {
 				// 技能充能掉落
 				dropChargeP := 0.0
-				log.Info("aaaaaaaaaaaaaaa")
 				gainSpellCharges = append(gainSpellCharges, -1)
 				gainDrops = append(gainDrops, -1)
-				log.Info("bbbbbbbbbbbb")
 				if rndUnchargedSpell != nil {
 					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
@@ -775,16 +773,12 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 						if err != nil {
 							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
 						}
-						log.Info("cccccccccccccc")
 						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
-						log.Info("ddddddddddddd")
 					}
 				}
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
-				log.Info("eeeeeeeeeeeeeeeee")
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
-				log.Info("ffffffffffffff")
 				if monster.MonsterJson.DropID != "" {
 					dropID64, err := strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
 					if err != nil {
@@ -793,7 +787,6 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 					}
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
-				log.Infof("gainSpellCharges: %v  , gainDrops: %v ", gainSpellCharges, gainDrops)
 			}
 		}
 	}
@@ -844,11 +837,19 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		}
 	}
 
+	// 此波攻擊沒擊殺任何怪物
+	if len(killMonsterIdxs) == 0 {
+		return
+	}
+
 	// 玩家點數變化
 	totalGainPoint := spendPoint + utility.SliceSum(gainPoints) // 總點數變化是消耗點數+獲得點數
 	if totalGainPoint != 0 {
 		player.AddPoint(totalGainPoint)
 	}
+
+	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", killMonsterIdxs, gainPoints, gainHeroExps, gainSpellCharges, gainDrops)
+
 	// 英雄增加經驗
 	player.AddHeroExp(utility.SliceSum(gainHeroExps))
 	// 英雄技能充能

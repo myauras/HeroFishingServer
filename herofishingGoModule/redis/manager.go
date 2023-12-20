@@ -3,10 +3,10 @@ package redis
 import (
 	"context"
 	// "fmt"
-	logger "herofishingGoModule/logger"
-
 	redis "github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
+	logger "herofishingGoModule/logger"
+	"time"
 )
 
 var rdb *redis.Client
@@ -20,11 +20,7 @@ func Init() {
 	if rdb != nil {
 		return
 	}
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
-		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
-		DB:       0,
-	})
+	newRedisClient()
 	ctx, Cancel = context.WithCancel(context.Background())
 	players = make(map[string]*RedisPlayer)
 	redisErr := Ping()
@@ -34,11 +30,24 @@ func Init() {
 		log.Infof("%s 初始化RedisDB完成", logger.LOG_Redis)
 	}
 }
+func newRedisClient() {
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     "redis-10238.c302.asia-northeast1-1.gce.cloud.redislabs.com:10238",
+		Password: "dMfmpIDd0BTIyeCnOkBhuznVPxd7V7yx",
+		DB:       0,
+	})
+}
 
 func Ping() error {
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		return err
+	var err error
+	for i := 0; i < 5; i++ {
+		_, err = rdb.Ping(ctx).Result()
+		if err == nil {
+			return nil
+		} else {
+			log.Warnf("%s Ping RedisDB失敗: %v", logger.LOG_Redis, err)
+		}
+		time.Sleep(1 * time.Second)
 	}
-	return nil
+	return err
 }

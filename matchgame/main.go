@@ -60,9 +60,6 @@ func main() {
 	}
 	InitGameJson() // 初始化遊戲Json資料
 
-	// 初始化redisDB
-	redis.Init()
-
 	roomChan := make(chan *game.Room)
 	roomInit := false
 	var matchmakerPodName string
@@ -146,6 +143,9 @@ func main() {
 	room := <-roomChan
 
 	close(roomChan)
+
+	// 初始化redisDB
+	redis.Init()
 
 	// 開啟連線
 	src := ":" + *port

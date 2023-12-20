@@ -40,7 +40,7 @@ func (hero *Hero) GetUnchargedSpells() []*HeroSpell {
 
 // 英雄施法充能增減
 func (hero *Hero) AddHeroSpellCharge(idx int, value int) {
-	if idx >= len(hero.Spells) {
+	if idx >= len(hero.Spells) || idx < 0 {
 		return
 	}
 	hero.Spells[idx].Charge += value
