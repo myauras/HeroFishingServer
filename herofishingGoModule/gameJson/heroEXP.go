@@ -3,6 +3,9 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+
+	"github.com/google/martian/log"
 	// "herofishingGoModule/logger"
 )
 
@@ -38,8 +41,8 @@ func GetHeroEXPs() ([]HeroEXPJsonData, error) {
 
 	var heroEXPs []HeroEXPJsonData
 	for _, data := range datas {
-		if hero, ok := data.(HeroEXPJsonData); ok {
-			heroEXPs = append(heroEXPs, hero)
+		if heroEXP, ok := data.(HeroEXPJsonData); ok {
+			heroEXPs = append(heroEXPs, heroEXP)
 		} else {
 			return nil, fmt.Errorf("資料類型不匹配: %T", data)
 		}
@@ -60,4 +63,33 @@ func GetHeroEXPByID(id string) (HeroEXPJsonData, error) {
 	}
 
 	return HeroEXPJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.HeroEXP)
+}
+
+// 傳入經驗取得等級
+func GetLVByEXP(exp int) (int, error) {
+	datas, err := getJsonDataByName(JsonName.HeroEXP)
+	if err != nil {
+		return 1, err
+	}
+
+	privousLV := 1
+	for _, data := range datas {
+		if expJson, ok := data.(HeroEXPJsonData); ok {
+			lv, lvErr := strconv.ParseInt(expJson.ID, 10, 32)
+			if lvErr != nil {
+				return 1, fmt.Errorf("strconv.ParseInt(exp.ID, 10, 32)錯誤: %s", lvErr)
+			}
+			needEXP, expErr := strconv.ParseInt(expJson.EXP, 10, 32)
+			if expErr != nil {
+				return 1, fmt.Errorf("strconv.ParseInt(exp.ID, 10, 32)錯誤: %s", expErr)
+			}
+			if int64(exp) < needEXP {
+				return privousLV, nil
+			}
+			privousLV = int(lv)
+		} else {
+			return 1, fmt.Errorf("資料類型不匹配: %T", data)
+		}
+	}
+	return privousLV, nil
 }
