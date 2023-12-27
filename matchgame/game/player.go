@@ -1,10 +1,10 @@
 package game
 
 import (
-	// log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
-	// "matchgame/logger"
+	"matchgame/logger"
 	gSetting "matchgame/setting"
 	"time"
 )
@@ -32,6 +32,20 @@ func (player *Player) AddPoint(value int64) {
 func (player *Player) AddHeroExp(value int) {
 	player.RedisPlayer.AddHeroExp(value)
 	player.DBPlayer.HeroExp += int32(value)
+}
+
+// 技能充能增減, idx傳入1~3
+func (player *Player) AddSpellCharge(idx int, value int) {
+	if idx < 1 || idx > 3 {
+		log.Errorf("%s AddSpellCharge傳入錯誤索引: %v", logger.LOG_Player, idx)
+		return
+	}
+	if value == 0 {
+		log.Errorf("%s AddSpellCharge傳入值為0", logger.LOG_Player)
+		return
+	}
+	player.RedisPlayer.AddSpellCharge(idx, value)
+	player.MyHero.AddHeroSpellCharge(idx, value)
 }
 
 // 將玩家連線斷掉

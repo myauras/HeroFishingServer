@@ -67,9 +67,8 @@ type AttackEvent struct {
 
 const CHAN_BUFFER = 4
 
-var Env string                       // 環境版本
-var MyRoom *Room                     // 房間
-var UPDATE_INTERVAL_MS float64 = 100 // 每X毫秒更新一次
+var Env string   // 環境版本
+var MyRoom *Room // 房間
 
 func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
 	log.Infof("%s InitGameRoom開始", logger.LOG_Room)
@@ -78,10 +77,6 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		return
 	}
 
-	if UPDATE_INTERVAL_MS <= 0 {
-		log.Errorf("%s Error Setting UDP Update interval", logger.LOG_Room)
-		UPDATE_INTERVAL_MS = 100
-	}
 	// 依據dbMapID從DB中取dbMap設定
 	log.Infof("%s 取DBMap資料", logger.LOG_Room)
 	var dbMap mongo.DBMap
@@ -547,7 +542,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			r.GameTime += UPDATE_INTERVAL_MS / 1000 // 更新遊戲時間
+			r.GameTime += float64(UPDATETIMER_MILISECS) / 1000 // 更新遊戲時間
 			for _, player := range r.Players {
 				if player == nil {
 					continue
@@ -680,6 +675,7 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	rtp := spellJson.RTP
 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
 	spellIdx := 0             // 釋放第幾個技能, 0就代表是普攻
+	spendSpellCharge := 0     // 花費技能充能
 	// 如果是技能攻擊, 設定spellIdx(第幾招技能)
 	if isSpellAttack {
 		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
@@ -828,6 +824,10 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		if !isSpellAttack {
 			spendPoint = -int64(room.DBmap.Bet)
 		} else { // 技能的話要檢查是否能量足夠, 不足夠要返回, 足夠的話就重置充能
+			spell := player.MyHero.GetSpell(spellIdx)
+			if spell != nil {
+				spendSpellCharge = spell.SpellJson.Cost
+			}
 			if !player.MyHero.CanSpell(spellIdx) {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時該玩家充能不足, 無法使用技能才對", pack))
 				log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
@@ -869,14 +869,17 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	if totalGainPoint != 0 {
 		player.AddPoint(totalGainPoint)
 	}
-
 	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", killMonsterIdxs, gainPoints, gainHeroExps, gainSpellCharges, gainDrops)
 
 	// 英雄增加經驗
 	player.AddHeroExp(utility.SliceSum(gainHeroExps))
-	// 英雄技能充能
+	// 施放技能的話要減少英雄技能充能
+	if spellIdx != 0 && spendSpellCharge != 0 {
+		player.AddSpellCharge(spellIdx, -spendSpellCharge)
+	}
+	// 擊殺怪物增加英雄技能充能
 	for _, v := range gainSpellCharges {
-		player.MyHero.AddHeroSpellCharge(v, 1)
+		player.AddSpellCharge(v, 1)
 	}
 
 	// 從怪物清單中移除被擊殺的怪物

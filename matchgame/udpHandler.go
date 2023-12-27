@@ -120,6 +120,7 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 			return
 		// ==========更新遊戲狀態==========
 		case <-gameUpdateTimer.C:
+			log.Infof("game.MyRoom.GameTime: %v", game.MyRoom.GameTime)
 			sendData, err := json.Marshal(&packet.Pack{
 				CMD:    packet.UPDATEGAME_TOCLIENT,
 				PackID: -1,

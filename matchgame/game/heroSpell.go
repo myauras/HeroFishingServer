@@ -3,14 +3,14 @@ package game
 import (
 	// log "github.com/sirupsen/logrus"
 	"herofishingGoModule/gameJson"
-
 	// "matchgame/logger"
 )
 
 // 英雄技能
 type HeroSpell struct {
 	SpellJson gameJson.HeroSpellJsonData
-	Charge    int // 該施法目前累積充能
+	Charge    int // (此值會存在RedisDB)該施法目前累積充能
+
 }
 
 // 取得此技能充能比例

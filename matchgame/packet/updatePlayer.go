@@ -1,8 +1,6 @@
 package packet
 
-import (
-	"time"
-)
+import ()
 
 type UpdatePlayer_ToClient struct {
 	CMDContent
@@ -15,7 +13,7 @@ type Player struct {
 	GainPoints int64 // 玩家總獲得點數
 }
 type PlayerBuffer struct {
-	Name     string    // 效果名稱
-	AtTime   time.Time // 在遊戲時間第X秒觸發
-	Duration float64   // 效果持續X秒
+	Name     string  // 效果名稱
+	AtTime   float64 // 在遊戲時間第X秒觸發
+	Duration float64 // 效果持續X秒
 }

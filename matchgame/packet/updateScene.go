@@ -1,7 +1,5 @@
 package packet
 
-import "time"
-
 // "herofishingGoModule/setting"
 
 type UpdateScene_ToClient struct {
@@ -26,12 +24,12 @@ type Monster struct {
 }
 
 type MonsterEffect struct {
-	Name     string    // 效果名稱
-	AtTime   time.Time // 在遊戲時間第X秒觸發
-	Duration float64   // 效果持續X秒
+	Name     string  // 效果名稱
+	AtTime   float64 // 在遊戲時間第X秒觸發
+	Duration float64 // 效果持續X秒
 }
 type SceneEffect struct {
-	Name     string    // 效果名稱
-	AtTime   time.Time // 在遊戲時間第X秒觸發
-	Duration float64   // 效果持續X秒
+	Name     string  // 效果名稱
+	AtTime   float64 // 在遊戲時間第X秒觸發
+	Duration float64 // 效果持續X秒
 }

@@ -115,12 +115,15 @@ type DBPlayer struct {
 	RedisSync     bool      `bson:"redisSync"`
 	LeftGameAt    time.Time `bson:"leftGameAt"`
 
-	// 用不到的資料放這
+	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`
 	// OnlineState   string    `bson:"onlineState"`
 	// LastSigninAt  time.Time `bson:"lastSigninAt"`
 	// LastSignoutAt time.Time `bson:"lastSignoutAt"`
 	// DeviceUID     string    `bson:"deviceUID"`
+
+	// 不是DB的資料放這
+	Drops [3]int // (只存在RedisDB)掉落道具
 }
 
 // gameSetting的Timer文件

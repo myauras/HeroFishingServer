@@ -40,31 +40,41 @@ func (hero *Hero) GetUnchargedSpells() []*HeroSpell {
 
 // 英雄施法充能歸0
 func (hero *Hero) ResetHeroSpellCharge(idx int) {
-	if idx < 1 || idx > 3 {
-		log.Errorf("%s uAddHeroSpellCharge傳入錯誤索引: %v", logger.LOG_Setting, idx)
+	spell := hero.GetSpell(idx)
+	if spell == nil {
 		return
 	}
-	hero.Spells[(idx - 1)].Charge = 0 // Spells索引是存0~2所以idx要-1
+	spell.Charge = 0
 	log.Infof("重置玩家技能-%v的充能", idx)
 }
 
-// 英雄施法充能增減, 傳入1~3
+// 英雄施法充能增減, idx傳入1~3
 func (hero *Hero) AddHeroSpellCharge(idx int, value int) {
-	if idx < 1 || idx > 3 {
-		log.Errorf("%s AddHeroSpellCharge傳入錯誤索引: %v", logger.LOG_Setting, idx)
+	spell := hero.GetSpell(idx)
+	if spell == nil {
 		return
 	}
-	hero.Spells[(idx - 1)].Charge += value // Spells索引是存0~2所以idx要-1
+	spell.Charge += value
 	log.Infof("玩家技能-%v的充能+%v", idx, value)
 }
 
 // 檢查是否可以施法
 func (hero *Hero) CanSpell(idx int) bool {
-	if idx < 1 || idx > 3 {
-		log.Errorf("%s CanSpell傳入錯誤索引: %v", logger.LOG_Setting, idx)
+
+	spell := hero.GetSpell(idx)
+	if spell == nil {
 		return false
 	}
-	cost := hero.Spells[(idx - 1)].SpellJson.Cost // Spells索引是存0~2所以idx要-1
+	cost := spell.SpellJson.Cost
 
 	return hero.Spells[(idx-1)].Charge >= cost
+}
+
+// 取得英雄技能
+func (hero *Hero) GetSpell(idx int) *HeroSpell {
+	if idx < 1 || idx > 3 {
+		log.Errorf("%s GetSpell傳入錯誤索引: %v", logger.LOG_Setting, idx)
+		return nil
+	}
+	return hero.Spells[(idx - 1)] // Spells索引是存0~2所以idx要-1
 }

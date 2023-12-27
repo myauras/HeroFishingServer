@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	"github.com/google/martian/log"
 	// "herofishingGoModule/logger"
 )
 
