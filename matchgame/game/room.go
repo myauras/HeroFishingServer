@@ -52,6 +52,7 @@ type Room struct {
 	MathModel    *gamemath.Model                // 數學模型
 	MSpawner     *MonsterSpawner                // 生怪器
 	AttackEvents map[string]*AttackEvent        // 攻擊事件
+	SceneEffects []packet.SceneEffect           // 場景效果
 	MutexLock    sync.Mutex
 }
 
@@ -352,7 +353,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			PackID: -1,
 			Content: &packet.UpdateScene_ToClient{
 				Spawns:       r.MSpawner.Spawns,
-				SceneEffects: nil,
+				SceneEffects: r.SceneEffects,
 			},
 		})
 	// ==========設定英雄==========
@@ -895,9 +896,28 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 	dropSpellJson, err := gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))
 	if err != nil {
 		log.Errorf("%s HandleDropSpell時gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))錯誤: %v", logger.LOG_Room, err)
+		return
 	}
 	switch dropSpellJson.EffectType {
 	case "Frozen": // 冰風暴
+		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 10)
+		if err != nil {
+			log.Errorf("%s HandleDropSpell時strconv.ParseFloat(dropSpellJson.EffectValue1, 10)錯誤: %v", logger.LOG_Room, err)
+			return
+		}
+		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
+			Name:     dropSpellJson.EffectType,
+			AtTime:   room.GameTime,
+			Duration: duration,
+		})
+		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.UPDATESCENE_TOCLIENT,
+			PackID: -1,
+			Content: &packet.UpdateScene_ToClient{
+				Spawns:       room.MSpawner.Spawns,
+				SceneEffects: room.SceneEffects,
+			},
+		})
 	case "Speedup": // 急速神符
 	default:
 		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)

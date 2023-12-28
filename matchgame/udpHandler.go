@@ -156,7 +156,7 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 				PackID: -1,
 				Content: &packet.UpdateScene_ToClient{
 					Spawns:       game.MyRoom.MSpawner.Spawns,
-					SceneEffects: nil,
+					SceneEffects: game.MyRoom.SceneEffects,
 				},
 			})
 			if err != nil {
