@@ -87,7 +87,7 @@ type JsonNameStruct struct {
 	Monster        string
 	MonsterSpawner string
 	Route          string
-	BuffSkill      string
+	DropSpell      string
 	Drop           string
 	Rank           string
 }
@@ -102,7 +102,7 @@ var JsonName = JsonNameStruct{
 	Monster:        "Monster",
 	MonsterSpawner: "MonsterSpawner",
 	Route:          "Route",
-	BuffSkill:      "BuffSkill",
+	DropSpell:      "DropSpell",
 	Drop:           "Drop",
 	Rank:           "Rank",
 }
@@ -141,8 +141,8 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		unmarshaler = MonsterSpawnerJsonData{}
 	case JsonName.Route:
 		unmarshaler = RouteJsonData{}
-	case JsonName.BuffSkill:
-		unmarshaler = BuffSkillJsonData{}
+	case JsonName.DropSpell:
+		unmarshaler = DropSpellJsonData{}
 	case JsonName.Drop:
 		unmarshaler = DropJsonData{}
 	case JsonName.Rank:

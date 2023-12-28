@@ -9,10 +9,9 @@ import (
 type DropJsonData struct {
 	ID string `json:"ID"`
 	// Ref          string `json:"Ref"`
-	GainRTP      string `json:"GainRTP"`
-	EffectType   string  `json:"EffectType"`
-	EffectValue1 string  `json:"EffectValue1,omitempty"`
-	EffectValue2 string  `json:"EffectValue2,omitempty"`
+	GainRTP   string `json:"GainRTP"`
+	DropType  string `json:"DropType"`
+	DropValue string `json:"DropValue,omitempty"`
 }
 
 func (jsonData DropJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
@@ -34,7 +33,7 @@ func (jsonData DropJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte
 }
 
 func GetDrops() ([]DropJsonData, error) {
-	datas, err := getJsonDataByName(JsonName.Drop) // Assuming you have JsonName.Drop defined
+	datas, err := getJsonDataByName(JsonName.Drop)
 	if err != nil {
 		return nil, err
 	}

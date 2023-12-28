@@ -1,5 +1,5 @@
 {"Drop":[
-	{	"ID":"4",	"Ref":"drop4",	"GainRTP":"0",	"EffectType":"Frozen",	"EffectValue1":"10"},
-	{	"ID":"5",	"Ref":"drop5",	"GainRTP":"0",	"EffectType":"AttackSpeedUP",	"EffectValue1":"2",	"EffectValue2":"20"},
-	{	"ID":"15",	"Ref":"drop15",	"GainRTP":"150",	"EffectType":"BuffSkill",	"EffectValue1":"15"}
+	{	"ID":"4",	"Ref":"drop4",	"DropType":"Spell",	"DropValue":"4"},
+	{	"ID":"5",	"Ref":"drop5",	"DropType":"Spell",	"DropValue":"5"},
+	{	"ID":"15",	"Ref":"drop15",	"DropType":"Spell",	"DropValue":"15"}
 ]}

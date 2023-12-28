@@ -337,14 +337,16 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 		return errors.New("HandleMessage fialed, Player is not in connection list")
 	}
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
+	// 取玩家
+	player := r.GetPlayerByTCPConn(conn)
+	if player == nil {
+		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
+		return fmt.Errorf("%s room.getPlayer為nil, 可能玩家已離開", logger.LOG_Room)
+	}
 	// 處理各類型封包
 	switch pack.CMD {
 	// ==========更新場景(玩家剛進遊戲 或 斷線回連會主動跟Server要更新資料用)==========
 	case packet.UPDATESCENE:
-		player := r.GetPlayerByTCPConn(conn)
-		if player == nil {
-			return fmt.Errorf("%s r.GetPlayerByTCPConn(conn)玩家為nil", logger.LOG_Room)
-		}
 		r.SendPacketToPlayer(player.Index, &packet.Pack{
 			CMD:    packet.UPDATESCENE_TOCLIENT,
 			PackID: -1,
@@ -387,7 +389,15 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		MyRoom.HandleHit(conn, pack, content)
+		MyRoom.HandleHit(player, pack, content)
+	// ==========使用道具==========
+	case packet.DROPSPELL:
+		content := packet.DropSpell{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
+		}
+		MyRoom.HandleDropSpell(player, pack, content)
 	}
 
 	return nil
@@ -621,60 +631,9 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 	)
 }
 
-// // 處理收到的攻擊事件(TCP方法先保留, 未來需要可以改回去)
-// func (room *Room) HandleAttack_TCP(conn net.Conn, pack packet.Pack, content packet.Attack) {
-// 	// 取玩家
-// 	player := room.GetPlayerByTCPConn(conn)
-// 	if player == nil {
-// 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
-// 		return
-// 	}
-// 	needPoint := int64(room.DBmap.Bet)
-// 	// 取技能表
-// 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
-// 	if err != nil {
-// 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
-// 		return
-// 	}
-// 	// 取rtp
-// 	rtp := spellJson.RTP
-// 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
-// 	// 是否為合法攻擊檢查
-// 	if isSpellAttack { // 如果是技能攻擊, 檢查是否可以施放該技能
-// 		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
-// 		if err != nil {
-// 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
-// 		}
-// 		if player.MyHero.CheckCanSpell(spellIdx) {
-// 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
-// 			return
-// 		}
-// 	} else { // 如果是普攻, 檢查是否有足夠點數
-// 		if player.DBPlayer.Point < needPoint {
-// 			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
-// 			return
-// 		}
-// 	}
-// 	// 廣播給client
-// 	room.BroadCastPacket(&packet.Pack{
-// 		CMD:    packet.ATTACK_TOCLIENT,
-// 		PackID: pack.PackID,
-// 		Content: &packet.Attack_ToClient{
-// 			PlayerIdx:   player.Index,
-// 			SpellJsonID: content.SpellJsonID,
-// 			MonsterIdx:  content.MonsterIdx,
-// 		}},
-// 	)
-// }
-
 // 處理收到的擊中事件
-func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) {
-	// 取玩家
-	player := room.GetPlayerByTCPConn(conn)
-	if player == nil {
-		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
-		return
-	}
+func (room *Room) HandleHit(player *Player, pack packet.Pack, hitCMD packet.Hit) {
+
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)
 	if err != nil {
@@ -929,6 +888,21 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			GainDrops:        gainDrops,
 		}},
 	)
+}
+
+// 處理收到的掉落施法封包(TCP)
+func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content packet.DropSpell) {
+	dropSpellJson, err := gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))
+	if err != nil {
+		log.Errorf("%s HandleDropSpell時gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))錯誤: %v", logger.LOG_Room, err)
+	}
+	switch dropSpellJson.EffectType {
+	case "Frozen": // 冰風暴
+	case "Speedup": // 急速神符
+	default:
+		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)
+		return
+	}
 }
 
 // 取得hitError封包

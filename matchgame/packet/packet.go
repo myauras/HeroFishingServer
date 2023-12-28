@@ -19,8 +19,8 @@ const (
 	ATTACK_TOCLIENT       = "ATTACK_TOCLIENT"       // (UDP)攻擊-送Client
 	HIT                   = "HIT"                   // (TCP)擊中
 	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
-	DROPUSE               = "DROPUSE"               // (TCP)道具使用
-	DROPUSE_TOCLIENT      = "DROPUSE_TOCLIENT"      // (TCP)道具使用-送Client
+	DROPSPELL             = "DROPSPELL"             // (TCP)道具使用
+	DROPSPELL_TOCLIENT    = "DROPSPELL_TOCLIENT"    // (TCP)道具使用-送Client
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
 	UDPAUTH               = "UDPAUTH"               // (UDP)身分驗證
