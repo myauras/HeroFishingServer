@@ -111,9 +111,11 @@ type DBPlayer struct {
 	Point         int64     `bson:"point"`
 	Ban           bool      `bson:"ban"`
 	InMatchgameID string    `bson:"inMatchgameID"`
-	HeroExp       int32     `bson:"heroExp"`
-	RedisSync     bool      `bson:"redisSync"`
 	LeftGameAt    time.Time `bson:"leftGameAt"`
+	RedisSync     bool      `bson:"redisSync"`
+	HeroExp       int       `bson:"heroExp"`
+	SpellCharges  [3]int    `bson:"spellCharges"`
+	Drops         [3]int    `bson:"drops"`
 
 	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`
@@ -122,8 +124,6 @@ type DBPlayer struct {
 	// LastSignoutAt time.Time `bson:"lastSignoutAt"`
 	// DeviceUID     string    `bson:"deviceUID"`
 
-	// 不是DB的資料放這
-	Drops [3]int // (只存在RedisDB)掉落道具
 }
 
 // gameSetting的Timer文件

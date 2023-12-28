@@ -26,12 +26,12 @@ type Hit_ToClient struct {
 
 }
 
-func (p *Hit) Parse(common CMDContent) bool {
+func (hit *Hit) Parse(common CMDContent) bool {
 
 	m := common.(map[string]interface{})
 
 	if attackID, ok := m["AttackID"].(float64); ok {
-		p.AttackID = int(attackID)
+		hit.AttackID = int(attackID)
 	} else {
 		// 寫LOG
 		log.WithFields(log.Fields{
@@ -53,11 +53,11 @@ func (p *Hit) Parse(common CMDContent) bool {
 				return false
 			}
 		}
-		p.MonsterIdxs = monsterIdxs
+		hit.MonsterIdxs = monsterIdxs
 	}
 
 	if spellJsonID, ok := m["SpellJsonID"].(string); ok {
-		p.SpellJsonID = spellJsonID
+		hit.SpellJsonID = spellJsonID
 	} else {
 		log.WithFields(log.Fields{
 			"log": "parse SpellJsonID資料錯誤",

@@ -115,7 +115,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 
 			isAuth = true
 			// 建立RedisDB Player
-			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayer.HeroExp))
+			redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, int(dbPlayer.Point), int(dbPlayer.HeroExp), dbPlayer.SpellCharges, dbPlayer.Drops)
 			if redisPlayerErr != nil {
 				log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 				_ = packet.SendPack(encoder, &packet.Pack{

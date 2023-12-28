@@ -17,10 +17,12 @@ let playerDoc = db.template.insertMany([
     lastSignoutAt_nowDate: null,
     ban: false,
     deviceUID: "",
-    heroExp: 0,
     leftGameAt_nowDate: null,
     inMatchgameID: "",
     redisSync: true,
+    heroExp: 0,
+    spellCharges: [0, 0, 0],
+    drops: [0, 0, 0],
   },
   // 模板-玩家狀態
   {

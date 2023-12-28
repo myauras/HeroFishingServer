@@ -172,20 +172,16 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 		log.Errorf("%s SetHero時player := r.getPlayer(conn)為nil", logger.LOG_Room)
 		return
 	}
-	heroEXP := 0
+
 	heroJson, err := gameJson.GetHeroByID(strconv.Itoa(heroID))
 	if err != nil {
 		log.Errorf("%s gameJson.GetHeroByID(strconv.Itoa(heroID))", logger.LOG_Room)
 		return
 	}
 	spellJsons := heroJson.GetSpellJsons()
-	heroSpells := [3]*HeroSpell{}
-	for i := 0; i < 3; i++ {
-		heroSpells[i] = &HeroSpell{
-			Charge:    0,
-			SpellJson: spellJsons[i],
-		}
-	}
+
+	heroEXP := 0
+	// spellCharges := [3]int{0, 0, 0}
 	if player.MyHero != nil {
 		heroEXP = player.MyHero.EXP
 	}
@@ -193,7 +189,7 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 		ID:     heroID,
 		SkinID: heroSkinID,
 		EXP:    heroEXP,
-		Spells: heroSpells,
+		Spells: spellJsons,
 	}
 }
 
@@ -263,11 +259,13 @@ func (r *Room) KickPlayer(conn net.Conn) {
 		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
 		// 更新玩家DB資料
 		updatePlayerBson := bson.D{
-			{Key: "point", Value: player.DBPlayer.Point},     // 設定玩家點數
-			{Key: "heroExp", Value: player.DBPlayer.HeroExp}, // 設定英雄經驗
-			{Key: "leftGameAt", Value: time.Now()},           // 設定離開遊戲時間
-			{Key: "inMatchgameID", Value: ""},                // 設定玩家不在遊戲房內了
-			{Key: "redisSync", Value: true},                  // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+			{Key: "point", Value: player.DBPlayer.Point},               // 設定玩家點數
+			{Key: "leftGameAt", Value: time.Now()},                     // 設定離開遊戲時間
+			{Key: "inMatchgameID", Value: ""},                          // 設定玩家不在遊戲房內了
+			{Key: "redisSync", Value: true},                            // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+			{Key: "heroExp", Value: player.DBPlayer.HeroExp},           // 設定英雄經驗
+			{Key: "spellCharges", Value: player.DBPlayer.SpellCharges}, // 設定技能充能
+			{Key: "drops", Value: player.DBPlayer.Drops},               // 設定掉落道具
 		}
 		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
 		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
@@ -341,7 +339,20 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	conn.SetDeadline(time.Time{}) // 移除連線超時設定
 	// 處理各類型封包
 	switch pack.CMD {
-
+	// ==========更新場景(玩家剛進遊戲 或 斷線回連會主動跟Server要更新資料用)==========
+	case packet.UPDATESCENE:
+		player := r.GetPlayerByTCPConn(conn)
+		if player == nil {
+			return fmt.Errorf("%s r.GetPlayerByTCPConn(conn)玩家為nil", logger.LOG_Room)
+		}
+		r.SendPacketToPlayer(player.Index, &packet.Pack{
+			CMD:    packet.UPDATESCENE_TOCLIENT,
+			PackID: -1,
+			Content: &packet.UpdateScene_ToClient{
+				Spawns:       r.MSpawner.Spawns,
+				SceneEffects: nil,
+			},
+		})
 	// ==========設定英雄==========
 	case packet.SETHERO:
 		content := packet.SetHero{}
@@ -588,7 +599,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 		if err != nil {
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
 		}
-		if player.MyHero.CanSpell(spellIdx) {
+		if player.CanSpell(spellIdx) {
 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
 		}
@@ -734,7 +745,9 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 			}
 
 			// 取得怪物掉落道具
-			dropAddOdds := 0.0 // 掉落道具增加的總RTP
+			dropAddOdds := 0.0   // 掉落道具增加的總RTP
+			dropID64 := int64(0) // 怪物掉落ID
+			// 怪物必須有掉落物才需要考慮怪物掉落
 			if monster.MonsterJson.DropID != "" {
 				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
@@ -742,13 +755,21 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Room, err)
 					return
 				}
-				addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
+				dropID64, err = strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
 				if err != nil {
-					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
-					log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
+					log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Room, err)
 					return
 				}
-				dropAddOdds += addOdds
+				// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
+				if !player.AlreadyGotDrop(int(dropID64)) {
+					addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
+					if err != nil {
+						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
+						log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
+						return
+					}
+					dropAddOdds += addOdds
+				}
 			}
 
 			// 計算實際怪物死掉獲得點數
@@ -756,10 +777,10 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 
 			// 計算是否造成擊殺
 			kill := false
-			rndUnchargedSpell := player.MyHero.GetRandomUnchargedSpell()
+			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomUnchargedSpell()
 			if !isSpellAttack { // 普攻
 				// 擊殺判定
-				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), rndUnchargedSpell != nil)
+				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell)
 				kill = utility.GetProbResult(attackKP)
 				log.Infof("======attackID: %s, spellMaxHits:%v odds:%v attackKP:%v kill:%v ", attackID, spellMaxHits, odds, attackKP, kill)
 			} else { // 技能攻擊
@@ -774,12 +795,12 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 				dropChargeP := 0.0
 				gainSpellCharges = append(gainSpellCharges, -1)
 				gainDrops = append(gainDrops, -1)
-				if rndUnchargedSpell != nil {
-					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.SpellJson.RTP, odds)
+				if gotUnchargedSpell {
+					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.RTP, odds)
 					if utility.GetProbResult(dropChargeP) {
-						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 						if err != nil {
-							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.SpellJson.ID)錯誤: %v", logger.LOG_Room, err)
+							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID)錯誤: %v", logger.LOG_Room, err)
 							room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時解析第X技能索引錯誤", pack))
 							return
 						}
@@ -789,13 +810,7 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
-				if monster.MonsterJson.DropID != "" {
-					dropID64, err := strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
-					if err != nil {
-						log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Room, err)
-						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時parse dropID錯誤", pack))
-						return
-					}
+				if dropAddOdds != 0 && dropID64 != 0 {
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
 			}
@@ -824,16 +839,17 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 		if !isSpellAttack {
 			spendPoint = -int64(room.DBmap.Bet)
 		} else { // 技能的話要檢查是否能量足夠, 不足夠要返回, 足夠的話就重置充能
-			spell := player.MyHero.GetSpell(spellIdx)
-			if spell != nil {
-				spendSpellCharge = spell.SpellJson.Cost
+			spell, getSpellErr := player.MyHero.GetSpell(spellIdx)
+			if getSpellErr != nil {
+				log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Room, getSpellErr)
+				return
 			}
-			if !player.MyHero.CanSpell(spellIdx) {
+			if !player.CanSpell(spellIdx) {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時該玩家充能不足, 無法使用技能才對", pack))
 				log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 				return
 			}
-			player.MyHero.ResetHeroSpellCharge(spellIdx)
+			spendSpellCharge = spell.Cost
 		}
 		room.AttackEvents[attackID] = &attackEvent // 將此攻擊事件加入清單
 	} else {
@@ -879,7 +895,17 @@ func (room *Room) HandleHit(conn net.Conn, pack packet.Pack, hitCMD packet.Hit) 
 	}
 	// 擊殺怪物增加英雄技能充能
 	for _, v := range gainSpellCharges {
+		if v <= 0 { // 因為有擊殺但沒掉落充能時, gainSpellCharges仍會填入-1, 所以要加判斷
+			continue
+		}
 		player.AddSpellCharge(v, 1)
+	}
+	// 擊殺怪物獲得掉落道具
+	for _, dropID := range gainDrops {
+		if dropID <= 0 { // 因為有擊殺但沒掉落時, gainDrops仍會填入-1, 所以要加判斷
+			continue
+		}
+		player.AddDrop(dropID)
 	}
 
 	// 從怪物清單中移除被擊殺的怪物

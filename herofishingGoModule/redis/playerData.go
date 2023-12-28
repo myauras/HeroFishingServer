@@ -31,9 +31,9 @@ type DBPlayer struct {
 	SpellCharge1 int    `redis:"spellCharge1"` // 技能充能1
 	SpellCharge2 int    `redis:"spellCharge2"` // 技能充能2
 	SpellCharge3 int    `redis:"spellCharge3"` // 技能充能3
-	DropCharge1  int    `redis:"dropCharge1"`  // 掉落道具1
-	DropCharge2  int    `redis:"dropCharge2"`  // 掉落道具2
-	DropCharge3  int    `redis:"dropCharge3"`  // 掉落道具3
+	Drop1        int    `redis:"drop1"`        // 掉落道具1
+	Drop2        int    `redis:"drop2"`        // 掉落道具2
+	Drop3        int    `redis:"drop3"`        // 掉落道具3
 }
 
 // 將暫存的數據寫入RedisDB
@@ -93,7 +93,7 @@ func (player *RedisPlayer) ClosePlayer() {
 }
 
 // 建立玩家資料
-func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, error) {
+func CreatePlayerData(playerID string, point int, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
@@ -103,12 +103,12 @@ func CreatePlayerData(playerID string, point int, heroExp int) (*RedisPlayer, er
 			"id":           playerID,
 			"point":        point,
 			"heroExp":      heroExp,
-			"spellCharge1": 0,
-			"spellCharge2": 0,
-			"spellCharge3": 0,
-			"drop1":        0,
-			"drop2":        0,
-			"drop3":        0,
+			"spellCharge1": spellCharges[0],
+			"spellCharge2": spellCharges[1],
+			"spellCharge3": spellCharges[2],
+			"drop1":        drops[0],
+			"drop2":        drops[1],
+			"drop3":        drops[2],
 		}).Result()
 		if err != nil {
 			return nil, fmt.Errorf("%s createPlayerData錯誤: %v", logger.LOG_Redis, err)
@@ -160,7 +160,6 @@ func (rPlayer *RedisPlayer) AddHeroExp(value int) {
 	rPlayer.heroExpBuffer += value
 }
 
-
 // 設定技能充能, idx傳入1~3
 func (rPlayer *RedisPlayer) AddSpellCharge(idx int, value int) {
 	if idx < 1 || idx > 3 {
@@ -173,15 +172,10 @@ func (rPlayer *RedisPlayer) AddSpellCharge(idx int, value int) {
 }
 
 // 設定掉落道具
-func (rPlayer *RedisPlayer) AddDrop(value int) {
+func (rPlayer *RedisPlayer) SetDrop(idx int, value int) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
-	for i, v := range rPlayer.dropsBuffer {
-		if v == 0 {
-			rPlayer.dropsBuffer[i] = value
-			break
-		}
-	}
+	rPlayer.dropsBuffer[idx] = value
 }
 
 // 暫存資料寫入並每X毫秒更新上RedisDB

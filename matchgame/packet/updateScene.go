@@ -2,6 +2,10 @@ package packet
 
 // "herofishingGoModule/setting"
 
+type UpdateScene struct {
+	CMDContent
+}
+
 type UpdateScene_ToClient struct {
 	CMDContent
 	Spawns       []Spawn       // 生怪清單(仍有效的生怪事件才傳, 如果該事件的怪物全數死亡就不用傳)

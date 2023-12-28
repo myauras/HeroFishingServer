@@ -19,12 +19,15 @@ const (
 	ATTACK_TOCLIENT       = "ATTACK_TOCLIENT"       // (UDP)攻擊-送Client
 	HIT                   = "HIT"                   // (TCP)擊中
 	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
+	DROPUSE               = "DROPUSE"               // (TCP)道具使用
+	DROPUSE_TOCLIENT      = "DROPUSE_TOCLIENT"      // (TCP)道具使用-送Client
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
 	UDPAUTH               = "UDPAUTH"               // (UDP)身分驗證
 	UPDATEGAME            = "UPDATEGAME"            // (UDP)遊戲狀態更新(太久沒收到回傳會將該玩家從房間踢出)
 	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每GAMEUPDATE_MS毫秒會送一次)
-	UPDATESCENE_TOCLIENT  = "UPDATESCENE_TOCLIENT"  // (UDP)場景狀態更新-送Client(每SCENEUPDATE_MS毫秒會送一次)
+	UPDATESCENE           = "UPDATESCENE"           // (TCP)場景狀態更新(玩家斷線回連時會主動送過來跟server要資料)
+	UPDATESCENE_TOCLIENT  = "UPDATESCENE_TOCLIENT"  // (UDP&UDP)場景狀態更新-送Client(每SCENEUPDATE_MS毫秒會送一次 或 玩家斷線回連時主動要求時會送)
 
 )
 
