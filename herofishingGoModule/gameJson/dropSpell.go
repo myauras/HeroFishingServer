@@ -9,7 +9,7 @@ import (
 type DropSpellJsonData struct {
 	ID           string `json:"ID"`
 	RTP          string `json:"RTP"`
-	EffectType   string `json:"Motion"`
+	EffectType   string `json:"EffectType"`
 	EffectValue1 string `json:"EffectValue1,omitempty"`
 	EffectValue2 string `json:"EffectValue2,omitempty"`
 }

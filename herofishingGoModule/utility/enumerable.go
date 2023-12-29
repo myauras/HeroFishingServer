@@ -43,17 +43,27 @@ func RemoveFromSliceByIdx[T any](slice []T, idx int) []T {
 
 // 從一個 slice 中移除多個索引, 多個索引是來自另外一個slice的元素
 func RemoveFromSliceBySlice[T any](slice []T, idxs []int) []T {
-    removeSet := make(map[int]bool)
-    for _, idx := range idxs {
-        removeSet[idx] = true
-    }
+	removeSet := make(map[int]bool)
+	for _, idx := range idxs {
+		removeSet[idx] = true
+	}
 
-    var newSlice []T
-    for i, v := range slice {
-        if !removeSet[i] {
-            newSlice = append(newSlice, v)
-        }
-    }
+	var newSlice []T
+	for i, v := range slice {
+		if !removeSet[i] {
+			newSlice = append(newSlice, v)
+		}
+	}
 
-    return newSlice
+	return newSlice
+}
+
+// Contains 檢查特定元素是否存在於切片中
+func Contains[T comparable](slice []T, element T) bool {
+	for _, v := range slice {
+		if v == element {
+			return true
+		}
+	}
+	return false
 }

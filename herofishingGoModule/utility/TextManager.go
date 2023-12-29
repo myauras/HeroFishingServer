@@ -7,12 +7,28 @@ import (
 )
 
 // 將傳入的字串以傳入的字元分隔並轉為[]int
-func StrToIntSlice(str string, char string) ([]int, error) {
+func Split_INT(str string, char string) ([]int, error) {
 	parts := strings.Split(str, char)
 	nums := make([]int, 0, len(parts))
 
 	for _, part := range parts {
 		num, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, err
+		}
+		nums = append(nums, num)
+	}
+
+	return nums, nil
+}
+
+// 將傳入的字串以傳入的字元分隔並轉為[]float64
+func Split_FLOAT(str string, char string) ([]float64, error) {
+	parts := strings.Split(str, char)
+	nums := make([]float64, 0, len(parts))
+
+	for _, part := range parts {
+		num, err := strconv.ParseFloat(part, 64)
 		if err != nil {
 			return nil, err
 		}

@@ -9,15 +9,7 @@ import (
 // 使用道具
 type DropSpell struct {
 	CMDContent
-	DropSpellJsonID int // Drop表ID
-	// 其他使用道具需要的參數
-}
-
-// 使用道具回傳client
-type DropSpell_ToClient struct {
-	CMDContent
-	PlayerIdx       int // 玩家座位
-	DropSpellJsonID int // Drop表ID
+	DropSpellJsonID int // DropSpell表ID
 	// 其他使用道具需要的參數
 }
 

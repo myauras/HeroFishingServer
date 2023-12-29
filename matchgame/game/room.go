@@ -132,6 +132,7 @@ func RoomLoop() {
 
 	for range ticker.C {
 		MyRoom.RemoveExpiredAttackEvents() // 移除過期的攻擊事件
+		MyRoom.RemoveExpiredSceneEffects() // 移除過期的場景效果
 	}
 }
 
@@ -145,7 +146,23 @@ func (r *Room) RemoveExpiredAttackEvents() {
 	}
 	if len(toRemoveKeys) > 0 {
 		utility.RemoveFromMapByKeys(r.AttackEvents, toRemoveKeys)
-		log.Infof("%s 移除不需要的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
+		log.Infof("%s 移除過期的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
+	}
+}
+
+// 移除過期的場景效果
+func (r *Room) RemoveExpiredSceneEffects() {
+	toRemoveIdxs := make([]int, 0)
+	for i, v := range r.SceneEffects {
+		if r.GameTime > (v.AtTime + v.Duration) {
+			toRemoveIdxs = append(toRemoveIdxs, i)
+		}
+	}
+	if len(toRemoveIdxs) > 0 {
+		for _, v := range toRemoveIdxs {
+			log.Infof("%s 移除過期的場景效果: %v", logger.LOG_Room, r.SceneEffects[v].Name)
+		}
+		r.SceneEffects = utility.RemoveFromSliceBySlice(r.SceneEffects, toRemoveIdxs)
 	}
 }
 
@@ -721,7 +738,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, hitCMD packet.Hit)
 					return
 				}
 				// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
-				if !player.AlreadyGotDrop(int(dropID64)) {
+				if !player.IsOwnedDrop(int(dropID64)) {
 					addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
 					if err != nil {
 						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
@@ -898,11 +915,21 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		log.Errorf("%s HandleDropSpell時gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))錯誤: %v", logger.LOG_Room, err)
 		return
 	}
+	dropSpellID, err := strconv.ParseInt(dropSpellJson.ID, 10, 64)
+	if err != nil {
+		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Room, err)
+		return
+	}
+	ownedDrop := player.IsOwnedDrop(int(dropSpellID))
+	if !ownedDrop {
+		log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Room, player.DBPlayer.ID, dropSpellID)
+		return
+	}
 	switch dropSpellJson.EffectType {
 	case "Frozen": // 冰風暴
-		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 10)
+		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell時strconv.ParseFloat(dropSpellJson.EffectValue1, 10)錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s HandleDropSpell時strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, err)
 			return
 		}
 		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
@@ -923,6 +950,8 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)
 		return
 	}
+	// 施法後要移除該掉落
+	player.RemoveDrop(int(dropSpellID))
 }
 
 // 取得hitError封包

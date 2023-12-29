@@ -17,8 +17,7 @@ type MonsterJsonData struct {
 	EXP    string `json:"EXP"`
 	DropID string `json:"DropID"`
 	// Radius       string `json:"Radius"`
-	// Speed        string `json:"Speed"`
-	LeaveSec    string `json:"LeaveSec"`
+	Speed       string `json:"Speed"`
 	MonsterType string `json:"MonsterType"`
 	// HitEffectPos string `json:"HitEffectPos"`
 }

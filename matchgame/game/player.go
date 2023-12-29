@@ -59,7 +59,7 @@ func (player *Player) AddDrop(value int) {
 		log.Errorf("%s AddDrop傳入值為0", logger.LOG_Player)
 		return
 	}
-	if player.AlreadyGotDrop(value) {
+	if player.IsOwnedDrop(value) {
 		log.Errorf("%s AddDrop時已經有此掉落道具, 無法再新增: %v", logger.LOG_Player, value)
 		return
 	}
@@ -74,12 +74,40 @@ func (player *Player) AddDrop(value int) {
 		log.Errorf("%s AddDrop時dropIdx為-1", logger.LOG_Player)
 		return
 	}
+	log.Infof("%s 玩家%s獲得Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
 	player.RedisPlayer.SetDrop(dropIdx, value)
 	player.DBPlayer.Drops[dropIdx] = value
 }
 
+// 移除掉落
+func (player *Player) RemoveDrop(value int) {
+	if value == 0 {
+		log.Errorf("%s RemoveDrop傳入值為0", logger.LOG_Player)
+		return
+	}
+	if !player.IsOwnedDrop(value) {
+
+		return
+	}
+	dropIdx := -1
+	for i, v := range player.DBPlayer.Drops {
+		if v == value {
+			dropIdx = i
+			break
+		}
+	}
+	if dropIdx == -1 {
+		log.Errorf("%s RemoveDrop時無此掉落道具, 無法移除: %v", logger.LOG_Player, value)
+		log.Errorf("%s RemoveDrop時dropIdx為-1", logger.LOG_Player)
+		return
+	}
+	log.Infof("%s 玩家%s移除Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
+	player.RedisPlayer.SetDrop(dropIdx, 0)
+	player.DBPlayer.Drops[dropIdx] = 0
+}
+
 // 是否已經擁有此道具
-func (player *Player) AlreadyGotDrop(value int) bool {
+func (player *Player) IsOwnedDrop(value int) bool {
 	for _, v := range player.DBPlayer.Drops {
 		if v == value {
 			return true

@@ -9,10 +9,10 @@ import (
 
 // Map JSON
 type MapJsonData struct {
-	ID                string  `json:"ID"`
-	Ref               string  `json:"Ref"`
+	ID                string `json:"ID"`
+	Ref               string `json:"Ref"`
 	Multiplier        string `json:"Multiplier"`
-	MonsterSpawnerIDs string  `json:"MonsterSpawnerIDs"`
+	MonsterSpawnerIDs string `json:"MonsterSpawnerIDs"`
 }
 
 func (jsonData MapJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
@@ -67,6 +67,6 @@ func GetMapByID(id string) (MapJsonData, error) {
 
 // 取得此地圖的生怪IDs
 func (jsonData MapJsonData) GetMonsterSpawnerIDs() ([]int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnerIDs, ",")
+	ids, err := utility.Split_INT(jsonData.MonsterSpawnerIDs, ",")
 	return ids, err
 }

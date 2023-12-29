@@ -80,7 +80,7 @@ func GetMonsterSpawnerByID(id string) (MonsterSpawnerJsonData, error) {
 
 // 取得隨機生怪秒數
 func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterSpawnIntervalSec, "~")
+	ids, err := utility.Split_INT(jsonData.MonsterSpawnIntervalSec, "~")
 	if len(ids) != 2 {
 		return 0, err
 	}
@@ -93,13 +93,13 @@ func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
 
 // 取得生怪IDs
 func (jsonData MonsterSpawnerJsonData) GetMonsterJsonIDs() ([]int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.MonsterIDs, ",")
+	ids, err := utility.Split_INT(jsonData.MonsterIDs, ",")
 	return ids, err
 }
 
 // 取得隨機路徑ID
 func (jsonData MonsterSpawnerJsonData) GetRandRoutJsonID() (int, error) {
-	ids, err := utility.StrToIntSlice(jsonData.Routes, ",")
+	ids, err := utility.Split_INT(jsonData.Routes, ",")
 	if err != nil {
 		return 0, err
 	}
