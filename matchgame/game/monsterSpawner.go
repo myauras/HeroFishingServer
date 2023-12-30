@@ -236,9 +236,6 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		spawn.MonsterIdxs[i] = monsterIdx
 		// 加入怪物清單
 		leaveTime := MyRoom.GameTime + toTargetTime
-		if monsterJson.MonsterType == "Boss" {
-			log.Warnf("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
-		}
 		// log.Infof("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
@@ -288,15 +285,6 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 	killSet := make(map[int]bool)
 	for _, v := range killMonsterIdxs {
 		killSet[v] = true
-		if m, ok := ms.Monsters[v]; ok {
-			// 如果死亡的是Boss就將BOSS已存在設定回false
-			if m.MonsterJson.MonsterType == "Boss" {
-				ms.MutexLock.Lock()
-				ms.BossExist = false
-				ms.MutexLock.Unlock()
-				log.Warn("設定BOSS退場")
-			}
-		}
 	}
 
 	// 檢查Spawn清單是否有Spawn沒有存活的怪物了, 沒有就移除該Spawn事件
@@ -319,13 +307,19 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 		// 如果此Spawn沒有任何怪物存活就把此Spawn加到要移除清單中
 		if noAliveMonster {
 			needRemoveSpawnIdxs = append(needRemoveSpawnIdxs, i)
+			if spawn.IsBoss {
+				ms.MutexLock.Lock()
+				ms.BossExist = false
+				ms.MutexLock.Unlock()
+				log.Warn("設定BOSS退場")
+			}
 		}
 
 	}
-	log.Infof("移除 MonsterIdx: %v", killMonsterIdxs)
+	// log.Infof("移除 MonsterIdx: %v", killMonsterIdxs)
 	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs) // 從怪物清單中移除被擊殺的怪物
 	if len(needRemoveSpawnIdxs) > 0 {                         // 如果有Spawn的怪物都死亡就移除該Spawn
-		log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
+		// log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
 		utility.RemoveFromSliceBySlice(ms.Spawns, needRemoveSpawnIdxs)
 	}
 
