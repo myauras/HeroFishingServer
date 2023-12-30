@@ -170,6 +170,9 @@ func (r *Room) RemoveExpiredSceneEffects() {
 // 移除過期的玩家Buffer
 func (r *Room) RemoveExpiredPlayerBuffers() {
 	for _, player := range r.Players {
+		if player == nil {
+			continue
+		}
 		toRemoveIdxs := make([]int, 0)
 		for j, buffer := range player.PlayerBuffs {
 			if r.GameTime > (buffer.AtTime + buffer.Duration) {
@@ -621,7 +624,6 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 
 // 處理收到的攻擊事件(UDP)
 func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, content packet.Attack) {
-
 	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
 	if content.MonsterIdx >= 0 {
 		if monster, ok := room.MSpawner.Monsters[content.MonsterIdx]; ok {
@@ -639,7 +641,6 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
 		return
 	}
-
 	// 取rtp
 	rtp := spellJson.RTP
 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
@@ -650,33 +651,42 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
 			return
 		}
-		// 檢查CD
+
 		if spellIdx < 1 || spellIdx > 3 {
 			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Room, spellIdx)
 			return
 		}
-		if (room.GameTime - player.LastSpellTime[spellIdx-1]) < spellJson.CD {
-			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
-			return
-		}
+		// 不檢查CD
+		// // 檢查CD
+		// passTime := room.GameTime - player.LastSpellsTime[spellIdx-1]
+		// if passTime < spellJson.CD {
+		// 	log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能發動技能", logger.LOG_Room, player.DBPlayer.ID)
+		// 	return
+		// }
 		// 檢查是否可以施放該技能
 		if player.CanSpell(spellIdx) {
 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
 		}
+		player.LastSpellsTime[spellIdx-1] = room.GameTime // 設定上一次攻擊時間
 	} else { // 如果是普攻
-		// 檢查CD, 普攻的CD要考慮Buff
-		if (room.GameTime - player.LastAttackTime) < (spellJson.CD / player.GetAttackCDBuff()) {
-			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
-			return
-		}
+		// 不檢查CD
+		// // 檢查CD, 普攻的CD要考慮Buff
+		// passTime := room.GameTime - player.LastAttackTime
+		// cd := spellJson.CD / player.GetAttackCDBuff()
+		// log.Errorf("passTime:%v cd:%v", passTime, cd)
+		// if passTime < cd {
+		// 	log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
+		// 	return
+		// }
 		// 檢查點數
 		if player.DBPlayer.Point < needPoint {
 			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
 			return
 		}
+		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	}
-	player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
+
 	// 廣播給client
 	room.BroadCastPacket(player.Index, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,

@@ -24,7 +24,7 @@ type Player struct {
 	LastUpdateAt   time.Time               // 上次收到玩家更新封包(心跳)
 	PlayerBuffs    []packet.PlayerBuff     // 玩家Buffers
 	LastAttackTime float64                 // 上次普攻時間
-	LastSpellTime  [3]float64              // 上次施放英雄技能時間
+	LastSpellsTime [3]float64              // 上次施放英雄技能時間
 	ConnTCP        *gSetting.ConnectionTCP // TCP連線
 	ConnUDP        *gSetting.ConnectionUDP // UDP連線
 }

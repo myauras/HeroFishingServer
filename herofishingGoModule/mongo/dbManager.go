@@ -4,7 +4,9 @@ package mongo
 
 import (
 	"context"
+	logger "herofishingGoModule/logger"
 
+	"github.com/google/martian/log"
 	"go.mongodb.org/mongo-driver/bson"
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,6 +19,7 @@ func GetDocByID(col string, id string, result interface{}) error {
 
 	err := DB.Collection(col).FindOne(context.TODO(), filter).Decode(result)
 	if err != nil {
+		log.Infof("%s GetDocByID錯誤: %v", logger.LOG_Mongo, err)
 		return err
 	}
 	return nil
