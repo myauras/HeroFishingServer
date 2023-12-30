@@ -34,6 +34,7 @@ type MonsterEffect struct {
 }
 type SceneEffect struct {
 	Name     string  // 效果名稱
+	Value    float64 // 效果數值
 	AtTime   float64 // 在遊戲時間第X秒觸發
 	Duration float64 // 效果持續X秒
 }

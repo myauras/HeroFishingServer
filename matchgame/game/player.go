@@ -7,6 +7,7 @@ import (
 	"herofishingGoModule/redis"
 	"herofishingGoModule/utility"
 	"matchgame/logger"
+	"matchgame/packet"
 	gSetting "matchgame/setting"
 	"time"
 
@@ -15,14 +16,17 @@ import (
 
 // 玩家
 type Player struct {
-	DBPlayer     *mongo.DBPlayer         // 玩家DB資料
-	RedisPlayer  *redis.RedisPlayer      // RedisDB玩家實例
-	Index        int                     // 玩家在房間的索引(座位)
-	MyHero       *Hero                   // 使用中的英雄
-	GainPoint    int64                   // 此玩家在遊戲房總共贏得點數
-	LastUpdateAt time.Time               // 上次收到玩家更新封包(心跳)
-	ConnTCP      *gSetting.ConnectionTCP // TCP連線
-	ConnUDP      *gSetting.ConnectionUDP // UDP連線
+	DBPlayer       *mongo.DBPlayer         // 玩家DB資料
+	RedisPlayer    *redis.RedisPlayer      // RedisDB玩家實例
+	Index          int                     // 玩家在房間的索引(座位)
+	MyHero         *Hero                   // 使用中的英雄
+	GainPoint      int64                   // 此玩家在遊戲房總共贏得點數
+	LastUpdateAt   time.Time               // 上次收到玩家更新封包(心跳)
+	PlayerBuffs    []packet.PlayerBuff     // 玩家Buffers
+	LastAttackTime float64                 // 上次普攻時間
+	LastSpellTime  [3]float64              // 上次施放英雄技能時間
+	ConnTCP        *gSetting.ConnectionTCP // TCP連線
+	ConnUDP        *gSetting.ConnectionUDP // UDP連線
 }
 
 // 玩家點數增減
@@ -172,4 +176,16 @@ func (player *Player) CanSpell(idx int) bool {
 	cost := spell.Cost
 
 	return player.DBPlayer.SpellCharges[(idx-1)] >= cost
+}
+
+// 取得普攻CD
+func (player *Player) GetAttackCDBuff() float64 {
+	cdBuff := 1.0
+	for _, buff := range player.PlayerBuffs {
+		if buff.Name == "Speedup" {
+			cdBuff = cdBuff / buff.Value
+			break
+		}
+	}
+	return cdBuff
 }

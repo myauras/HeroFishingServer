@@ -131,8 +131,9 @@ func RoomLoop() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		MyRoom.RemoveExpiredAttackEvents() // 移除過期的攻擊事件
-		MyRoom.RemoveExpiredSceneEffects() // 移除過期的場景效果
+		MyRoom.RemoveExpiredAttackEvents()  // 移除過期的攻擊事件
+		MyRoom.RemoveExpiredSceneEffects()  // 移除過期的場景效果
+		MyRoom.RemoveExpiredPlayerBuffers() // 移除過期的玩家Buffer
 	}
 }
 
@@ -163,6 +164,24 @@ func (r *Room) RemoveExpiredSceneEffects() {
 			log.Infof("%s 移除過期的場景效果: %v", logger.LOG_Room, r.SceneEffects[v].Name)
 		}
 		r.SceneEffects = utility.RemoveFromSliceBySlice(r.SceneEffects, toRemoveIdxs)
+	}
+}
+
+// 移除過期的玩家Buffer
+func (r *Room) RemoveExpiredPlayerBuffers() {
+	for _, player := range r.Players {
+		toRemoveIdxs := make([]int, 0)
+		for j, buffer := range player.PlayerBuffs {
+			if r.GameTime > (buffer.AtTime + buffer.Duration) {
+				toRemoveIdxs = append(toRemoveIdxs, j)
+			}
+		}
+		if len(toRemoveIdxs) > 0 {
+			for _, v := range toRemoveIdxs {
+				log.Infof("%s 移除過期的玩家Buffer: %v", logger.LOG_Room, player.PlayerBuffs[v].Name)
+			}
+			player.PlayerBuffs = utility.RemoveFromSliceBySlice(player.PlayerBuffs, toRemoveIdxs)
+		}
 	}
 }
 
@@ -523,9 +542,10 @@ func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 			continue
 		}
 		players[i] = &packet.Player{
-			ID:         v.DBPlayer.ID,
-			Idx:        v.Index,
-			GainPoints: v.GainPoint,
+			ID:          v.DBPlayer.ID,
+			Idx:         v.Index,
+			GainPoints:  v.GainPoint,
+			PlayerBuffs: v.PlayerBuffs,
 		}
 	}
 	return players
@@ -601,6 +621,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 
 // 處理收到的攻擊事件(UDP)
 func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, content packet.Attack) {
+
 	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
 	if content.MonsterIdx >= 0 {
 		if monster, ok := room.MSpawner.Monsters[content.MonsterIdx]; ok {
@@ -618,25 +639,44 @@ func (room *Room) HandleAttack(player *Player, pack packet.UDPReceivePack, conte
 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
 		return
 	}
+
 	// 取rtp
 	rtp := spellJson.RTP
 	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
 	// 是否為合法攻擊檢查
-	if isSpellAttack { // 如果是技能攻擊, 檢查是否可以施放該技能
-		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引 Ex.1就是第1個技能
+	if isSpellAttack { // 如果是技能攻擊
+		spellIdx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 		if err != nil {
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
+			return
 		}
+		// 檢查CD
+		if spellIdx < 1 || spellIdx > 3 {
+			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Room, spellIdx)
+			return
+		}
+		if (room.GameTime - player.LastSpellTime[spellIdx-1]) < spellJson.CD {
+			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
+			return
+		}
+		// 檢查是否可以施放該技能
 		if player.CanSpell(spellIdx) {
 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
 		}
-	} else { // 如果是普攻, 檢查是否有足夠點數
+	} else { // 如果是普攻
+		// 檢查CD, 普攻的CD要考慮Buff
+		if (room.GameTime - player.LastAttackTime) < (spellJson.CD / player.GetAttackCDBuff()) {
+			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
+			return
+		}
+		// 檢查點數
 		if player.DBPlayer.Point < needPoint {
 			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
 			return
 		}
 	}
+	player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	// 廣播給client
 	room.BroadCastPacket(player.Index, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,
@@ -929,7 +969,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 	case "Frozen": // 冰風暴
 		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell時strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
 			return
 		}
 		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
@@ -946,6 +986,29 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			},
 		})
 	case "Speedup": // 急速神符
+		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
+		if err != nil {
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			return
+		}
+		value, err := strconv.ParseFloat(dropSpellJson.EffectValue2, 64)
+		if err != nil {
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue2, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			return
+		}
+		player.PlayerBuffs = append(player.PlayerBuffs, packet.PlayerBuff{
+			Name:     dropSpellJson.EffectType,
+			Value:    value,
+			AtTime:   room.GameTime,
+			Duration: duration,
+		})
+		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.UPDATEPLAYER_TOCLIENT,
+			PackID: -1,
+			Content: &packet.UpdatePlayer_ToClient{
+				Players: room.GetPacketPlayers(),
+			},
+		})
 	default:
 		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)
 		return
