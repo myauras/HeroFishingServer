@@ -87,15 +87,6 @@ func openConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
 			case packet.UPDATEGAME:
 				// log.Infof("%s 更新玩家 %s 心跳", logger.LOG_Main, player.DBPlayer.ID)
 				player.LastUpdateAt = time.Now() // 更新心跳
-
-			// ==========發動攻擊==========
-			case packet.ATTACK:
-				content := packet.Attack{}
-				if ok := content.Parse(pack.Content); !ok {
-					log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
-					continue
-				}
-				game.MyRoom.HandleAttack(player, pack, content)
 			}
 		}
 	}

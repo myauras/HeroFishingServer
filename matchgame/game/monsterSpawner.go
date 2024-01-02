@@ -110,6 +110,7 @@ func (ms *MonsterSpawner) SpawnTimer() {
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
 				if MyRoom.GameTime > monster.LeaveTime {
+					// log.Warnf("GameTime: %v leaveTime: %v", MyRoom.GameTime, monster.LeaveTime)
 					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
 				}
 			}
@@ -200,7 +201,7 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		ms.MutexLock.Lock()
 		ms.BossExist = true
 		ms.MutexLock.Unlock()
-		log.Warn("設定BOSS出場")
+		// log.Warn("設定BOSS出場")
 	}
 
 	// 遍歷生怪中的怪物
@@ -236,10 +237,10 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		spawn.MonsterIdxs[i] = monsterIdx
 		// 加入怪物清單
 		leaveTime := MyRoom.GameTime + toTargetTime
-		if monsterJson.MonsterType == "Boss" {
-			log.Warnf("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
-		}
-		// log.Infof("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
+		// if monsterJson.MonsterType == "Boss" {
+		// 	log.Warnf("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
+		// }
+		// log.Warnf("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,
@@ -294,7 +295,7 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 				ms.MutexLock.Lock()
 				ms.BossExist = false
 				ms.MutexLock.Unlock()
-				log.Warn("設定BOSS退場")
+				// log.Warn("設定BOSS退場")
 			}
 		}
 	}
@@ -322,10 +323,10 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 		}
 
 	}
-	log.Infof("移除 MonsterIdx: %v", killMonsterIdxs)
+	// log.Infof("移除 MonsterIdx: %v", killMonsterIdxs)
 	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs) // 從怪物清單中移除被擊殺的怪物
 	if len(needRemoveSpawnIdxs) > 0 {                         // 如果有Spawn的怪物都死亡就移除該Spawn
-		log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
+		// log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
 		utility.RemoveFromSliceBySlice(ms.Spawns, needRemoveSpawnIdxs)
 	}
 
