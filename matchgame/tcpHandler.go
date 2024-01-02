@@ -143,6 +143,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				DBPlayer:     &dbPlayer,
 				RedisPlayer:  redisPlayer,
 				LastUpdateAt: time.Now(),
+				PlayerBuffs:  []packet.PlayerBuff{},
 				ConnTCP: &gSetting.ConnectionTCP{
 					Conn:    conn,
 					Encoder: encoder,
