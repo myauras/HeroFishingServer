@@ -44,7 +44,7 @@ func main() {
 		}
 	}()
 
-	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
+	log.Infof("%s ==============MATCHGAME 啟動3==============", logger.LOG_Main)
 	go signalListen()
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
 	if ep := os.Getenv("PORT"); ep != "" {

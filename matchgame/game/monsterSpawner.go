@@ -105,18 +105,17 @@ func (ms *MonsterSpawner) SpawnTimer() {
 				continue
 			}
 			time.Sleep(1000 * time.Millisecond) // 每X豪秒檢查一次
-
 			// 怪物移除檢查
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
 				if MyRoom.GameTime > monster.LeaveTime {
 					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
+					log.Errorf("怪物:%v 因為時間被移除", monster.MonsterIdx)
 				}
 			}
 			if len(needRemoveMonsterIdxs) != 0 {
 				ms.RemoveMonsters(needRemoveMonsterIdxs)
 			}
-
 			// 生怪檢查
 			for spawnID, timer := range ms.spawnTimerMap {
 				spawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(spawnID)) // 這邊不用檢查err因為會加入spawnTimerMap都是檢查過的
@@ -130,7 +129,6 @@ func (ms *MonsterSpawner) SpawnTimer() {
 					var spawn *Spawn
 					switch spawnData.SpawnType {
 					case gameJson.RandomGroup:
-
 						ids, err := utility.Split_INT(spawnData.TypeValue, ",")
 						if err != nil {
 							log.Errorf("%s spawnData ID為 %s 的TypeValue不是,分割的字串: %v", logger.LOG_MonsterSpawner, spawnData.ID, err)
@@ -200,9 +198,8 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		ms.MutexLock.Lock()
 		ms.BossExist = true
 		ms.MutexLock.Unlock()
-		log.Warn("設定BOSS出場")
+		// log.Warn("設定BOSS出場")
 	}
-
 	// 遍歷生怪中的怪物
 	for i, monsterID := range spawn.MonsterJsonIDs {
 		monsterJson, err := gameJson.GetMonsterByID(strconv.Itoa(monsterID))
@@ -236,7 +233,7 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		spawn.MonsterIdxs[i] = monsterIdx
 		// 加入怪物清單
 		leaveTime := MyRoom.GameTime + toTargetTime
-		// log.Infof("MyRoom.GameTime: %v toTargetTime: %v leaveTime: %v", MyRoom.GameTime, toTargetTime, leaveTime)
+		log.Warnf("Monster:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,
@@ -261,7 +258,6 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		IsBoss:      spawn.IsBoss,
 		Monsters:    monsters,
 	})
-
 	// 廣播給所有玩家
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD: packet.SPAWN_TOCLIENT,
@@ -311,12 +307,12 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 				ms.MutexLock.Lock()
 				ms.BossExist = false
 				ms.MutexLock.Unlock()
-				log.Warn("設定BOSS退場")
+				// log.Warn("設定BOSS退場")
 			}
 		}
 
 	}
-	// log.Infof("移除 MonsterIdx: %v", killMonsterIdxs)
+	// log.Warnf("移除 MonsterIdx: %v", killMonsterIdxs)
 	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs) // 從怪物清單中移除被擊殺的怪物
 	if len(needRemoveSpawnIdxs) > 0 {                         // 如果有Spawn的怪物都死亡就移除該Spawn
 		// log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)

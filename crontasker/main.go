@@ -31,7 +31,7 @@ func main() {
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
 
-	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
+	log.Infof("%s ==============Crontasker 啟動==============", logger.LOG_Main)
 
 	// 設定環境版本
 	Env = *flag.String("Env", "Dev", "Env setting")
