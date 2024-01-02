@@ -137,8 +137,9 @@ func RoomLoop() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		MyRoom.RemoveExpiredAttackEvents() // 移除過期的攻擊事件
-		MyRoom.RemoveExpiredSceneEffects() // 移除過期的場景效果
+		MyRoom.RemoveExpiredAttackEvents()  // 移除過期的攻擊事件
+		MyRoom.RemoveExpiredSceneEffects()  // 移除過期的場景效果
+		MyRoom.RemoveExpiredPlayerBuffers() // 移除過期的玩家Buffer
 	}
 }
 
@@ -153,7 +154,7 @@ func (r *Room) RemoveExpiredAttackEvents() {
 	}
 	if len(toRemoveKeys) > 0 {
 		utility.RemoveFromMapByKeys(r.AttackEvents, toRemoveKeys)
-		log.Infof("%s 移除過期的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
+		// log.Infof("%s 移除過期的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
 	}
 }
 
@@ -166,10 +167,28 @@ func (r *Room) RemoveExpiredSceneEffects() {
 		}
 	}
 	if len(toRemoveIdxs) > 0 {
-		for _, v := range toRemoveIdxs {
-			log.Infof("%s 移除過期的場景效果: %v", logger.LOG_Room, r.SceneEffects[v].Name)
-		}
+		// for _, v := range toRemoveIdxs {
+		// 	log.Infof("%s 移除過期的場景效果: %v", logger.LOG_Room, r.SceneEffects[v].Name)
+		// }
 		r.SceneEffects = utility.RemoveFromSliceBySlice(r.SceneEffects, toRemoveIdxs)
+	}
+}
+
+// 移除過期的玩家Buffer
+func (r *Room) RemoveExpiredPlayerBuffers() {
+	for _, player := range r.Players {
+		toRemoveIdxs := make([]int, 0)
+		for j, buffer := range player.PlayerBuffs {
+			if r.GameTime > (buffer.AtTime + buffer.Duration) {
+				toRemoveIdxs = append(toRemoveIdxs, j)
+			}
+		}
+		if len(toRemoveIdxs) > 0 {
+			// for _, v := range toRemoveIdxs {
+			// 	log.Infof("%s 移除過期的玩家Buffer: %v", logger.LOG_Room, player.PlayerBuffs[v].Name)
+			// }
+			player.PlayerBuffs = utility.RemoveFromSliceBySlice(player.PlayerBuffs, toRemoveIdxs)
+		}
 	}
 }
 
@@ -537,9 +556,10 @@ func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 			continue
 		}
 		players[i] = &packet.Player{
-			ID:         v.DBPlayer.ID,
-			Idx:        v.Index,
-			GainPoints: v.GainPoint,
+			ID:          v.DBPlayer.ID,
+			Idx:         v.Index,
+			GainPoints:  v.GainPoint,
+			PlayerBuffs: v.PlayerBuffs,
 		}
 	}
 	return players
@@ -662,6 +682,16 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
 			return
 		}
+		// 檢查CD
+		if spellIdx < 1 || spellIdx > 3 {
+			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Room, spellIdx)
+			return
+		}
+		if (room.GameTime - player.LastSpellsTime[spellIdx-1]) < spellJson.CD {
+			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
+			return
+		}
+		// 檢查是否可以施放該技能
 		if player.CanSpell(spellIdx) {
 			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
 			return
@@ -671,14 +701,23 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 			log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Room, getSpellErr)
 			return
 		}
+
 		spendSpellCharge = spell.Cost
+		player.LastSpellsTime[spellIdx-1] = room.GameTime
+
 	} else { // 如果是普攻, 檢查是否有足夠點數
+		// 檢查CD, 普攻的CD要考慮Buff
+		if (room.GameTime - player.LastAttackTime) < (spellJson.CD / player.GetAttackCDBuff()) {
+			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊", logger.LOG_Room, player.DBPlayer.ID)
+			return
+		}
+		// 檢查點數
 		if player.DBPlayer.Point < needPoint {
 			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
 			return
 		}
 		spendPoint = -int64(room.DBmap.Bet)
-
+		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	}
 
 	// =============建立攻擊事件=============
