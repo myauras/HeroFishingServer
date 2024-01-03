@@ -44,11 +44,17 @@ func main() {
 		}
 	}()
 
-	log.Infof("%s ==============MATCHGAME 啟動3==============", logger.LOG_Main)
+	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
 	go signalListen()
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
 	if ep := os.Getenv("PORT"); ep != "" {
 		port = &ep
+	}
+
+	if imgVer := os.Getenv("ImgVer"); imgVer != "" {
+		log.Infof("%s Image版本為: %s", logger.LOG_Main, imgVer)
+	} else {
+		log.Errorf("%s 取不到環境變數: ImgVer", logger.LOG_Main)
 	}
 	Env = *flag.String("Version", "Dev", "version setting")
 	if ep := os.Getenv("Version"); ep != "" {

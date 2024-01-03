@@ -40,7 +40,16 @@ func (p *Attack) Parse(common CMDContent) bool {
 	} else {
 		log.WithFields(log.Fields{
 			"log": "parse SpellJsonID資料錯誤",
-		}).Errorf("%s Parse packet error: %s", logger.LOG_Pack, "Hit")
+		}).Errorf("%s Parse packet error: %s", logger.LOG_Pack, "Attack")
+		return false
+	}
+	if monsterIdx, ok := m["MonsterIdx"].(float64); ok {
+		p.MonsterIdx = int(monsterIdx)
+	} else {
+		// 寫LOG
+		log.WithFields(log.Fields{
+			"log": "parse monsterIdx資料錯誤",
+		}).Errorf("%s Parse packet error: %s", logger.LOG_Pack, "Attack")
 		return false
 	}
 

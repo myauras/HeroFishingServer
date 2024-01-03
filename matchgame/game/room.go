@@ -646,7 +646,6 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 		log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
 		return
 	}
-
 	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
 	if content.MonsterIdx >= 0 {
 		if monster, ok := room.MSpawner.Monsters[content.MonsterIdx]; ok {
@@ -657,7 +656,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 			return
 		}
 	}
-	needPoint := int64(room.DBmap.Bet)
+	// needPoint := int64(room.DBmap.Bet)
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
@@ -711,21 +710,22 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 
 	} else { // 如果是普攻, 檢查是否有足夠點數
 		// 檢查CD, 普攻的CD要考慮Buff
-		passSec := room.GameTime - player.LastAttackTime // 距離上次攻擊經過的秒數
-		cd := spellJson.CD / player.GetAttackCDBuff()    // CD秒數
-		if passSec < cd {
-			log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊, passSec: %v cd: %v", logger.LOG_Room, player.DBPlayer.ID, passSec, cd)
-			return
-		}
+		// passSec := room.GameTime - player.LastAttackTime // 距離上次攻擊經過的秒數
+		// cd := spellJson.CD / player.GetAttackCDBuff()    // CD秒數
+		// if passSec < cd {
+		// 	log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊, passSec: %v cd: %v", logger.LOG_Room, player.DBPlayer.ID, passSec, cd)
+		// 	return
+		// }
+
+		// (先關閉點數不足檢測)
 		// 檢查點數
-		if player.DBPlayer.Point < needPoint {
-			log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
-			return
-		}
+		// if player.DBPlayer.Point < needPoint {
+		// 	log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
+		// 	return
+		// }
 		spendPoint = -int64(room.DBmap.Bet)
 		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	}
-
 	// =============建立攻擊事件=============
 	var attackEvent *AttackEvent
 	// 以attackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
@@ -742,16 +742,15 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	} else { // 有同樣的攻擊事件存在代表Hit比Attack先送到
 		attackEvent = room.AttackEvents[attackID]
 		attackEvent.Paid = true // 設為已支付費用
+		// 有Hit先送到的封包要處理
+		if len(attackEvent.Hit_ToClientPacks) > 0 {
+			for _, v := range attackEvent.Hit_ToClientPacks {
+				room.settleHit(player, v)
+			}
+		}
 	}
 
 	// =============是合法的攻擊就進行資源消耗與回送封包=============
-
-	// 有Hit先送到的封包要處理
-	if len(attackEvent.Hit_ToClientPacks) > 0 {
-		for _, v := range attackEvent.Hit_ToClientPacks {
-			room.settleHit(player, v)
-		}
-	}
 
 	// 玩家點數變化
 	player.AddPoint(spendPoint)
@@ -908,23 +907,22 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	}
 
 	// 設定AttackEvent
-	var attackEvent AttackEvent
+	var attackEvent *AttackEvent
 	// 不存在此攻擊事件代表之前的Attack封包還沒送到
 	if _, ok := room.AttackEvents[attackID]; !ok {
-
 		idxs := make([][]int, 1)
 		idxs[0] = hitMonsterIdxs
-		attackEvent = AttackEvent{
+		attackEvent = &AttackEvent{
 			AttackID:          attackID,
 			ExpiredTime:       room.GameTime + ATTACK_EXPIRED_SECS,
 			MonsterIdxs:       idxs,
 			Paid:              false, // 設定為還沒支付費用
 			Hit_ToClientPacks: make([]packet.Pack, 0),
 		}
-		room.AttackEvents[attackID] = &attackEvent // 將此攻擊事件加入清單
+		room.AttackEvents[attackID] = attackEvent // 將此攻擊事件加入清單
 
 	} else {
-		attackEvent := room.AttackEvents[attackID]
+		attackEvent = room.AttackEvents[attackID]
 		if attackEvent == nil {
 			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時room.AttackEvents[attackID]為nil", pack))
 			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Room)
@@ -947,7 +945,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		return
 	}
 	attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, content.MonsterIdxs) // 將此波命中加入攻擊事件中
-
 	// 將命中結果封包計入在此攻擊事件中
 	hitPack := packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
@@ -960,7 +957,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			GainDrops:        gainDrops,
 		}}
 	attackEvent.Hit_ToClientPacks = append(attackEvent.Hit_ToClientPacks, hitPack)
-
+	// log.Errorf("attackEvent.Paid: %v   killMonsterIdxs: %v", attackEvent.Paid, killMonsterIdxs)
 	// =============已完成支付費用的命中就進行資源消耗與回送封包=============
 	if attackEvent.Paid {
 		room.settleHit(player, hitPack)
@@ -1003,7 +1000,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	}
 	// 從怪物清單中移除被擊殺的怪物(付費後才算目標死亡, 沒收到付費的Attack封包之前都還是算怪物存活)
 	room.MSpawner.RemoveMonsters(content.KillMonsterIdxs)
-	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
+	log.Errorf("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
 	// log.Infof("/////////////////////////////////")
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)

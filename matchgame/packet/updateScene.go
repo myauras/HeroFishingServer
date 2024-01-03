@@ -14,10 +14,10 @@ type UpdateScene_ToClient struct {
 
 type Spawn struct {
 	CMDContent
-	RouteJsonID int       // 路徑JsonID
-	SpawnTime   float64   // 在遊戲時間第X秒時被產生的
-	IsBoss      bool      // 是否為Boss生怪
-	Monsters    []Monster // 怪物清單
+	RouteJsonID int        // 路徑JsonID
+	SpawnTime   float64    // 在遊戲時間第X秒時被產生的
+	IsBoss      bool       // 是否為Boss生怪
+	Monsters    []*Monster // 怪物清單
 }
 
 type Monster struct {
