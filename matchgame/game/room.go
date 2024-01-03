@@ -851,13 +851,14 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				}
 				// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
 				if !player.IsOwnedDrop(int(dropID64)) {
-					addOdds, err := strconv.ParseFloat(dropJson.GainRTP, 64)
+					addOdds, err := strconv.ParseFloat(dropJson.RTP, 64)
 					if err != nil {
 						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
 						log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
 						return
 					}
 					dropAddOdds += addOdds
+					log.Errorf("dropAddOdds: %v", dropAddOdds)
 				}
 			}
 
@@ -900,6 +901,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
 				if dropAddOdds != 0 && dropID64 != 0 {
+					log.Errorf("dropID64: %v", int(dropID64))
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
 			}
@@ -1032,7 +1034,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 	case "Frozen": // 冰風暴
 		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell時strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
 			return
 		}
 		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
@@ -1049,6 +1051,29 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			},
 		})
 	case "Speedup": // 急速神符
+		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
+		if err != nil {
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			return
+		}
+		value, err := strconv.ParseFloat(dropSpellJson.EffectValue2, 64)
+		if err != nil {
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue2, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			return
+		}
+		player.PlayerBuffs = append(player.PlayerBuffs, packet.PlayerBuff{
+			Name:     dropSpellJson.EffectType,
+			Value:    value,
+			AtTime:   room.GameTime,
+			Duration: duration,
+		})
+		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.UPDATEPLAYER_TOCLIENT,
+			PackID: -1,
+			Content: &packet.UpdatePlayer_ToClient{
+				Players: room.GetPacketPlayers(),
+			},
+		})
 	default:
 		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)
 		return

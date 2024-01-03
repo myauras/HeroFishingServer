@@ -9,7 +9,7 @@ import (
 type DropJsonData struct {
 	ID string `json:"ID"`
 	// Ref          string `json:"Ref"`
-	GainRTP   string `json:"GainRTP"`
+	RTP       string `json:"RTP"`
 	DropType  string `json:"DropType"`
 	DropValue string `json:"DropValue,omitempty"`
 }
