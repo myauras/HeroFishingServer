@@ -59,7 +59,6 @@ func (player *Player) AddSpellCharge(idx int, value int) {
 
 // 新增掉落
 func (player *Player) AddDrop(value int) {
-	log.Errorf("獲得DropID: %v", value)
 	if value == 0 {
 		log.Errorf("%s AddDrop傳入值為0", logger.LOG_Player)
 		return

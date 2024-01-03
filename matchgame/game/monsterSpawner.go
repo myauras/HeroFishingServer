@@ -142,6 +142,7 @@ func (ms *MonsterSpawner) SpawnTimer() {
 						if err != nil {
 							continue
 						}
+						log.Errorf("rndSpawnID: %v", rndSpawnID)
 						newSpawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(rndSpawnID))
 						monsterJsonIDs, err := newSpawnData.GetMonsterJsonIDs()
 						if err != nil {

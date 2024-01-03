@@ -94,6 +94,9 @@ func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
 // 取得生怪IDs
 func (jsonData MonsterSpawnerJsonData) GetMonsterJsonIDs() ([]int, error) {
 	ids, err := utility.Split_INT(jsonData.MonsterIDs, ",")
+	if err != nil {
+		err = fmt.Errorf("MonsterSpawnerJson的MonsterIDs Split_INT錯誤 JsonID: %s MonsterIDs: %s", jsonData.ID, jsonData.MonsterIDs)
+	}
 	return ids, err
 }
 
