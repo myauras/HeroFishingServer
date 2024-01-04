@@ -14,8 +14,8 @@ const (
 )
 
 var EnvGCPProject = map[string]string{
-	"Dev":     "herofishing-dev",     // 開發版
-	"Release": "herofishing-release", // 正式版
+	"Dev":     "fourth-waters-410202", // 開發版
+	"Release": "herofishing-release",  // 正式版
 }
 
 // 環境版本

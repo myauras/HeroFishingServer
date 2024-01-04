@@ -33,7 +33,7 @@ func Init(env string) error {
 	}
 
 	// 設定bucket和object前綴
-	bucketName := "herofishing_gamejson_dev"
+	bucketName := "herofishing_gamejson_dev2"
 	prefix := "" // 如果所有的json都在根目錄，就用空字串就可以
 
 	bucket := client.Bucket(bucketName)

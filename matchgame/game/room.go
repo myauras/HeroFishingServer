@@ -900,7 +900,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
 				if dropID64 != 0 {
-					log.Errorf("dropID64: %v", int(dropID64))
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
 			}

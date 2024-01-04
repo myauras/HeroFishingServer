@@ -39,6 +39,12 @@ func main() {
 	}()
 
 	log.Infof("%s ==============MATCHMAKER 啟動==============", logger.LOG_Main)
+	// // 顯示Image版本
+	// if imgVer := os.Getenv("ImgVer"); imgVer != "" {
+	// 	log.Infof("%s Image版本為: %s", logger.LOG_Main, imgVer)
+	// } else {
+	// 	log.Errorf("%s 取不到環境變數: ImgVer", logger.LOG_Main)
+	// }
 	// 設定Port
 	port := flag.String("port", "32680", "The port to listen to tcp traffic on")
 	if envPort := os.Getenv("PORT"); envPort != "" {

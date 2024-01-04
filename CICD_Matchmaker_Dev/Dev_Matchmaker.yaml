@@ -32,7 +32,7 @@ spec:
       serviceAccountName: default # 指定使用default serviceAccount
       containers:
       - name: herofishing-matchmaker
-        image: asia-east1-docker.pkg.dev/herofishing-dev/herofishing/herofishing-matchmaker:0.1.91
+        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchmaker:0.2.4
         resources:
           requests:
             memory: "1024Mi"
@@ -41,6 +41,10 @@ spec:
             memory: "2048Mi"
             cpu: "200m"
         env:
+        - name: ImgVer
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['imgVersion']
         - name: "PORT"
           value: "30390"
         - name: "Env"
