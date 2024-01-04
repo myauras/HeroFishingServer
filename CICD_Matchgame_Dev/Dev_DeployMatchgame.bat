@@ -7,7 +7,3 @@ kubectl apply -f .\CICD_Matchgame_Dev\Dev_fleet.yaml
 @if ERRORLEVEL 1 exit /b 1
 kubectl apply -f .\CICD_Matchgame_Dev\Dev_fleetautoscaler.yaml
 @if ERRORLEVEL 1 exit /b 1
-
-@REM 建立k8s cluster的防火牆 以下這行如果本來就有建立防火牆就不需要執行 可以註解掉否則會報錯誤
-@REM gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
-@REM gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"

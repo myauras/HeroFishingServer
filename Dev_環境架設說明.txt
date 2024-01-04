@@ -31,6 +31,8 @@ kubectl create namespace herofishing-gameserver
 gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --format="value(workloadIdentityConfig.workloadPool)"
 # kubectl annotate serviceaccount --namespace herofishing-service [SERVICE_ACCOUNT_NAME] iam.gke.io/gcp-service-account=[GCP_SERVICE_ACCOUNT_EMAIL]
 
+# 設定K8s上下文(使用yaml佈署應用時, 會根據k8s上下文決定佈署到哪個專案的哪個cluster)
+gcloud container clusters get-credentials cluster-herofishing --zone=asia-east1-c --project fourth-waters-410202
 
 
 # =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
@@ -61,9 +63,13 @@ kubectl get pods -n agones-system -o wide # 取得k8s的pods來確認部屬與�
 helm uninstall helm-release-herofishing --namespace=agones-system
 
 # 將K8s的服務帳戶與GCP的服務帳戶綁定(agones fleet建出來的gameserver pod是使用agones-sdk這個serviceAccount, 所以讓k8s的agones-sdk綁定GCP的gcseditor綁定)
+gcloud iam service-accounts add-iam-policy-binding gcseditor@fourth-waters-410202.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:fourth-waters-410202.svc.id.goog[herofishing-gameserver/agones-sdk]"
 kubectl annotate serviceaccount agones-sdk -n herofishing-gameserver iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com
+# 使用以下語法來查詢是否都有將k8s的服務帳戶綁定到GCP的服務帳戶
+gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --project fourth-waters-410202
 
-
+# 建立防火牆
+gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
 
 # =========啟用Artifacts服務=========  
 # 要能push docker image要先啟用artifact registry服務
@@ -121,3 +127,4 @@ kubectl describe certificaterequest <請求名稱> -n herofishing-service # 查�
 # 例如: Waiting on certificate issuance from order herofishing-service/herofishing-certification-tdrcr-455658989: "pending"
 kubectl describe order <訂單名稱> -n herofishing-service # 查看訂單狀態, 訂單名稱通常是長這樣子herofishing-certification-tdrcr-455658989
 kubectl describe challenge -n <命名空間> # 查看challenge狀況, 訂單一直在pendding就需要查看問題出在哪
+

@@ -1,5 +1,5 @@
 {"MonsterSpawner":[
-	{	"ID":"10",	"SpawnType":"RandomGroup",	"TypeValue":"11,12,13,14,18",	"MonsterSpawnIntervalSec":"5~10"},
+	{	"ID":"10",	"SpawnType":"RandomGroup",	"TypeValue":"11,12,13,14",	"MonsterSpawnIntervalSec":"5~10"},
 	{	"ID":"11",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"25",	"Routes":"1,2,3,4,5,6,7,8"},
 	{	"ID":"12",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"26",	"Routes":"1,2,3,4,5,6,7,8"},
 	{	"ID":"13",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"27",	"Routes":"1,2,3,4,5,6,7,8"},

@@ -109,8 +109,8 @@ func (ms *MonsterSpawner) SpawnTimer() {
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
 				if MyRoom.GameTime > monster.LeaveTime {
+					log.Errorf("怪物離開: %v", monster.MonsterIdx)
 					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
-					// log.Errorf("怪物:%v 因為時間被移除", monster.MonsterIdx)
 				}
 			}
 			if len(needRemoveMonsterIdxs) != 0 {
@@ -142,7 +142,6 @@ func (ms *MonsterSpawner) SpawnTimer() {
 						if err != nil {
 							continue
 						}
-						log.Errorf("rndSpawnID: %v", rndSpawnID)
 						newSpawnData, _ := gameJson.GetMonsterSpawnerByID(strconv.Itoa(rndSpawnID))
 						monsterJsonIDs, err := newSpawnData.GetMonsterJsonIDs()
 						if err != nil {
@@ -237,7 +236,7 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		// if spawn.IsBoss {
 		// 	log.Errorf("BOSS:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
 		// }
-		// log.Warnf("Monster:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
+		log.Warnf("monsterIdx:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,

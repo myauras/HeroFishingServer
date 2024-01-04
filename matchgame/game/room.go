@@ -896,6 +896,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
 					}
 				}
+				log.Errorf("擊殺怪物: %v", monsterIdx)
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
@@ -1000,7 +1001,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	}
 	// 從怪物清單中移除被擊殺的怪物(付費後才算目標死亡, 沒收到付費的Attack封包之前都還是算怪物存活)
 	room.MSpawner.RemoveMonsters(content.KillMonsterIdxs)
-	log.Errorf("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
+	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
 	// log.Infof("/////////////////////////////////")
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)
