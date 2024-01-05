@@ -234,9 +234,9 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		// 加入怪物清單
 		leaveTime := MyRoom.GameTime + toTargetTime
 		// if spawn.IsBoss {
-		// 	log.Errorf("BOSS:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
+		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
 		// }
-		log.Warnf("monsterIdx:%v GameTime: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, toTargetTime, leaveTime)
+		log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetTime: %v leaveTime: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,
