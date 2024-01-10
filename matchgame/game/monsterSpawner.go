@@ -109,7 +109,7 @@ func (ms *MonsterSpawner) SpawnTimer() {
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
 				if MyRoom.GameTime > monster.LeaveTime {
-					log.Errorf("怪物離開: %v", monster.MonsterIdx)
+					// log.Errorf("怪物離開: %v", monster.MonsterIdx)
 					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
 				}
 			}
@@ -236,7 +236,7 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		// if spawn.IsBoss {
 		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
 		// }
-		log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetTime: %v leaveTime: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
+		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetTime: %v leaveTime: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
 			MonsterJson: monsterJson,
 			MonsterIdx:  monsterIdx,
@@ -281,6 +281,8 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 	if len(killMonsterIdxs) == 0 {
 		return
 	}
+	ms.SendDieMonsters(killMonsterIdxs) // 怪物死亡時廣播封包給client
+
 	killSet := make(map[int]bool)
 	for _, v := range killMonsterIdxs {
 		killSet[v] = true
@@ -322,4 +324,37 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 		ms.Spawns = utility.RemoveFromSliceBySlice(ms.Spawns, needRemoveSpawnIdxs)
 	}
 
+}
+
+// 怪物死亡時廣播封包給client
+func (ms *MonsterSpawner) SendDieMonsters(killMonsterIdxs []int) {
+	dieMonsters := make([]packet.DieMonster, 0)
+
+	for _, idx := range killMonsterIdxs {
+
+		for _, monster := range ms.Monsters {
+			if monster.MonsterIdx == idx {
+				jsonID, err := strconv.ParseInt(monster.MonsterJson.ID, 10, 64)
+				if err != nil {
+					log.Errorf("%s strconv.ParseInt(monster.MonsterJson.ID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+					jsonID = -1
+				}
+				dieMonsters = append(dieMonsters, packet.DieMonster{
+					ID:  int(jsonID),
+					Idx: idx,
+				})
+				break
+			}
+		}
+	}
+	if len(dieMonsters) == 0 {
+		return
+	}
+
+	MyRoom.BroadCastPacket(-1, &packet.Pack{ // 廣播封包
+		CMD: packet.MONSTERDIE_TOCLIENT,
+		Content: &packet.MonsterDie_ToClient{
+			DieMonsters: dieMonsters,
+		},
+	})
 }

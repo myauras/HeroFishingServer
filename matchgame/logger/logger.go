@@ -2,6 +2,7 @@ package logger
 
 const (
 	LOG_Main           = "[Main]"
+	LOG_Agones         = "[Agones]"
 	LOG_Room           = "[Room]"
 	LOG_Player         = "[Player]"
 	LOG_Monster        = "[Monster]"

@@ -124,9 +124,11 @@ func CheckGameServer(roomName string) error {
 		log.Errorf("取得Matchgame列表失敗: %v", err)
 		return err
 	}
-
+	log.Infof("檢查RoomName是否可加入: %s", roomName)
 	for _, gs := range gameServers.Items {
+		log.Infof("GS RoomName: %s", gs.Labels["RoomName"])
 		if gs.Labels["RoomName"] == roomName {
+			log.Infof("目標RoomName狀態: %s", gs.Status.State)
 			if gs.Status.State == agonesv1.GameServerStateReady {
 				log.Infof("%s 已確認目標Matchgame server正常運作", logger.LOG_Agones)
 				return nil

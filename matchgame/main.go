@@ -3,22 +3,22 @@ package main
 import (
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
-	gSetting "matchgame/setting"
+	// gSetting "matchgame/setting"
 
 	log "github.com/sirupsen/logrus"
 
+	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
+	serverSDK "agones.dev/agones/pkg/sdk"
+	"agones.dev/agones/pkg/util/signals"
 	"flag"
 	"fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
+	"matchgame/agones"
 	"matchgame/game"
 	"os"
 	"time"
-
-	serverSDK "agones.dev/agones/pkg/sdk"
-	"agones.dev/agones/pkg/util/signals"
-	sdk "agones.dev/agones/sdks/go"
 )
 
 // 環境版本
@@ -60,9 +60,9 @@ func main() {
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
 	}
-	agonesSDK, err := sdk.NewSDK()
+	err := agones.InitAgones()
 	if err != nil {
-		log.Errorf("%s Could not connect to sdk: %v.\n", logger.LOG_Main, err)
+		log.Errorf("%s %s", logger.LOG_Main, err)
 	}
 	InitGameJson() // 初始化遊戲Json資料
 
@@ -73,12 +73,12 @@ func main() {
 	var myGameServer *serverSDK.GameServer
 	var playerIDs [setting.PLAYER_NUMBER]string
 
-	agonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
+	agones.AgonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		// log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
 		defer func() {
 			if err := recover(); err != nil {
 				log.Errorf("%s 遊戲崩潰: %v.\n", logger.LOG_Main, err)
-				shutdownServer(agonesSDK)
+				agones.AgonesSDK.Shutdown()
 			}
 		}()
 
@@ -116,6 +116,8 @@ func main() {
 			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
 			game.InitGameRoom(dbMapID, playerIDs, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
+
+			log.Infof("%s GameServer狀態為: %s", logger.LOG_Main, gs.Status.State)
 			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
 		} else {
 			if matchmakerPodName != "" && gs.ObjectMeta.Labels["MatchmakerPodName"] != "" && matchmakerPodName != gs.ObjectMeta.Labels["MatchmakerPodName"] {
@@ -131,19 +133,13 @@ func main() {
 		}
 	})
 
-	// 將此遊戲房伺服器狀態標示為Ready(要標示為ready才會被Agones Allocation服務分配到)
-	if err := agonesSDK.Ready(); err != nil {
-		log.Fatalf("Could not send ready message")
-		return
-	} else {
-		log.Infof("%s Matchgame已可被Agones Allocation服務分配", logger.LOG_Main)
-	}
+	go TestLoop() // 測試Loop
 
 	stopChan := make(chan struct{})
 	endGameChan := make(chan struct{})
-
+	agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
 	// Agones伺服器健康檢查
-	go agonesHealthPin(agonesSDK, stopChan)
+	go agones.AgonesHealthPin(stopChan)
 
 	// 等拿到房間資料後才開啟socket連線
 	room := <-roomChan
@@ -155,8 +151,8 @@ func main() {
 
 	// 開啟連線
 	src := ":" + *port
-	go openConnectTCP(agonesSDK, stopChan, src)
-	go openConnectUDP(agonesSDK, stopChan, src)
+	go openConnectTCP(agones.AgonesSDK, stopChan, src)
+	go openConnectUDP(agones.AgonesSDK, stopChan, src)
 	// 寫入DBMatchgame
 	writeMatchgameToDB(*room.DBMatchgame)
 	// 開始遊戲房計時器
@@ -172,17 +168,35 @@ func main() {
 		// 錯誤發生寫入Log
 		// FirebaseFunction.DeleteGameRoom(RoomName)
 		log.Infof("%s game stop chan", logger.LOG_Main)
-		shutdownServer(agonesSDK)
+		agones.ShutdownServer()
 		return
 	case <-endGameChan:
 		// 遊戲房關閉寫入Log
 		// FirebaseFunction.DeleteGameRoom(RoomName)
 		log.Infof("%s End game chan", logger.LOG_Main)
-		delayShutdownServer(60*time.Second, agonesSDK, stopChan)
+		agones.DelayShutdownServer(60*time.Second, stopChan)
 	}
 	<-stopChan
 
-	shutdownServer(agonesSDK) // 關閉Server
+	agones.ShutdownServer() // 關閉Server
+}
+
+// 房間循環
+func TestLoop() {
+	if agones.AgonesSDK == nil {
+		return
+	}
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+
+		gs, err := agones.AgonesSDK.GameServer()
+		if err != nil {
+			log.Fatalf("取得GameServer失敗: %v", err)
+		}
+		log.Infof("%s GameServer狀態為: %s", logger.LOG_Main, gs.Status.State)
+	}
 }
 
 // 初始化遊戲Json資料
@@ -222,43 +236,4 @@ func signalListen() {
 	// FirebaseFunction.DeleteGameRoom(documentID)
 	log.Infof("%s Exit signal received. Shutting down.", logger.LOG_Main)
 	os.Exit(0)
-}
-
-// 通知Agones關閉server並結束應用程式
-func shutdownServer(s *sdk.SDK) {
-	log.Infof("%s Shutdown agones server and exit app.", logger.LOG_Main)
-	// 通知Agones關閉server
-	if err := s.Shutdown(); err != nil {
-		log.Errorf("%s Could not call shutdown: %v", logger.LOG_Main, err)
-	}
-	// 結束應用
-	os.Exit(0)
-}
-
-// 延遲關閉Agones server
-func delayShutdownServer(delay time.Duration, sdk *sdk.SDK, stop chan struct{}) {
-	timer1 := time.NewTimer(delay)
-	<-timer1.C
-	// 通知Agones關閉server
-	if err := sdk.Shutdown(); err != nil {
-		log.Errorf("%s Could not call shutdown: %v", logger.LOG_Main, err)
-	}
-	stop <- struct{}{}
-}
-
-// 送定時送Agones健康ping通知agones server遊戲房還活著
-// Agones的超時為periodSeconds設定的秒數 參考官方: https://agones.dev/site/docs/guides/health-checking/
-func agonesHealthPin(agonesSDK *sdk.SDK, stop <-chan struct{}) {
-	tick := time.Tick(gSetting.AGONES_HEALTH_PIN_INTERVAL_SEC * time.Second)
-	for {
-		if err := agonesSDK.Health(); err != nil {
-			log.Errorf("%s ping agones server錯誤: %v", logger.LOG_Main, err)
-		}
-		select {
-		case <-stop:
-			log.Infof("%s Health pings 意外停止", logger.LOG_Main)
-			return
-		case <-tick:
-		}
-	}
 }

@@ -1,27 +1,27 @@
 package game
 
 import (
+	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
+	"matchgame/agones"
 	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
-
 	gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -366,13 +366,17 @@ func (r *Room) OnRoomPlayerChange() {
 	if r == nil {
 		return
 	}
-	// 不是空房間處理
-	if r.PlayerCount() != 0 {
-		r.MSpawner.SpawnSwitch(true) // 開始生怪
-		return
+	playerCount := r.PlayerCount()
+	if playerCount >= setting.PLAYER_NUMBER { // 滿房
+		r.MSpawner.SpawnSwitch(true)                             // 生怪
+		agones.SetServerState(agonesv1.GameServerStateAllocated) // 設定房間為Allocated(滿房不再能有玩家加進來)
+	} else if playerCount == 0 { // 空房間處理
+		r.MSpawner.SpawnSwitch(false)                        // 停止生怪
+		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
+	} else { // 有人但沒有滿房
+		r.MSpawner.SpawnSwitch(true)                         // 生怪
+		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
 	}
-	// 如果是空房間處理
-	r.MSpawner.SpawnSwitch(false) // 停止生怪
 
 }
 
@@ -896,7 +900,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
 					}
 				}
-				log.Errorf("擊殺怪物: %v", monsterIdx)
+				// log.Errorf("擊殺怪物: %v", monsterIdx)
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
@@ -911,8 +915,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	var attackEvent *AttackEvent
 	// 不存在此攻擊事件代表之前的Attack封包還沒送到
 	if _, ok := room.AttackEvents[attackID]; !ok {
-		idxs := make([][]int, 1)
-		idxs[0] = hitMonsterIdxs
+		idxs := make([][]int, 0)
+		log.Errorf("idxs: %v", idxs)
 		attackEvent = &AttackEvent{
 			AttackID:          attackID,
 			ExpiredTime:       room.GameTime + ATTACK_EXPIRED_SECS,
@@ -929,7 +933,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Room)
 			return
 		}
-		attackEvent.MonsterIdxs = append(attackEvent.MonsterIdxs, hitMonsterIdxs)
 	}
 
 	// 計算目前此技能收到的總擊中數量 並檢查 是否超過此技能的最大擊中數量
@@ -937,9 +940,9 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	for _, innerSlice := range attackEvent.MonsterIdxs {
 		hitCount += len(innerSlice)
 	}
-	if hitCount > int(spellMaxHits) {
+	if hitCount >= int(spellMaxHits) {
 		log.Error(content.MonsterIdxs)
-		errLog := fmt.Sprintf("HandleHit時收到的擊中數量超過此技能最大可擊中數量, SpellID: %s curHit: %v", spellJson.ID, hitCount)
+		errLog := fmt.Sprintf("HandleHit時收到的擊中數量超過此技能最大可擊中數量, SpellID: %s curHit: %v MonsterIdxs: %v", spellJson.ID, hitCount, attackEvent.MonsterIdxs)
 		log.Error(errLog)
 		room.SendPacketToPlayer(player.Index, newHitErrorPack(errLog, pack))
 
@@ -1001,7 +1004,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	}
 	// 從怪物清單中移除被擊殺的怪物(付費後才算目標死亡, 沒收到付費的Attack封包之前都還是算怪物存活)
 	room.MSpawner.RemoveMonsters(content.KillMonsterIdxs)
-	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
+	log.Errorf("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
 	// log.Infof("/////////////////////////////////")
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)
