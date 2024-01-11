@@ -11,7 +11,7 @@ import (
 	serverSDK "agones.dev/agones/pkg/sdk"
 	"agones.dev/agones/pkg/util/signals"
 	"flag"
-	"fmt"
+	// "fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
@@ -71,7 +71,6 @@ func main() {
 	var matchmakerPodName string
 	var dbMapID string
 	var myGameServer *serverSDK.GameServer
-	var playerIDs [setting.PLAYER_NUMBER]string
 
 	agones.AgonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		// log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
@@ -84,13 +83,15 @@ func main() {
 
 		if !roomInit && gs.ObjectMeta.Labels["RoomName"] != "" {
 			log.Infof("%s 開始初始化遊戲房!", logger.LOG_Main)
+
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
-			var pIDs [setting.PLAYER_NUMBER]string
-			for i, v := range pIDs {
-				key := fmt.Sprintf("Player%d", i)
-				v = gs.ObjectMeta.Labels[key]
-				playerIDs[i] = v
-			}
+
+			playerIDs := [setting.PLAYER_NUMBER]string{}
+			// 這裡先不把玩家加到DB中(因為之後會透過JoinPlayer來加)
+			// for i := range playerIDs {
+			// 	key := fmt.Sprintf("Player%d", i)
+			// 	playerIDs[i] = gs.ObjectMeta.Labels[key]
+			// }
 
 			// 初始化MongoDB設定
 			mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
@@ -133,7 +134,7 @@ func main() {
 		}
 	})
 
-	go TestLoop() // 測試Loop
+	// go TestLoop() // 測試Loop
 
 	stopChan := make(chan struct{})
 	endGameChan := make(chan struct{})
@@ -153,8 +154,8 @@ func main() {
 	src := ":" + *port
 	go openConnectTCP(agones.AgonesSDK, stopChan, src)
 	go openConnectUDP(agones.AgonesSDK, stopChan, src)
-	// 寫入DBMatchgame
-	writeMatchgameToDB(*room.DBMatchgame)
+	// 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
+	room.WriteMatchgameToDB()
 	// 開始遊戲房計時器
 	go room.RoomTimer(stopChan)
 	// 開始生怪
@@ -207,15 +208,6 @@ func InitGameJson() {
 		log.Errorf("%s 初始化GameJson失敗: %v", logger.LOG_Main, err)
 		return
 	}
-}
-func writeMatchgameToDB(matchgame mongo.DBMatchgame) {
-	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Main)
-	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, matchgame)
-	if err != nil {
-		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Main, err)
-		return
-	}
-	log.Infof("%s 寫入Matchgame到DB完成", logger.LOG_Main)
 }
 
 // 初始化MongoDB設定

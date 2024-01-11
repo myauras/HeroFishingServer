@@ -116,7 +116,21 @@ func GetDocIDsByFilter(col string, filter bson.M) ([]string, error) {
 }
 
 // 更新文件
-func UpdateDocByID(col string, id string, updateData bson.D) (*mongoDriver.UpdateResult, error) {
+func UpdateDocByBsonD(col string, id string, updateData bson.D) (*mongoDriver.UpdateResult, error) {
+
+	filter := bson.D{{Key: "_id", Value: id}}
+	update := bson.D{{Key: "$set", Value: updateData}}
+
+	result, err := DB.Collection(col).UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// 更新文件
+func UpdateDocByInterface(col string, id string, updateData interface{}) (*mongoDriver.UpdateResult, error) {
 
 	filter := bson.D{{Key: "_id", Value: id}}
 	update := bson.D{{Key: "$set", Value: updateData}}

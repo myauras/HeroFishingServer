@@ -159,7 +159,7 @@ func setExternalID(ip string) {
 		{Key: "matchmakerIP", Value: ip},
 	}
 	// 更新資料
-	_, err := mongo.UpdateDocByID(mongo.ColName.GameSetting, "GameState", data)
+	_, err := mongo.UpdateDocByBsonD(mongo.ColName.GameSetting, "GameState", data)
 	if err != nil {
 		log.Errorf("%s SetExternalID失敗: %v", logger.LOG_Main, err)
 		return

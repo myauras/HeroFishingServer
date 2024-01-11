@@ -133,7 +133,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			updatePlayerBson := bson.D{
 				{Key: "redisSync", Value: false},
 			}
-			mongo.UpdateDocByID(mongo.ColName.Player, dbPlayer.ID, updatePlayerBson)
+			mongo.UpdateDocByBsonD(mongo.ColName.Player, dbPlayer.ID, updatePlayerBson)
 
 			// 建立udp socket連線Token
 			newConnToken := generateSecureToken(32)

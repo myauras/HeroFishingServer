@@ -1,12 +1,9 @@
 package game
 
 import (
-	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/redis"
@@ -22,6 +19,10 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GameState int // 目前遊戲狀態列舉
@@ -264,17 +265,16 @@ func (r *Room) JoinPlayer(player *Player) bool {
 		log.Errorf("%s JoinPlayer傳入nil Player", logger.LOG_Room)
 		return false
 	}
-	log.Infof("%s 玩家 %s 嘗試加入房間", logger.LOG_Room, player.DBPlayer.ID)
+	log.Infof("%s 玩家 %s 嘗試加入房間 DBMatchgame: %v", logger.LOG_Room, player.DBPlayer.ID, r.DBMatchgame)
 
 	index := -1
 	for i, v := range r.Players {
-		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
-			index = i
-			break
-		}
-		if v.DBPlayer.ID == player.DBPlayer.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
+		if v != nil && v.DBPlayer.ID == player.DBPlayer.ID { // 如果要加入的玩家ID與目前房間的玩家ID一樣就回傳失敗
 			log.Errorf("%s 加入房間失敗, 嘗試加入同樣的玩家: %s.\n", logger.LOG_Room, player.DBPlayer.ID)
 			return false
+		}
+		if index == -1 { // 有座位是空的就把座位索引存起來
+			index = i
 		}
 	}
 	if index == -1 { // 沒有找到座位代表房間滿人
@@ -283,10 +283,18 @@ func (r *Room) JoinPlayer(player *Player) bool {
 	}
 	// 設定玩家
 	r.MutexLock.Lock()
+	joinErr := r.DBMatchgame.JoinPlayer(player.DBPlayer.ID)
+	if joinErr != nil {
+		log.Errorf("%s JoinPlayer時r.DBMatchgame.JoinPlayer(player.DBPlayer.ID)錯誤: %v", logger.LOG_Room, joinErr)
+		return false
+	}
 	player.Index = index
 	r.Players[index] = player
 	r.MutexLock.Unlock()
+
+	r.UpdateMatchgameToDB() // 更新DB
 	r.OnRoomPlayerChange()
+
 	log.Infof("%s 玩家%s 已加入房間(%v/%v) 房間資訊: %+v", logger.LOG_Room, player.DBPlayer.ID, r.PlayerCount(), setting.PLAYER_NUMBER, r)
 	return true
 }
@@ -294,13 +302,13 @@ func (r *Room) JoinPlayer(player *Player) bool {
 // 將玩家踢出房間
 func (r *Room) KickPlayer(conn net.Conn) {
 	log.Infof("%s 執行KickPlayer", logger.LOG_Room)
-	r.MutexLock.Lock()
-	defer r.MutexLock.Unlock()
+
 	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
 	if seatIndex < 0 || r.Players[seatIndex] == nil {
 		return
 	}
 	player := r.Players[seatIndex]
+
 	// 更新玩家DB
 	if player.DBPlayer != nil {
 		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, player.DBPlayer.ID)
@@ -315,13 +323,22 @@ func (r *Room) KickPlayer(conn net.Conn) {
 			{Key: "drops", Value: player.DBPlayer.Drops},               // 設定掉落道具
 		}
 		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
-		mongo.UpdateDocByID(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
+		mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
 		log.Infof("%s 更新玩家 %s DB資料玩家", logger.LOG_Room, player.DBPlayer.ID)
 	}
 	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
 	player.CloseConnection()
+	r.MutexLock.Lock()
 	r.Players[seatIndex] = nil
+
+	// 更新房間DB
+	r.DBMatchgame.KickPlayer(player.DBPlayer.ID)
+	r.MutexLock.Unlock()
+
+	r.UpdateMatchgameToDB() // 更新DB
+
 	r.OnRoomPlayerChange()
+
 	// 更新玩家狀態
 	r.BroadCastPacket(seatIndex, &packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
@@ -377,7 +394,6 @@ func (r *Room) OnRoomPlayerChange() {
 		r.MSpawner.SpawnSwitch(true)                         // 生怪
 		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
 	}
-
 }
 
 // 處理TCP訊息
@@ -410,7 +426,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	case packet.SETHERO:
 		content := packet.SetHero{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		r.SetHero(conn, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
@@ -428,7 +444,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	case packet.LEAVE: //離開遊戲房
 		content := packet.Leave{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		r.KickPlayer(conn) // 將玩家踢出房間
@@ -436,7 +452,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	case packet.ATTACK:
 		content := packet.Attack{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleAttack(player, pack, content)
@@ -444,7 +460,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	case packet.HIT:
 		content := packet.Hit{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleHit(player, pack, content)
@@ -452,7 +468,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 	case packet.DROPSPELL:
 		content := packet.DropSpell{}
 		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Main, pack.CMD)
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleDropSpell(player, pack, content)
@@ -584,7 +600,7 @@ func (r *Room) SendPacketToPlayer_UDP(pIndex int, sendData []byte) {
 	sendData = append(sendData, '\n')
 	_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
 	if sendErr != nil {
-		log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+		log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
 		return
 	}
 }
@@ -604,7 +620,7 @@ func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
 		sendData = append(sendData, '\n')
 		_, sendErr := v.ConnUDP.Conn.WriteTo(sendData, v.ConnUDP.Addr)
 		if sendErr != nil {
-			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Main, sendErr.Error())
+			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
 			return
 		}
 	}
@@ -916,7 +932,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 不存在此攻擊事件代表之前的Attack封包還沒送到
 	if _, ok := room.AttackEvents[attackID]; !ok {
 		idxs := make([][]int, 0)
-		log.Errorf("idxs: %v", idxs)
 		attackEvent = &AttackEvent{
 			AttackID:          attackID,
 			ExpiredTime:       room.GameTime + ATTACK_EXPIRED_SECS,
@@ -1092,4 +1107,27 @@ func newHitErrorPack(errStr string, pack packet.Pack) *packet.Pack {
 		ErrMsg:  errStr,
 		Content: &packet.Hit_ToClient{},
 	}
+}
+
+// 將房間資料寫入DB(只有開房時執行1次)
+func (room *Room) WriteMatchgameToDB() {
+	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Room)
+	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, room.DBMatchgame)
+	if err != nil {
+		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Room, err)
+		return
+	}
+	log.Infof("%s 寫入Matchgame到DB完成", logger.LOG_Room)
+}
+
+// 將房間資料更新上DB
+func (room *Room) UpdateMatchgameToDB() {
+	log.Infof("%s 開始更新Matchgame到DB: %v", logger.LOG_Room, room.DBMatchgame)
+
+	_, err := mongo.UpdateDocByInterface(mongo.ColName.Matchgame, room.DBMatchgame.ID, room.DBMatchgame)
+	if err != nil {
+		log.Errorf("%s UpdateMatchgameToDB時mongo.UpdateDocByID(mongo.ColName.Matchgame, room.DBMatchgame.ID, updateData)發生錯誤 %v", logger.LOG_Room, err)
+	}
+
+	log.Infof("%s 更新Matchgame到DB完成", logger.LOG_Room)
 }
