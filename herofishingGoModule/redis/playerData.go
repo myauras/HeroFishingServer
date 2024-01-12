@@ -94,7 +94,6 @@ func (player *RedisPlayer) ClosePlayer() {
 
 // 建立玩家資料
 func CreatePlayerData(playerID string, point int, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
-	log.Errorf("CreatePlayerData Start")
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
@@ -130,7 +129,6 @@ func CreatePlayerData(playerID string, point int, heroExp int, spellCharges [3]i
 	} else {
 		return nil, fmt.Errorf("%s createPlayerData錯誤 玩家 %s 已存在map中", logger.LOG_Redis, playerID)
 	}
-	log.Errorf("CreatePlayerData players: %v", players)
 	return &player, nil
 }
 

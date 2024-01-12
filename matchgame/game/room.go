@@ -787,6 +787,9 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 			PlayerIdx:   player.Index,
 			SpellJsonID: content.SpellJsonID,
 			MonsterIdx:  content.MonsterIdx,
+			AttackLock:  content.AttackLock,
+			AttackPos:   content.AttackPos,
+			AttackDir:   content.AttackDir,
 		}},
 	)
 }
@@ -969,6 +972,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		CMD:    packet.HIT_TOCLIENT,
 		PackID: pack.PackID,
 		Content: &packet.Hit_ToClient{
+			PlayerIdx:        player.Index,
 			KillMonsterIdxs:  killMonsterIdxs,
 			GainPoints:       gainPoints,
 			GainHeroExps:     gainHeroExps,

@@ -18,6 +18,7 @@ type Hit struct {
 // 命中怪物回傳client
 type Hit_ToClient struct {
 	CMDContent
+	PlayerIdx        int     // 玩家座位索引
 	KillMonsterIdxs  []int   // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
 	GainPoints       []int64 // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
 	GainHeroExps     []int   // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
