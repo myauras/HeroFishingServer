@@ -448,7 +448,14 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
+		r.BroadCastPacket(player.Index, &packet.Pack{ // 廣播封包
+			CMD: packet.SETHERO_TOCLIENT,
+			Content: &packet.Leave_ToClient{
+				PlayerIdx: player.Index,
+			},
+		})
 		r.KickPlayer(conn, "玩家主動離開") // 將玩家踢出房間
+
 	// ==========發動攻擊==========
 	case packet.ATTACK:
 		content := packet.Attack{}
