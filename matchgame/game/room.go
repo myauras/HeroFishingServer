@@ -265,7 +265,7 @@ func (r *Room) JoinPlayer(player *Player) bool {
 		log.Errorf("%s JoinPlayer傳入nil Player", logger.LOG_Room)
 		return false
 	}
-	log.Infof("%s 玩家 %s 嘗試加入房間 DBMatchgame: %v", logger.LOG_Room, player.DBPlayer.ID, r.DBMatchgame)
+	log.Infof("%s 玩家 %s 嘗試加入房間 DBMatchgame: %+v", logger.LOG_Room, player.DBPlayer.ID, r.DBMatchgame)
 
 	index := -1
 	for i, v := range r.Players {
@@ -273,7 +273,7 @@ func (r *Room) JoinPlayer(player *Player) bool {
 			log.Errorf("%s 加入房間失敗, 嘗試加入同樣的玩家: %s.\n", logger.LOG_Room, player.DBPlayer.ID)
 			return false
 		}
-		if index == -1 { // 有座位是空的就把座位索引存起來
+		if v == nil && index == -1 { // 有座位是空的就把座位索引存起來
 			index = i
 		}
 	}
@@ -288,6 +288,7 @@ func (r *Room) JoinPlayer(player *Player) bool {
 		log.Errorf("%s JoinPlayer時r.DBMatchgame.JoinPlayer(player.DBPlayer.ID)錯誤: %v", logger.LOG_Room, joinErr)
 		return false
 	}
+	log.Infof("安排房間座位: %v", index)
 	player.Index = index
 	r.Players[index] = player
 	r.MutexLock.Unlock()
@@ -300,8 +301,8 @@ func (r *Room) JoinPlayer(player *Player) bool {
 }
 
 // 將玩家踢出房間
-func (r *Room) KickPlayer(conn net.Conn) {
-	log.Infof("%s 執行KickPlayer", logger.LOG_Room)
+func (r *Room) KickPlayer(conn net.Conn, reason string) {
+	log.Infof("%s 執行KickPlayer 原因: %s", logger.LOG_Room, reason)
 
 	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
 	if seatIndex < 0 || r.Players[seatIndex] == nil {
@@ -447,7 +448,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		r.KickPlayer(conn) // 將玩家踢出房間
+		r.KickPlayer(conn, "玩家主動離開") // 將玩家踢出房間
 	// ==========發動攻擊==========
 	case packet.ATTACK:
 		content := packet.Attack{}
@@ -566,7 +567,7 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	err := packet.SendPack(r.Players[pIndex].ConnTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-		r.KickPlayer(r.Players[pIndex].ConnTCP.Conn)
+		r.KickPlayer(r.Players[pIndex].ConnTCP.Conn, "SendPacketToPlayer錯誤")
 	}
 }
 
@@ -647,7 +648,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 				// 玩家無心跳超過X秒就踢出遊戲房
 				// log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
 				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
-					MyRoom.KickPlayer(player.ConnTCP.Conn)
+					MyRoom.KickPlayer(player.ConnTCP.Conn, "玩家心跳逾時")
 				}
 			}
 		case <-stop:

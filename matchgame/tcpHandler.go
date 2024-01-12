@@ -69,7 +69,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		}
 		pack, err := packet.ReadPack(decoder)
 		if err != nil {
-			game.MyRoom.KickPlayer(conn)
+			game.MyRoom.KickPlayer(conn, "handleConnectionTCP錯誤")
 			return
 		}
 		log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
@@ -176,7 +176,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			err = game.MyRoom.HandleTCPMsg(conn, pack)
 			if err != nil {
 				log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
-				game.MyRoom.KickPlayer(conn)
+				game.MyRoom.KickPlayer(conn, "處理GameRoom封包錯誤")
 				return
 			}
 		}

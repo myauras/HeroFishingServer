@@ -69,7 +69,6 @@ func (p *Attack) Parse(common CMDContent) bool {
 		}).Errorf("%s Parse packet error: %s", logger.LOG_Pack, "Attack")
 		return false
 	}
-	log.Errorf("attackLock: %v", p.AttackLock)
 
 	if attackPos, ok := m["AttackPos"].([]interface{}); ok {
 		var pos []float64
