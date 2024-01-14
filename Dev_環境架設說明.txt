@@ -124,7 +124,7 @@ kubectl apply -f .\CICD_Common_Dev\cert-manager.yaml
 # 類型: A
 # 資料: 對外ip
 
-# 可以使用以下語法來查看證書頒發狀態(這個頒發過程可能需要好幾十分鐘的時間)
+# 可以使用以下語法來查看證書頒發狀態(這個頒發過程可能要幾分鐘的時間)
 kubectl describe certificate herofishing-certification -n herofishing-service # 查看證書頒發狀況
 kubectl get certificaterequest -n herofishing-service # 查看證書頒發請求
 kubectl describe certificaterequest <請求名稱> -n herofishing-service # 查看請求的細節資訊

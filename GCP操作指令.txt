@@ -47,3 +47,4 @@ gsutil ls
 gsutil ls gs://herofishing_gamejson_dev/
 # 查看pod使用的serviceAccount
 kubectl get pod herofishing-matchmaker-5b6dc6776b-dgvxb -n herofishing-service -o=jsonpath='{.spec.serviceAccount}'
+kubectl get pod herofishing-matchgame-qbqzp-59glj -n herofishing-gameserver -o=jsonpath='{.spec.serviceAccount}'
