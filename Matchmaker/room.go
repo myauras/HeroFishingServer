@@ -113,13 +113,32 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 			continue
 		}
 
-		// 確認目Matchgame是否還活著, 掛掉就繼續找下一個
+		// 確認目Matchgame Server是否還活著, 掛掉就繼續找下一個
 		err := CheckGameServer(room.dbMatchgameID)
 		if err != nil {
 			utility.RemoveFromSliceByIdx(usher.rooms, roomIdx) // 移除掛掉的房間
 			log.Errorf("%s 目標遊戲房已掛: %v", logger.LOG_Room, err)
 			continue
 		}
+
+		// DBMatchgame加入玩家資料(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
+		var dbMatchgame mongo.DBMatchgame
+		getDBMatchgameErr := mongo.GetDocByID(mongo.ColName.Matchgame, room.dbMatchgameID, &dbMatchgame)
+		if getDBMatchgameErr != nil {
+			log.Errorf("%s 取得DB資料mongo.GetDocByID(mongo.ColName.Matchgame, room.dbMatchgameID, dbMatchgame)錯誤: %v", logger.LOG_Room, getDBMatchgameErr)
+			continue
+		}
+		joinPlayerErr := (&dbMatchgame).JoinPlayer(player.id)
+		if joinPlayerErr != nil {
+			log.Errorf("%s DBMatchgame加入玩家錯誤: %v", logger.LOG_Room, joinPlayerErr)
+			continue
+		}
+		log.Infof("%s 開始更新Matchgame到DB dbMatchgame: %v", logger.LOG_Room, dbMatchgame)
+		_, updateDBMatchgame := mongo.UpdateDocByInterface(mongo.ColName.Matchgame, dbMatchgame.ID, dbMatchgame)
+		if updateDBMatchgame != nil {
+			log.Errorf("%s mongo.UpdateDocByID(mongo.ColName.Matchgame, dbMatchgame.ID, updateData)發生錯誤", logger.LOG_Room)
+		}
+		log.Infof("%s 更新Matchgame到DB完成", logger.LOG_Room)
 
 		log.WithFields(log.Fields{
 			"playerID":  player.id,

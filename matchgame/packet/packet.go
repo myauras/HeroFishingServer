@@ -15,6 +15,7 @@ const (
 	SETHERO               = "SETHERO"               // (TCP)設定玩家英雄
 	SETHERO_TOCLIENT      = "SETHERO_TOCLIENT"      // (TCP)設定玩家英雄-送Client
 	LEAVE                 = "LEAVE"                 // (TCP)離開遊戲房
+	LEAVE_TOCLIENT        = "LEAVE_TOCLIENT"        // (TCP)離開遊戲房-送Client
 	ATTACK                = "ATTACK"                // (UDP)攻擊
 	ATTACK_TOCLIENT       = "ATTACK_TOCLIENT"       // (UDP)攻擊-送Client
 	HIT                   = "HIT"                   // (TCP)擊中
@@ -27,7 +28,8 @@ const (
 	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每GAMEUPDATE_MS毫秒會送一次)
 	UPDATESCENE           = "UPDATESCENE"           // (TCP)場景狀態更新(玩家斷線回連時會主動送過來跟server要資料)
 	UPDATESCENE_TOCLIENT  = "UPDATESCENE_TOCLIENT"  // (UDP&TCP)場景狀態更新-送Client(每SCENEUPDATE_MS毫秒會送一次 或 玩家斷線回連時主動要求時會送)
-
+	// 測試用
+	MONSTERDIE_TOCLIENT = "MONSTERDIE_TOCLIENT" // (TCP)怪物死亡時送Client
 )
 
 type Pack struct {

@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"fmt"
 	"herofishingGoModule/setting"
 	"time"
 )
@@ -167,4 +168,34 @@ type DBMatchgame struct {
 	NodeName          string                        `bson:"nodeName"`
 	PodName           string                        `bson:"podName"`
 	MatchmakerPodName string                        `bson:"matchmakerPodName"`
+}
+
+// 加入玩家
+func (dbMatchgame *DBMatchgame) JoinPlayer(playerID string) error {
+	// 滿足以下條件之一的房間不可加入
+	// 1. 該玩家已在此房間
+	// 2. 房間已滿
+	joinIdx := -1
+	for i, v := range dbMatchgame.PlayerIDs {
+		if v == playerID {
+			return fmt.Errorf("玩家(%s)已經存在DBMatchgame中", playerID)
+		}
+		if v == "" && joinIdx == -1 {
+			joinIdx = i
+		}
+	}
+	if joinIdx == -1 {
+		return fmt.Errorf("房間已滿, 玩家(%s)無法加入", playerID)
+	}
+	dbMatchgame.PlayerIDs[joinIdx] = playerID
+	return nil
+}
+
+// 移除玩家
+func (dbMatchgame *DBMatchgame) KickPlayer(playerID string) {
+	for i, v := range dbMatchgame.PlayerIDs {
+		if v == playerID {
+			dbMatchgame.PlayerIDs[i] = ""
+		}
+	}
 }

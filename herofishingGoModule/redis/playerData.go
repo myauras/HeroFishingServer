@@ -82,7 +82,7 @@ func ClosePlayer(playerID string) {
 		players[playerID].WritePlayerUpdateToRedis()
 		delete(players, playerID) // 從 map 中移除
 	} else {
-		log.Errorf("%s ClosePlayer錯誤 玩家 %s 不存在map中", logger.LOG_Redis, playerID)
+		log.Warnf("%s ClosePlayer錯誤 玩家 %s 不存在map中", logger.LOG_Redis, playerID)
 		return
 	}
 }

@@ -107,7 +107,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		{Key: "inMatchgameID", Value: ""},            // 設定玩家不在遊戲房內了
 		{Key: "redisSync", Value: true},              // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 	}
-	mongo.UpdateDocByID(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
+	mongo.UpdateDocByBsonD(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
 
 	log.Infof("%s 玩家 %s redisDB資料同步完成", logger.LOG_Main, mongoPlayerDoc.ID)
 	// // 回傳
