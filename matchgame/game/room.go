@@ -43,19 +43,18 @@ type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 Players[2]就會是nil 直到有新玩家加入
-	Players         [setting.PLAYER_NUMBER]*Player // 玩家陣列
-	RoomName        string                         // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
-	GameState       GameState                      // 遊戲狀態
-	DBMatchgame     *mongo.DBMatchgame             // DB遊戲房資料
-	DBmap           *mongo.DBMap                   // DB地圖設定
-	GameTime        float64                        // 遊戲開始X秒
-	ErrorLogs       []string                       // ErrorLogs
-	MathModel       *gamemath.Model                // 數學模型
-	MSpawner        *MonsterSpawner                // 生怪器
-	AttackEvents    map[string]*AttackEvent        // 攻擊事件
-	ExpireAttackIDs utility.HashSet                // 已過期的攻擊事件ID清單
-	SceneEffects    []packet.SceneEffect           // 場景效果
-	MutexLock       sync.Mutex
+	Players      [setting.PLAYER_NUMBER]*Player // 玩家陣列
+	RoomName     string                         // 房間名稱(也是DB文件ID)(房主UID+時間轉 MD5)
+	GameState    GameState                      // 遊戲狀態
+	DBMatchgame  *mongo.DBMatchgame             // DB遊戲房資料
+	DBmap        *mongo.DBMap                   // DB地圖設定
+	GameTime     float64                        // 遊戲開始X秒
+	ErrorLogs    []string                       // ErrorLogs
+	MathModel    *gamemath.Model                // 數學模型
+	MSpawner     *MonsterSpawner                // 生怪器
+	AttackEvents map[string]*AttackEvent        // 攻擊事件
+	SceneEffects []packet.SceneEffect           // 場景效果
+	MutexLock    sync.Mutex
 }
 
 // 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)
@@ -118,7 +117,6 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 			GameRTP:        dbMap.RTP,            // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
 		},
-		ExpireAttackIDs: utility.NewHashSet(),
 	}
 	log.Infof("%s 初始生怪器", logger.LOG_Room)
 	// 初始生怪器
@@ -150,7 +148,6 @@ func (r *Room) RemoveExpiredAttackEvents() {
 	for k, v := range r.AttackEvents {
 		if r.GameTime > v.ExpiredTime {
 			toRemoveKeys = append(toRemoveKeys, k)
-			r.ExpireAttackIDs.Add(v.AttackID)
 		}
 	}
 	if len(toRemoveKeys) > 0 {
@@ -670,9 +667,11 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
-	if room.ExpireAttackIDs.Contains(attackID) { // 此攻擊已經過期
-		log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
-		return
+	if event, ok := room.AttackEvents[attackID]; ok {
+		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
+			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
+			return
+		}
 	}
 	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
 	if content.MonsterIdx >= 0 {
@@ -807,9 +806,11 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
-	if room.ExpireAttackIDs.Contains(attackID) { // 此攻擊已經過期
-		log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
-		return
+	if event, ok := room.AttackEvents[attackID]; ok {
+		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
+			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
+			return
+		}
 	}
 
 	// 取技能表
