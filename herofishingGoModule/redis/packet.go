@@ -4,7 +4,8 @@ import "encoding/json"
 
 // 命令類型
 const (
-	CMD_PLAYERLEFT = "PLAYERLEFT"
+	CMD_PLAYERLEFT  = "PLAYERLEFT"
+	CMD_GAMECREATED = "GAMECREATED"
 )
 
 type CMDContent interface {
@@ -15,4 +16,7 @@ type RedisPubSubPack struct {
 }
 type PlayerLeft struct {
 	PlayerID string `json:"PlayerID"` // 玩家ID
+}
+type GameCreated struct {
+	MatchgameID string `json:"PlayerID"` // 玩家ID
 }

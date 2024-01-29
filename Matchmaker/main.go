@@ -289,7 +289,8 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	// 根據DB地圖設定來開遊戲房
 	switch dbMap.MatchType {
 	case setting.MatchType.Quick: // 快速配對
-		player.room = Receptionist.JoinRoom(dbMap, player)
+		var isNewRoom bool
+		player.room, isNewRoom = Receptionist.JoinRoom(dbMap, player)
 		if player.room == nil {
 			log.WithFields(log.Fields{
 				"dbMap":  dbMap,
@@ -300,22 +301,25 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 			return
 		}
 		gs := player.room.gameServer
-		// 回送封包
-		packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
-			CMD:    packet.CREATEROOM_TOCLIENT,
-			PackID: pack.PackID,
-			Content: &packet.CreateRoom_ToClient{
-				CreaterID:     player.room.creater.id,
-				PlayerIDs:     player.room.GetPlayerIDs(),
-				DBMapID:       player.room.dbMapID,
-				DBMatchgameID: player.room.dbMatchgameID,
-				IP:            gs.Status.Address,
-				Port:          gs.Status.Ports[0].Port,
-				PodName:       gs.ObjectMeta.Name,
-			},
-		})
-		if packErr != nil {
-			return
+
+		// 如果是加入已存在的房間就直接回送封包, 如果是建立新房間就等待Cluster把Matchgame建立好後PubMsg接收到時才回送封包
+		if !isNewRoom {
+			packErr := packet.SendPack(player.connTCP.Encoder, &packet.Pack{
+				CMD:    packet.CREATEROOM_TOCLIENT,
+				PackID: pack.PackID,
+				Content: &packet.CreateRoom_ToClient{
+					CreaterID:     player.room.creater.id,
+					PlayerIDs:     player.room.GetPlayerIDs(),
+					DBMapID:       player.room.dbMapID,
+					DBMatchgameID: player.room.dbMatchgameID,
+					IP:            gs.Status.Address,
+					Port:          gs.Status.Ports[0].Port,
+					PodName:       gs.ObjectMeta.Name,
+				},
+			})
+			if packErr != nil {
+				return
+			}
 		}
 
 	default:

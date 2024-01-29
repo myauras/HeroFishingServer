@@ -8,6 +8,7 @@ import (
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
 	logger "matchmaker/logger"
+	"matchmaker/packet"
 	mSetting "matchmaker/setting"
 	"net"
 	"sync"
@@ -96,8 +97,8 @@ func (r *RoomReceptionist) getUsher(dbMapID string) *Usher {
 	return usher
 }
 
-// 加入房間-快速房
-func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room {
+// 加入房間-快速房, 回傳房間與是否為新開房間
+func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) (*room, bool) {
 
 	// 取得房間接待員
 	usher := r.getUsher(dbMap.ID)
@@ -149,7 +150,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 		}).Infof("%s Player join an exist room", logger.LOG_Room)
 
 		log.Infof("%s 玩家 %s 加入房間(%v/%v) 房間資料: %+v", logger.LOG_Room, player.id, room.PlayerCount(), setting.PLAYER_NUMBER, room)
-		return room
+		return room, false
 	}
 
 	log.Infof("%s 玩家 %s 找不到可加入的房間, 創建一個新房間(%v/%v): %+v", logger.LOG_Room, player.id, 1, setting.PLAYER_NUMBER, dbMap)
@@ -177,7 +178,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 	err := player.room.CreateGame()
 	if err != nil {
 		log.Errorf("%s 建立Matchgame server失敗: %v", logger.LOG_Room, err)
-		return nil
+		return nil, false
 	}
 
 	log.WithFields(log.Fields{
@@ -188,7 +189,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) *room
 		"dbRoomData": dbMap,
 	}).Infof("%s Player create a new room", logger.LOG_Room)
 
-	return &newRoom
+	return &newRoom, true
 
 }
 
@@ -217,11 +218,40 @@ func (r *room) SubRoomMsg() {
 			var playerLeftData redis.PlayerLeft
 			err := json.Unmarshal(data.Content, &playerLeftData)
 			if err != nil {
-				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, redis.CMD_PLAYERLEFT, err)
+				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, data.CMD, err)
 				continue
 			}
 			r.RemovePlayer(playerLeftData.PlayerID) // 將該玩家從房間中移除
-			log.Printf("%s 玩家離開: %s", logger.LOG_Room, playerLeftData.PlayerID)
+			log.Printf("%s 收到Matchgame玩家離開: %s", logger.LOG_Room, playerLeftData.PlayerID)
+		case redis.CMD_GAMECREATED: // 房間建立
+			var gameCreated redis.GameCreated
+			err := json.Unmarshal(data.Content, &gameCreated)
+			if err != nil {
+				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, data.CMD, err)
+				continue
+			}
+			log.Printf("%s 收到Matchgame房間建立完成: %s", logger.LOG_Room, gameCreated.MatchgameID)
+			creater := r.players[0]
+			if creater == nil {
+				return
+			}
+			packErr := packet.SendPack(creater.connTCP.Encoder, &packet.Pack{
+				CMD:    packet.CREATEROOM_TOCLIENT,
+				PackID: -1,
+				Content: &packet.CreateRoom_ToClient{
+					CreaterID:     creater.id,
+					PlayerIDs:     r.GetPlayerIDs(),
+					DBMapID:       r.dbMapID,
+					DBMatchgameID: r.dbMatchgameID,
+					IP:            r.gameServer.Status.Address,
+					Port:          r.gameServer.Status.Ports[0].Port,
+					PodName:       r.gameServer.ObjectMeta.Name,
+				},
+			})
+			if packErr != nil {
+				return
+			}
+
 		}
 	}
 }

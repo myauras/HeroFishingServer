@@ -156,6 +156,7 @@ func main() {
 	go openConnectUDP(agones.AgonesSDK, stopChan, src)
 	// 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
 	room.WriteMatchgameToDB()
+	room.PubGameCreatedMsg() // 送房間建立訊息給Matchmaker
 	// 開始遊戲房計時器
 	go room.RoomTimer(stopChan)
 	// 開始生怪
