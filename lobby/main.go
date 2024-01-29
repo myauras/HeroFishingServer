@@ -8,6 +8,7 @@ import (
 	logger "lobby/logger"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -44,6 +45,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/player/syncredischeck", handleSyncRedisCheck).Methods("POST")
+	router.HandleFunc("/game/getstate", handleGetState).Methods("POST")
 
 	log.Infof("%s ==============Lobby 啟動完成==============", logger.LOG_Main)
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -82,7 +84,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	var mongoPlayerDoc mongo.DBPlayer
 	getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, playerID, &mongoPlayerDoc)
 	if getPlayerDocErr != nil {
-		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤: %v", logger.LOG_Main, getPlayerDocErr)
+		log.Errorf("%s handleSyncRedisCheck時取dbplayer資料發生錯誤: %v", logger.LOG_Main, getPlayerDocErr)
 		return
 	}
 	if mongoPlayerDoc.RedisSync { // RedisSync為true就不需要進行資料同步
@@ -117,6 +119,32 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	// }
 	// json.NewEncoder(w).Encode(response)
 }
+
+// 處理 /game/getstate 路由的 POST 請求
+func handleGetState(w http.ResponseWriter, r *http.Request) {
+	var requestData RequestData
+	err := json.NewDecoder(r.Body).Decode(&requestData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var mongoGameStateDoc mongo.DBGameState
+	getGameStateDocErr := mongo.GetDocByID(mongo.ColName.GameSetting, "GameState", &mongoGameStateDoc)
+	if getGameStateDocErr != nil {
+		log.Errorf("%s 取GameState資料發生錯誤: %v", logger.LOG_Main, getGameStateDocErr)
+		return
+	}
+	log.Infof("%v", mongoGameStateDoc.IosReview)
+	iosReview := strconv.FormatBool(mongoGameStateDoc.IosReview)
+	// 回傳
+	response := map[string]string{
+		"msg":   "success",
+		"error": "",
+		"data":  iosReview,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
 func verifyPlayer(token string) (string, error) {
 	playerID, err := mongo.PlayerVerify(token)
 	if err != nil {

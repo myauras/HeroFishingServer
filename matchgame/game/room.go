@@ -337,7 +337,14 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 
 	r.OnRoomPlayerChange()
 
-	// 更新玩家狀態
+	// 廣播玩家離開封包
+	r.BroadCastPacket(seatIndex, &packet.Pack{
+		CMD: packet.LEAVE_TOCLIENT,
+		Content: &packet.Leave_ToClient{
+			PlayerIdx: seatIndex,
+		},
+	})
+	// 廣播玩家封包
 	r.BroadCastPacket(seatIndex, &packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
@@ -345,6 +352,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			Players: r.GetPacketPlayers(),
 		},
 	})
+
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
@@ -445,12 +453,6 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		r.BroadCastPacket(player.Index, &packet.Pack{ // 廣播封包
-			CMD: packet.SETHERO_TOCLIENT,
-			Content: &packet.Leave_ToClient{
-				PlayerIdx: player.Index,
-			},
-		})
 		r.KickPlayer(conn, "玩家主動離開") // 將玩家踢出房間
 
 	// ==========發動攻擊==========
@@ -477,6 +479,14 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleDropSpell(player, pack, content)
+	// ==========設定自動攻擊==========
+	case packet.AUTO:
+		content := packet.Auto{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
+		}
+		MyRoom.HandleAuto(player, pack, content)
 	}
 
 	return nil
@@ -1110,6 +1120,18 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 	}
 	// 施法後要移除該掉落
 	player.RemoveDrop(int(dropSpellID))
+}
+
+// 處理收到的自動攻擊封包(TCP)
+func (room *Room) HandleAuto(player *Player, pack packet.Pack, content packet.Auto) {
+	isAuto := content.IsAuto
+	room.SendPacketToPlayer(player.Index, &packet.Pack{
+		CMD:    packet.AUTO_TOCLIENT,
+		PackID: -1,
+		Content: &packet.Auto_ToClient{
+			IsAuto: isAuto,
+		},
+	})
 }
 
 // 取得hitError封包

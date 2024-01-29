@@ -16,6 +16,8 @@ const (
 	SETHERO_TOCLIENT      = "SETHERO_TOCLIENT"      // (TCP)設定玩家英雄-送Client
 	LEAVE                 = "LEAVE"                 // (TCP)離開遊戲房
 	LEAVE_TOCLIENT        = "LEAVE_TOCLIENT"        // (TCP)離開遊戲房-送Client
+	AUTO                  = "AUTO"                  // (TCP)設定自動攻擊
+	AUTO_TOCLIENT         = "AUTO_TOCLIENT"         // (TCP)設定自動攻擊-送Client
 	ATTACK                = "ATTACK"                // (UDP)攻擊
 	ATTACK_TOCLIENT       = "ATTACK_TOCLIENT"       // (UDP)攻擊-送Client
 	HIT                   = "HIT"                   // (TCP)擊中

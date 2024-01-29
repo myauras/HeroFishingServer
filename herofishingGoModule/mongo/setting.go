@@ -127,6 +127,16 @@ type DBPlayer struct {
 
 }
 
+// DB玩家資料
+type DBGameState struct {
+	ID                 string    `bson:"_id"`
+	CreatedAt          time.Time `bson:"createdAt"`
+	EnvVersion         string    `bson:"envVersion"`
+	GameVersion        string    `bson:"gameVersion"`
+	MinimumGameVersion string    `bson:"minimumGameVersion"`
+	IosReview          bool      `bson:"iosReview"`
+}
+
 // gameSetting的Timer文件
 type DBTimer struct {
 	ID                  string    `bson:"_id"`
