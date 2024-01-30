@@ -126,6 +126,14 @@ func (player *Player) CloseConnection() {
 		return
 	}
 	if player.ConnTCP.Conn != nil {
+		log.Infof("player.ConnTCP.CloseChan= %v", player.ConnTCP.CloseChan)
+		select {
+		case player.ConnTCP.CloseChan <- struct{}{}:
+			log.Info("成功發送")
+		default:
+			log.Info("失敗")
+		}
+		log.Infof("xxxxxxxxxx")
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 		player.ConnTCP = nil
@@ -134,6 +142,7 @@ func (player *Player) CloseConnection() {
 		player.ConnUDP.Conn = nil
 		player.ConnUDP = nil
 	}
+	log.Infof("%s 關閉玩家(%s)連線", logger.LOG_Player, player.DBPlayer.ID)
 }
 
 // 取得此英雄隨機尚未充滿能的技能, 無尚未充滿能的技能時會返回false

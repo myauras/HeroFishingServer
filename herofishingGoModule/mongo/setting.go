@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"herofishingGoModule/setting"
 	"time"
+
+	"github.com/google/martian/log"
 )
 
 var (
@@ -186,6 +188,9 @@ func (dbMatchgame *DBMatchgame) JoinPlayer(playerID string) error {
 	// 1. 該玩家已在此房間
 	// 2. 房間已滿
 	joinIdx := -1
+	if playerID == "" {
+		return fmt.Errorf("要加入的玩家名稱為空")
+	}
 	for i, v := range dbMatchgame.PlayerIDs {
 		if v == playerID {
 			return fmt.Errorf("玩家(%s)已經存在DBMatchgame中", playerID)
@@ -206,6 +211,7 @@ func (dbMatchgame *DBMatchgame) KickPlayer(playerID string) {
 	for i, v := range dbMatchgame.PlayerIDs {
 		if v == playerID {
 			dbMatchgame.PlayerIDs[i] = ""
+			log.Infof("清空DBMatchgame中 index為%v的玩家(%s)", i, v)
 		}
 	}
 }

@@ -87,16 +87,11 @@ func main() {
 		}()
 
 		if !roomInit && gs.ObjectMeta.Labels["RoomName"] != "" {
-			log.Infof("%s 開始初始化遊戲房!", logger.LOG_Main)
+			log.Infof("%s 開始房間建立", logger.LOG_Main)
 
 			matchmakerPodName = gs.ObjectMeta.Labels["MatchmakerPodName"]
 
 			playerIDs := [setting.PLAYER_NUMBER]string{}
-			// 這裡先不把玩家加到DB中(因為之後會透過JoinPlayer來加)
-			// for i := range playerIDs {
-			// 	key := fmt.Sprintf("Player%d", i)
-			// 	playerIDs[i] = gs.ObjectMeta.Labels[key]
-			// }
 
 			// 初始化MongoDB設定
 			mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
@@ -115,7 +110,7 @@ func main() {
 			roomName := gs.ObjectMeta.Labels["RoomName"]
 			podName := gs.ObjectMeta.Name
 			nodeName := os.Getenv("NodeName")
-			log.Infof("%s ==============第一位玩家加入 開始初始化房間==============", logger.LOG_Main)
+			log.Infof("%s ==============開始初始化房間==============", logger.LOG_Main)
 			log.Infof("%s packID: %v", logger.LOG_Main, packID)
 			log.Infof("%s podName: %v", logger.LOG_Main, podName)
 			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
@@ -148,32 +143,28 @@ func main() {
 
 	stopChan := make(chan struct{})
 	endGameChan := make(chan struct{})
-	agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
-	// Agones伺服器健康檢查
-	go agones.AgonesHealthPin(stopChan)
-
-	// 等拿到房間資料後才開啟socket連線
+	agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才會被Matchmaker分配玩家進來)
+	go agones.AgonesHealthPin(stopChan)                  // Agones伺服器健康檢查
 	room := <-roomChan
-
 	close(roomChan)
 
-	// 初始化redisDB
-	redis.Init()
+	// ====================Room資料設定完成====================
+	log.Infof("%s ==============Room資料設定完成==============", logger.LOG_Main)
+	redis.Init()              // 初始化redisDB
+	room.WriteMatchgameToDB() // 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
 
 	// 開啟連線
 	src := ":" + *port
 	go openConnectTCP(agones.AgonesSDK, stopChan, src)
 	go openConnectUDP(agones.AgonesSDK, stopChan, src)
-	// 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
-	room.WriteMatchgameToDB()
-	room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
-	// 開始遊戲房計時器
-	go room.RoomTimer(stopChan)
-	// 開始生怪
-	go room.MSpawner.SpawnTimer()
-	room.MSpawner.SpawnSwitch(true)
 
-	log.Infof("%s ==============房間準備就緒==============", logger.LOG_Main)
+	go room.RoomTimer(stopChan) // 開始遊戲房計時器
+
+	// 開始生怪計時器
+	go room.MSpawner.SpawnTimer()
+	room.MSpawner.SpawnSwitch(false)
+
+	room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
 
 	select {
 	case <-stopChan:

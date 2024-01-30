@@ -342,6 +342,7 @@ func (r *room) CreateGame(packID int) error {
 				"error:":     err.Error(),
 			}).Infof("%s Create gameServer with retry: \n", logger.LOG_Room)
 		}
+		go r.SubRoomMsg() // 訂閱房間資訊
 	} else {
 		log.WithFields(log.Fields{
 			"retryTimes": mSetting.RETRY_CREATE_GAMESERVER_TIMES,
@@ -349,8 +350,6 @@ func (r *room) CreateGame(packID int) error {
 		}).Errorf("%s Create gameServer error: \n", logger.LOG_Room)
 		err = fmt.Errorf("%s Gameserver allocated failed", logger.LOG_Room)
 	}
-
-	go r.SubRoomMsg() // 訂閱房間資訊
 
 	return err
 }

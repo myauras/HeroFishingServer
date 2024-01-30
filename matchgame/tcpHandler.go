@@ -58,12 +58,16 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	isAuth := false
 	encoder := json.NewEncoder(conn)
 	decoder := json.NewDecoder(conn)
-	conn.SetReadDeadline(time.Now().Add(1 * time.Minute))
+	closeConn := make(chan struct{})
+	log.Info(closeConn)
+	conn.SetReadDeadline(time.Now().Add(gSetting.TCP_CONN_TIMEOUT_SEC * time.Second))
 	for {
 		select {
 		case <-stop:
-			log.Errorf("強制終止TCP")
-			// 被強制終止
+			log.Errorf("%s (TCP)強制終止連線", logger.LOG_Main)
+			return
+		case <-closeConn:
+			log.Infof("%s (TCP)終止連線", logger.LOG_Main)
 			return
 		default:
 		}
@@ -145,9 +149,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				LastUpdateAt: time.Now(),
 				PlayerBuffs:  []packet.PlayerBuff{},
 				ConnTCP: &gSetting.ConnectionTCP{
-					Conn:    conn,
-					Encoder: encoder,
-					Decoder: decoder,
+					Conn:      conn,
+					CloseChan: closeConn,
+					Encoder:   encoder,
+					Decoder:   decoder,
 				},
 				ConnUDP: &gSetting.ConnectionUDP{
 					ConnToken: newConnToken,

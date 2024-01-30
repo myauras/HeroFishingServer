@@ -12,12 +12,14 @@ const (
 	SCENEUPDATE_MS                 = 10000 // 每X毫秒送UPDATESCENE_TOCLIENT封包給client(場景狀態更新)
 	ROOMLOOP_MS                    = 1000  // 每X毫秒房間檢查一次
 	AGONES_HEALTH_PIN_INTERVAL_SEC = 1     // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
+	TCP_CONN_TIMEOUT_SEC           = 120   // TCP連線逾時時間X秒
 )
 
 type ConnectionTCP struct {
-	Conn    net.Conn      // TCP連線
-	Encoder *json.Encoder // 連線編碼
-	Decoder *json.Decoder // 連線解碼
+	Conn      net.Conn      // TCP連線
+	CloseChan chan struct{} // TCP關閉連線Chan
+	Encoder   *json.Encoder // 連線編碼
+	Decoder   *json.Decoder // 連線解碼
 }
 type ConnectionUDP struct {
 	Conn      net.PacketConn // UDP連線
