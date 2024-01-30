@@ -28,11 +28,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -command "(Get-Content matchmaker\
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Build image=======
-docker build --no-cache -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchmaker:0.2.10 .
+docker build --no-cache -f matchmaker/Dockerfile -t asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchmaker:0.2.11 .
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Push image=======
-docker push asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchmaker:0.2.10
+docker push asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchmaker:0.2.11
 @if ERRORLEVEL 1 exit /b 1
 
 REM =======Change go.mod back to local setting=======

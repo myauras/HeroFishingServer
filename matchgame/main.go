@@ -3,14 +3,18 @@ package main
 import (
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
+	"strconv"
+
 	// gSetting "matchgame/setting"
 
 	log "github.com/sirupsen/logrus"
 
+	"flag"
+
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	serverSDK "agones.dev/agones/pkg/sdk"
 	"agones.dev/agones/pkg/util/signals"
-	"flag"
+
 	// "fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
@@ -71,6 +75,7 @@ func main() {
 	var matchmakerPodName string
 	var dbMapID string
 	var myGameServer *serverSDK.GameServer
+	var packID int64
 
 	agones.AgonesSDK.WatchGameServer(func(gs *serverSDK.GameServer) {
 		// log.Infof("%s 遊戲房狀態 %s", logger.LOG_Main, gs.Status.State)
@@ -103,10 +108,15 @@ func main() {
 			dbMapID = gs.ObjectMeta.Labels["DBMapID"]
 			roomInit = true
 			myGameServer = gs
+			packID, err = strconv.ParseInt(gs.ObjectMeta.Labels["PackID"], 10, 64)
+			if err != nil {
+				log.Errorf("%s strconv.ParseInt packID錯誤: %v", logger.LOG_Main, err)
+			}
 			roomName := gs.ObjectMeta.Labels["RoomName"]
 			podName := gs.ObjectMeta.Name
 			nodeName := os.Getenv("NodeName")
 			log.Infof("%s ==============第一位玩家加入 開始初始化房間==============", logger.LOG_Main)
+			log.Infof("%s packID: %v", logger.LOG_Main, packID)
 			log.Infof("%s podName: %v", logger.LOG_Main, podName)
 			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
 			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
@@ -156,7 +166,7 @@ func main() {
 	go openConnectUDP(agones.AgonesSDK, stopChan, src)
 	// 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
 	room.WriteMatchgameToDB()
-	room.PubGameCreatedMsg() // 送房間建立訊息給Matchmaker
+	room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
 	// 開始遊戲房計時器
 	go room.RoomTimer(stopChan)
 	// 開始生怪

@@ -18,5 +18,6 @@ type PlayerLeft struct {
 	PlayerID string `json:"PlayerID"` // 玩家ID
 }
 type GameCreated struct {
-	MatchgameID string `json:"PlayerID"` // 玩家ID
+	MatchgameID string `json:"PlayerID"` // 遊戲房ID
+	PackID      int    `json:"PackID"`   // Matchmaker要回送CreateRoom_ToClient封包時的PackID
 }

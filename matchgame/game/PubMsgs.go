@@ -36,10 +36,11 @@ func (r *Room) PubPlayerLeftMsg(playerID string) {
 }
 
 // 送房間建立訊息給Matchmaker
-func (r *Room) PubGameCreatedMsg() {
+func (r *Room) PubGameCreatedMsg(packID int) {
 	publishChannelName := "Game-" + r.RoomName
 	gameCreatedContent := redis.GameCreated{
 		MatchgameID: r.DBMatchgame.ID,
+		PackID:      packID,
 	}
 	contentBytes, err := json.Marshal(gameCreatedContent)
 	if err != nil {

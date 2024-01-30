@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	logger "matchmaker/logger"
+	"strconv"
+
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	allocationv1 "agones.dev/agones/pkg/apis/allocation/v1"
 	"agones.dev/agones/pkg/client/clientset/versioned"
-	"context"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	logger "matchmaker/logger"
 )
 
 const (
@@ -52,10 +54,11 @@ func GetAgonesClient() *versioned.Clientset {
 }
 
 // 建立一個新的Matchgame Server
-func CreateGameServer(roomName string, playerIDs []string, createrID string, dbMapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
+func CreateGameServer(packID int, roomName string, playerIDs []string, createrID string, dbMapID string, matchmakerPodName string) (*agonesv1.GameServer, error) {
 
 	// 建立遊戲房伺服器標籤
 	myLabels := map[string]string{
+		"PackID":            strconv.Itoa(packID), // 需要傳入packID, 等房間創好後會pub通知matchmaker房間創好了, 此時matchmaker才使用此packID回送client通知可以連線matchgame了
 		"RoomName":          roomName,
 		"CreaterID":         createrID,
 		"MatchmakerPodName": matchmakerPodName,

@@ -290,7 +290,7 @@ func packHandle_CreateRoom(pack packet.Pack, player *roomPlayer, remoteAddr stri
 	switch dbMap.MatchType {
 	case setting.MatchType.Quick: // 快速配對
 		var isNewRoom bool
-		player.room, isNewRoom = Receptionist.JoinRoom(dbMap, player)
+		player.room, isNewRoom = Receptionist.JoinRoom(pack.PackID, dbMap, player)
 		if player.room == nil {
 			log.WithFields(log.Fields{
 				"dbMap":  dbMap,

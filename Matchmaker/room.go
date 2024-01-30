@@ -98,7 +98,7 @@ func (r *RoomReceptionist) getUsher(dbMapID string) *Usher {
 }
 
 // 加入房間-快速房, 回傳房間與是否為新開房間
-func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) (*room, bool) {
+func (r *RoomReceptionist) JoinRoom(packID int, dbMap mongo.DBMap, player *roomPlayer) (*room, bool) {
 
 	// 取得房間接待員
 	usher := r.getUsher(dbMap.ID)
@@ -175,7 +175,7 @@ func (r *RoomReceptionist) JoinRoom(dbMap mongo.DBMap, player *roomPlayer) (*roo
 	usher.lastJoinRoomIdx = roomIdx
 
 	// 建立遊戲(Matchgame Server)
-	err := player.room.CreateGame()
+	err := player.room.CreateGame(packID)
 	if err != nil {
 		log.Errorf("%s 建立Matchgame server失敗: %v", logger.LOG_Room, err)
 		return nil, false
@@ -237,7 +237,7 @@ func (r *room) SubRoomMsg() {
 			}
 			packErr := packet.SendPack(creater.connTCP.Encoder, &packet.Pack{
 				CMD:    packet.CREATEROOM_TOCLIENT,
-				PackID: -1,
+				PackID: gameCreated.PackID,
 				Content: &packet.CreateRoom_ToClient{
 					CreaterID:     creater.id,
 					PlayerIDs:     r.GetPlayerIDs(),
@@ -293,7 +293,7 @@ func (r *room) RemovePlayer(playerID string) {
 }
 
 // 建立遊戲
-func (r *room) CreateGame() error {
+func (r *room) CreateGame(packID int) error {
 	var err error
 	if r == nil {
 		err = fmt.Errorf("%s CreateGame Room的r為nil", logger.LOG_Room)
@@ -324,7 +324,7 @@ func (r *room) CreateGame() error {
 	timer := time.NewTicker(mSetting.RETRY_INTERVAL_SECONDS * time.Second)
 	for i := 0; i < mSetting.RETRY_CREATE_GAMESERVER_TIMES; i++ {
 		retryTimes = i
-		r.gameServer, err = CreateGameServer(roomName, r.GetPlayerIDs(), r.creater.id, r.dbMapID, SelfPodName)
+		r.gameServer, err = CreateGameServer(packID, roomName, r.GetPlayerIDs(), r.creater.id, r.dbMapID, SelfPodName)
 		if err == nil {
 			createGameOK = true
 			break
