@@ -297,12 +297,14 @@ func (r *Room) JoinPlayer(player *Player) bool {
 
 // 將玩家踢出房間
 func (r *Room) KickPlayer(conn net.Conn, reason string) {
-	log.Infof("%s 執行KickPlayer 原因: %s", logger.LOG_Room, reason)
 
 	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
 	if seatIndex < 0 || r.Players[seatIndex] == nil {
+		log.Infof("%s 執行KickPlayer 原因: %s , 玩家已經不在清單中直接返回", logger.LOG_Room, reason)
 		return
 	}
+
+	log.Infof("%s 執行KickPlayer 原因: %s", logger.LOG_Room, reason)
 	player := r.Players[seatIndex]
 
 	// 更新玩家DB
@@ -323,17 +325,10 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 		log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
 	}
 	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
-	log.Error("ssss")
-	player.CloseConnection()
-	log.Error("aaaa")
 	r.MutexLock.Lock()
-	log.Error("bbbb")
 	r.Players[seatIndex] = nil
-	log.Error("cccc")
 	r.DBMatchgame.KickPlayer(player.DBPlayer.ID)
-	log.Error("dddd")
 	r.MutexLock.Unlock()
-	log.Error("eeee")
 	r.UpdateMatchgameToDB() // 更新房間DB
 
 	r.OnRoomPlayerChange()
@@ -353,7 +348,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			Players: r.GetPacketPlayers(),
 		},
 	})
-
+	player.CloseConnection()
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
@@ -541,7 +536,7 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 		}
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
-			log.Errorf("%s 廣播封包錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
 		}
 	}
 }

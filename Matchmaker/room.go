@@ -149,11 +149,11 @@ func (r *RoomReceptionist) JoinRoom(packID int, dbMap mongo.DBMap, player *roomP
 			"dbMapData": dbMap,
 		}).Infof("%s Player join an exist room", logger.LOG_Room)
 
-		log.Infof("%s 玩家 %s 加入房間(%v/%v) 房間資料: %+v", logger.LOG_Room, player.id, room.PlayerCount(), setting.PLAYER_NUMBER, room)
+		log.Errorf("%s 玩家 %s 加入房間(%v/%v) 房間資料: %+v", logger.LOG_Room, player.id, room.PlayerCount(), setting.PLAYER_NUMBER, room)
 		return room, false
 	}
 
-	log.Infof("%s 玩家 %s 找不到可加入的房間, 創建一個新房間(%v/%v): %+v", logger.LOG_Room, player.id, 1, setting.PLAYER_NUMBER, dbMap)
+	log.Errorf("%s 玩家 %s 找不到可加入的房間, 創建一個新房間(%v/%v): %+v", logger.LOG_Room, player.id, 1, setting.PLAYER_NUMBER, dbMap)
 	// 找不到可加入的房間就創一個新房間
 	newCreateTime := time.Now()
 	newRoom := room{
@@ -222,7 +222,7 @@ func (r *room) SubRoomMsg() {
 				continue
 			}
 			r.RemovePlayer(playerLeftData.PlayerID) // 將該玩家從房間中移除
-			log.Printf("%s 收到Matchgame玩家離開: %s", logger.LOG_Room, playerLeftData.PlayerID)
+			log.Infof("%s 收到Matchgame玩家離開: %s", logger.LOG_Room, playerLeftData.PlayerID)
 		case redis.CMD_GAMECREATED: // 房間建立
 			var gameCreated redis.GameCreated
 			err := json.Unmarshal(data.Content, &gameCreated)
@@ -230,7 +230,7 @@ func (r *room) SubRoomMsg() {
 				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, data.CMD, err)
 				continue
 			}
-			log.Printf("%s 收到Matchgame房間建立完成: %s", logger.LOG_Room, gameCreated.MatchgameID)
+			log.Errorf("%s 收到Matchgame房間建立完成: %s", logger.LOG_Room, gameCreated.MatchgameID)
 			creater := r.players[0]
 			if creater == nil {
 				return

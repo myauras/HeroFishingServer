@@ -123,17 +123,11 @@ func (player *Player) IsOwnedDrop(value int) bool {
 // 將玩家連線斷掉
 func (player *Player) CloseConnection() {
 	if player == nil {
+		log.Errorf("%s 關閉玩家連線時 player 為 nil", logger.LOG_Player)
 		return
 	}
 	if player.ConnTCP.Conn != nil {
-		log.Infof("player.ConnTCP.CloseChan= %v", player.ConnTCP.CloseChan)
-		select {
-		case player.ConnTCP.CloseChan <- struct{}{}:
-			log.Info("成功發送")
-		default:
-			log.Info("失敗")
-		}
-		log.Infof("xxxxxxxxxx")
+		player.ConnTCP.CloseChan <- player.DBPlayer.ID
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 		player.ConnTCP = nil

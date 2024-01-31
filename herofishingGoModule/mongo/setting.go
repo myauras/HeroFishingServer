@@ -211,7 +211,7 @@ func (dbMatchgame *DBMatchgame) KickPlayer(playerID string) {
 	for i, v := range dbMatchgame.PlayerIDs {
 		if v == playerID {
 			dbMatchgame.PlayerIDs[i] = ""
-			log.Infof("清空DBMatchgame中 index為%v的玩家(%s)", i, v)
+			log.Infof("移除DBMatchgame中 index為%v的玩家(%s)", i, v)
 		}
 	}
 }

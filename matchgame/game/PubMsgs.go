@@ -61,5 +61,5 @@ func (r *Room) PubGameCreatedMsg(packID int) {
 		log.Errorf("%s PubGameCreatedMsg错误: %s", logger.LOG_Room, publishErr)
 		return
 	}
-	log.Infof("%s 送遊戲房建立訊息到 %s Msg: %+v", logger.LOG_Room, publishChannelName, msg)
+	log.Errorf("%s 送遊戲房建立訊息到 %s Msg: %+v", logger.LOG_Room, publishChannelName, msg)
 }

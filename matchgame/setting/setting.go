@@ -17,7 +17,7 @@ const (
 
 type ConnectionTCP struct {
 	Conn      net.Conn      // TCP連線
-	CloseChan chan struct{} // TCP關閉連線Chan
+	CloseChan chan string   // TCP關閉連線Chan
 	Encoder   *json.Encoder // 連線編碼
 	Decoder   *json.Decoder // 連線解碼
 }
