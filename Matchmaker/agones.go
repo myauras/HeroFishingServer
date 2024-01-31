@@ -132,7 +132,7 @@ func CheckGameServer(roomName string) error {
 		log.Infof("GS RoomName: %s", gs.Labels["RoomName"])
 		if gs.Labels["RoomName"] == roomName {
 			log.Infof("目標RoomName狀態: %s", gs.Status.State)
-			if gs.Status.State == agonesv1.GameServerStateReady {
+			if gs.Status.State == agonesv1.GameServerStateAllocated {
 				log.Infof("%s 已確認目標Matchgame server正常運作", logger.LOG_Agones)
 				return nil
 			} else {

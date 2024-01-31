@@ -7,7 +7,7 @@ import (
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
-	"matchgame/agones"
+	// "matchgame/agones"
 	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
+	// agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -328,9 +328,9 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 	r.MutexLock.Lock()
 	r.Players[seatIndex] = nil
 	r.DBMatchgame.KickPlayer(player.DBPlayer.ID)
-	r.MutexLock.Unlock()
 	r.UpdateMatchgameToDB() // 更新房間DB
-
+	r.MutexLock.Unlock()
+	player.CloseConnection() // 關閉連線
 	r.OnRoomPlayerChange()
 
 	// 廣播玩家離開封包
@@ -348,7 +348,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			Players: r.GetPacketPlayers(),
 		},
 	})
-	player.CloseConnection()
+
 	log.Infof("%s 踢出玩家完成", logger.LOG_Room)
 }
 
@@ -359,14 +359,11 @@ func (r *Room) OnRoomPlayerChange() {
 	}
 	playerCount := r.PlayerCount()
 	if playerCount >= setting.PLAYER_NUMBER { // 滿房
-		r.MSpawner.SpawnSwitch(true)                             // 生怪
-		agones.SetServerState(agonesv1.GameServerStateAllocated) // 設定房間為Allocated(滿房不再能有玩家加進來)
+		r.MSpawner.SpawnSwitch(true) // 生怪
 	} else if playerCount == 0 { // 空房間處理
-		r.MSpawner.SpawnSwitch(false)                        // 停止生怪
-		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
+		r.MSpawner.SpawnSwitch(false) // 停止生怪
 	} else { // 有人但沒有滿房
-		r.MSpawner.SpawnSwitch(true)                         // 生怪
-		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才有人能加進來)
+		r.MSpawner.SpawnSwitch(true) // 生怪
 	}
 }
 

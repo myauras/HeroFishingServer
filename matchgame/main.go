@@ -122,7 +122,7 @@ func main() {
 			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
 			game.InitGameRoom(dbMapID, playerIDs, roomName, myGameServer.Status.Address, myGameServer.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
-
+			agones.SetServerState(agonesv1.GameServerStateAllocated) // 設定房間為Allocated(agones應該會在WatchGameServer後自動設定為Allocated但這邊還是主動設定)
 			log.Infof("%s GameServer狀態為: %s", logger.LOG_Main, gs.Status.State)
 			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
 		} else {

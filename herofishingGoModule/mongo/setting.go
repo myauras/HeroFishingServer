@@ -5,7 +5,9 @@ import (
 	"herofishingGoModule/setting"
 	"time"
 
-	"github.com/google/martian/log"
+	logger "herofishingGoModule/logger"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -211,7 +213,9 @@ func (dbMatchgame *DBMatchgame) KickPlayer(playerID string) {
 	for i, v := range dbMatchgame.PlayerIDs {
 		if v == playerID {
 			dbMatchgame.PlayerIDs[i] = ""
-			log.Infof("移除DBMatchgame中 index為%v的玩家(%s)", i, v)
+			log.Infof("%s 移除DBMatchgame中 index為%v的玩家(%s)", logger.LOG_Mongo, i, v)
+			return
 		}
 	}
+	log.Warnf("%s 移除DBMatchgame玩家(%s)失敗 目標玩家不在清單中", logger.LOG_Mongo, playerID)
 }
