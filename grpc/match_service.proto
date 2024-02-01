@@ -1,0 +1,23 @@
+// match_service.proto
+
+syntax = "proto3";
+
+package match;
+
+// The gRPC service definition for match communication
+service MatchService {
+  // Bi-directional streaming RPC for match communication
+  rpc MatchComm(stream MatchRequest) returns (stream MatchResponse);
+}
+
+// The request message contains information from the sender
+message MatchRequest {
+  string sender = 1;
+  string message = 2;
+}
+
+// The response message contains information from the receiver
+message MatchResponse {
+  string receiver = 1;
+  string message = 2;
+}

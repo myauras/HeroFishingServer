@@ -32,7 +32,7 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS     float64 = 40  // 最長允許玩家無心跳X秒後踢出遊戲房
+	KICK_PLAYER_SECS     float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
 	ATTACK_EXPIRED_SECS  float64 = 3   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 	UPDATETIMER_MILISECS int     = 500 // 計時器X毫秒跑一次
 )
@@ -320,8 +320,8 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			{Key: "spellCharges", Value: player.DBPlayer.SpellCharges}, // 設定技能充能
 			{Key: "drops", Value: player.DBPlayer.Drops},               // 設定掉落道具
 		}
-		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
-		mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson)
+		r.PubPlayerLeftMsg(player.DBPlayer.ID)                                             // 送玩家離開訊息給Matchmaker
+		mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
 		log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
 	}
 	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB

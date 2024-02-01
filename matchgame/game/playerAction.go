@@ -284,7 +284,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
-				log.Errorf("dropID64: %v", dropID64)
 				if dropID64 != 0 {
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
