@@ -8,8 +8,8 @@ import (
 )
 
 var model = Model{
-	GameRTP:        0.95,
-	SpellSharedRTP: 0.945,
+	GameRTP:        0.95, // 遊戲RTP
+	SpellSharedRTP: 0.5,  // 分給技能掉落的RTP, 填0.5代表普攻有0.95-0.5=0.45的RTP而0.5被分給技能掉落
 }
 
 func TestGetSpellKP(t *testing.T) {

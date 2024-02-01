@@ -177,7 +177,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 
-	hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
+	// hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
 	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
 	gainPoints := make([]int64, 0)     // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
 	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
@@ -199,7 +199,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				continue
 			}
 
-			hitMonsterIdxs = append(hitMonsterIdxs, monsterIdx) // 加入擊中怪物索引清單
+			// hitMonsterIdxs = append(hitMonsterIdxs, monsterIdx) // 加入擊中怪物索引清單
 
 			// 取得怪物賠率
 			odds, err := strconv.ParseFloat(monster.MonsterJson.Odds, 64)
@@ -221,6 +221,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			dropID64 := int64(0) // 怪物掉落ID
 			// 怪物必須有掉落物才需要考慮怪物掉落
 			if monster.MonsterJson.DropID != "" {
+				log.Errorf("monster.MonsterJson.DropID= %s", monster.MonsterJson.DropID)
 				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
 					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表錯誤", pack))
@@ -249,8 +250,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 
 			// 計算是否造成擊殺
 			kill := false
-			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomUnchargedSpell()
-			if !isSpellAttack { // 普攻
+			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomUnchargedSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
+			if !isSpellAttack {                                                      // 普攻
 				// 擊殺判定
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell)
 				kill = utility.GetProbResult(attackKP)
@@ -283,6 +284,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
 				gainHeroExps = append(gainHeroExps, int(monsterExp))
+				log.Errorf("dropID64: %v", dropID64)
 				if dropID64 != 0 {
 					gainDrops[len(gainDrops)-1] = int(dropID64)
 				}
@@ -383,7 +385,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	}
 	// 從怪物清單中移除被擊殺的怪物(付費後才算目標死亡, 沒收到付費的Attack封包之前都還是算怪物存活)
 	room.MSpawner.RemoveMonsters(content.KillMonsterIdxs)
-	log.Errorf("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
+	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
 	// log.Infof("/////////////////////////////////")
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)

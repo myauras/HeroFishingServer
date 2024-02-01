@@ -148,6 +148,7 @@ func (player *Player) GetRandomUnchargedSpell() (gameJson.HeroSpellJsonData, boo
 	spell, err := utility.GetRandomTFromSlice(spells)
 	if err != nil {
 		log.Errorf("%s utility.GetRandomTFromSlice(spells)錯誤: %v", logger.LOG_Player, err)
+		return gameJson.HeroSpellJsonData{}, false
 	}
 	return spell, true
 }
@@ -155,14 +156,13 @@ func (player *Player) GetRandomUnchargedSpell() (gameJson.HeroSpellJsonData, boo
 // 取得此英雄尚未充滿能的技能
 func (player *Player) GetUnchargedSpells() []gameJson.HeroSpellJsonData {
 	spells := make([]gameJson.HeroSpellJsonData, 0)
-
 	for i, v := range player.DBPlayer.SpellCharges {
 		spell, err := player.MyHero.GetSpell((i + 1))
 		if err != nil {
 			log.Errorf("%s GetUnchargedSpells時GetUnchargedSpells錯誤: %v", logger.LOG_Player, err)
 			continue
 		}
-		if v >= spell.Cost {
+		if v < spell.Cost {
 			spells = append(spells, spell)
 		}
 	}
