@@ -10,4 +10,5 @@ const (
 	LOG_Setting        = "[Setting]"
 	LOG_MonsterSpawner = "[MonsterSpawner]"
 	LOG_MathModel      = "[MathModel]"
+	LOG_gRPC           = "[gRPC]"
 )

@@ -1,8 +1,8 @@
-// match_service.proto
-
 syntax = "proto3";
 
-package match;
+package matchgrpc;
+
+option go_package = "aura.com/matchgrpc;matchgrpc";
 
 // The gRPC service definition for match communication
 service MatchService {
