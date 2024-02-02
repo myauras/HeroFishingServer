@@ -107,8 +107,6 @@ func (r *RoomReceptionist) JoinRoom(packID int, dbMap mongo.DBMap, player *roomP
 	for i, _ := range usher.rooms {
 		roomIdx := (usher.lastJoinRoomIdx + i) % len(usher.rooms)
 		room := usher.rooms[roomIdx]
-		if room.IsIDExist(player.id) {
-		}
 		joined := room.AddPlayer(player)
 		// 房間不可加入就換下一間檢查
 		if !joined {
@@ -195,10 +193,10 @@ func (r *RoomReceptionist) JoinRoom(packID int, dbMap mongo.DBMap, player *roomP
 
 }
 
-// 訂閱Redis房間訊息
-func (r *room) SubRoomMsg() {
-	channelName := "Game-" + r.dbMatchgameID
-	log.Infof("%s 訂閱Redis房間(%s)", logger.LOG_Room, channelName)
+// 訂閱Redis Matchgame房間訊息
+func (r *room) SubMatchgameMsg() {
+	channelName := "Matchgame-" + r.dbMatchgameID
+	log.Infof("%s 訂閱Redis Matchgame(%s)", logger.LOG_Room, channelName)
 	msgChan := make(chan interface{})
 	err := redis.Subscribe(channelName, msgChan)
 	if err != nil {
@@ -344,7 +342,7 @@ func (r *room) CreateGame(packID int) error {
 				"error:":     err.Error(),
 			}).Infof("%s Create gameServer with retry: \n", logger.LOG_Room)
 		}
-		go r.SubRoomMsg() // 訂閱房間資訊
+		go r.SubMatchgameMsg() // 訂閱房間資訊
 	} else {
 		log.WithFields(log.Fields{
 			"retryTimes": mSetting.RETRY_CREATE_GAMESERVER_TIMES,

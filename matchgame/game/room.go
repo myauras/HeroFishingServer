@@ -121,7 +121,8 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
-	go RoomLoop() // 開始房間循環
+	go RoomLoop()                // 開始房間循環
+	go MyRoom.SubMatchmakerMsg() // 訂閱MatchmakerMsg
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
@@ -138,6 +139,16 @@ func RoomLoop() {
 		MyRoom.RemoveExpiredSceneEffects()  // 移除過期的場景效果
 		MyRoom.RemoveExpiredPlayerBuffers() // 移除過期的玩家Buffer
 	}
+}
+
+// 傳入玩家ID取得Player
+func (r *Room) GetPlayerByID(playerID string) *Player {
+	for _, v := range r.Players {
+		if v.DBPlayer != nil && v.DBPlayer.ID == playerID {
+			return v
+		}
+	}
+	return nil
 }
 
 // 移除過期的攻擊事件
