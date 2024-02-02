@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -88,6 +89,12 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if mongoPlayerDoc.RedisSync { // RedisSync為true就不需要進行資料同步
+		// 回傳
+		response := map[string]string{
+			"result": "success",
+			"error":  "",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 	// 取redisDB player
@@ -103,6 +110,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	drops := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	updatePlayerBson := bson.D{
 		{Key: "point", Value: redisPlayer.Point},     // 設定玩家點數
+		{Key: "leftGameAt", Value: time.Now()},       // 設定離開遊戲時間
 		{Key: "heroExp", Value: redisPlayer.HeroExp}, // 設定英雄經驗
 		{Key: "spellCharges", Value: spellCharges},   // 設定技能充能
 		{Key: "drops", Value: drops},                 // 設定道具掉落
@@ -112,12 +120,12 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	mongo.UpdateDocByBsonD(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
 
 	log.Infof("%s 玩家 %s redisDB資料同步完成", logger.LOG_Main, mongoPlayerDoc.ID)
-	// // 回傳
-	// response := map[string]string{
-	// 	"msg":   "success",
-	// 	"error": "",
-	// }
-	// json.NewEncoder(w).Encode(response)
+	// 回傳
+	response := map[string]string{
+		"result": "success",
+		"error":  "",
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // 處理 /game/getstate 路由的 POST 請求
@@ -138,9 +146,9 @@ func handleGetState(w http.ResponseWriter, r *http.Request) {
 	iosReview := strconv.FormatBool(mongoGameStateDoc.IosReview)
 	// 回傳
 	response := map[string]string{
-		"msg":   "success",
-		"error": "",
-		"data":  iosReview,
+		"result": "success",
+		"error":  "",
+		"data":   iosReview,
 	}
 	json.NewEncoder(w).Encode(response)
 }

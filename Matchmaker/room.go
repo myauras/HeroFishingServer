@@ -107,6 +107,8 @@ func (r *RoomReceptionist) JoinRoom(packID int, dbMap mongo.DBMap, player *roomP
 	for i, _ := range usher.rooms {
 		roomIdx := (usher.lastJoinRoomIdx + i) % len(usher.rooms)
 		room := usher.rooms[roomIdx]
+		if room.IsIDExist(player.id) {
+		}
 		joined := room.AddPlayer(player)
 		// 房間不可加入就換下一間檢查
 		if !joined {
