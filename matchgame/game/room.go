@@ -122,7 +122,6 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
 	go RoomLoop()                // 開始房間循環
-	go MyRoom.SubMatchmakerMsg() // 訂閱MatchmakerMsg
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)

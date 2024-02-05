@@ -205,9 +205,13 @@ func (player *RedisPlayer) GetPlayerDBData() {
 // 取得RedisDB中Player資料, 找不到玩家資料時DBPlayer會返回0值
 func GetPlayerDBData(playerID string) (DBPlayer, error) {
 	var player DBPlayer
+	log.Infof("rdb= %v", rdb)
+	log.Infof("ctx= %v", ctx)
+	log.Infof("playerID= %v", playerID)
 	val, err := rdb.HGetAll(ctx, playerID).Result()
 	if err != nil {
-		return player, fmt.Errorf("ShowPlayer錯誤: %v", err)
+		log.Errorf("GetPlayerDBData錯誤: %v", err)
+		return player, fmt.Errorf("GetPlayerDBData錯誤: %v", err)
 	}
 	if len(val) == 0 { // 找不到資料回傳0值
 		return player, nil

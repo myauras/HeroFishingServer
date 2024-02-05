@@ -165,6 +165,7 @@ func main() {
 	room.MSpawner.SpawnSwitch(false)
 
 	room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
+	go room.SubMatchmakerMsg()          // 訂閱MatchmakerMsg
 
 	select {
 	case <-stopChan:

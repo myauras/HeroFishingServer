@@ -9,7 +9,7 @@ spec:
     metadata:
       labels:
         type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-        imgVersion: "0.2.130" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+        imgVersion: "0.2.135" # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       ports:
       - name: default
@@ -26,11 +26,11 @@ spec:
         metadata:
           labels:
             type: herofishing-matchgame # 標示為herofishing-matchgame, 方便之後對版本做刪除等管理
-            imgVersion: "0.2.130" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
+            imgVersion: "0.2.135" # 加版本標籤, 未來方便針對某個版本的pods進行移除, 版本必須要跟image版本一致避免搞混
         spec:
           containers:
           - name: herofishing-matchgame
-            image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.130
+            image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.135
             resources:
               requests:
                 memory: "32Mi"

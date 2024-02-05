@@ -44,6 +44,8 @@ func main() {
 	mongoPW := os.Getenv("MongoPW")
 	initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
+	redis.Init() // 初始化Redis
+
 	router := mux.NewRouter()
 	router.HandleFunc("/player/syncredischeck", handleSyncRedisCheck).Methods("POST")
 	router.HandleFunc("/game/getstate", handleGetState).Methods("POST")
@@ -99,8 +101,17 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	// 取redisDB player
 	redisPlayer, err := redis.GetPlayerDBData(playerID)
-	if err != nil || redisPlayer.ID == "" {
-		log.Errorf("%s handleSyncRedisCheck執行redis.GetPlayerDBData錯誤: %s", logger.LOG_Main, err)
+	if err != nil {
+		log.Errorf("%s handleSyncRedisCheck執行redis.GetPlayerDBData錯誤: %v", logger.LOG_Main, err)
+		return
+	}
+	if redisPlayer.ID == "" {
+		// 回傳
+		response := map[string]string{
+			"result": "success",
+			"error":  "",
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 	log.Infof("%s 玩家 %s 須同步redisDB資料", logger.LOG_Main, mongoPlayerDoc.ID)
