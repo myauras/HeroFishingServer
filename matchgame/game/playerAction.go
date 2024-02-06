@@ -499,24 +499,33 @@ func (room *Room) HandleLvUpSpell(player *Player, pack packet.Pack, content pack
 		errStr := fmt.Sprintf("%s gameJson.GetHeroLVByEXP錯誤: %v", logger.LOG_Action, err)
 		log.Errorf(errStr)
 		errSend(errStr)
+		return
 	}
 	remainSpellPoint := heroLV - player.MyHero.UsedSpellPoint
 	if remainSpellPoint <= 0 {
 		errStr := fmt.Sprintf("%s 技能點數不足 remainSpellPoint: %v", logger.LOG_Action, remainSpellPoint)
 		log.Errorf(errStr)
 		errSend(errStr)
+		return
 	}
 	if content.SpellIdx < 0 && content.SpellIdx > 2 { // 英雄技能索引只會是0~2
 		errStr := fmt.Sprintf("%s 英雄技能索引只會是0~2 content.SpellIdx: %v", logger.LOG_Action, content.SpellIdx)
 		log.Errorf(errStr)
 		errSend(errStr)
+		return
+	}
+	if player.MyHero.SpellLVs[content.SpellIdx] > 2 { // SpellLV是0~3, 0是尚未學習,s 3是等級3
+		errStr := fmt.Sprintf("%s 該技能索引%v 等級為%v 無法再升級了", logger.LOG_Action, content.SpellIdx, player.MyHero.SpellLVs[content.SpellIdx])
+		log.Errorf(errStr)
+		errSend(errStr)
+		return
 	}
 
 	player.MyHero.UsedSpellPoint++             // 已使用的點數++
 	player.MyHero.SpellLVs[content.SpellIdx]++ // 英雄技能等級++
 
 	room.SendPacketToPlayer(player.Index, &packet.Pack{
-		CMD:    packet.AUTO_TOCLIENT,
+		CMD:    packet.LVUPSPELL_TOCLIENT,
 		PackID: -1,
 		Content: &packet.LvUpSpell_ToClient{
 			Success: true,
