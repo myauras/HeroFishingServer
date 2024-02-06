@@ -139,10 +139,12 @@ func (player *Player) CloseConnection() {
 	log.Infof("%s 關閉玩家(%s)連線", logger.LOG_Player, player.DBPlayer.ID)
 }
 
-// 取得此英雄隨機尚未充滿能的技能, 無尚未充滿能的技能時會返回false
-func (player *Player) GetRandomUnchargedSpell() (gameJson.HeroSpellJsonData, bool) {
-	spells := player.GetUnchargedSpells()
+// 取得此英雄隨機尚未充滿能且已經學習過的技能, 無適合的技能時會返回false
+func (player *Player) GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bool) {
+	spells := player.GetLearnedAndChargeableSpells()
+
 	if len(spells) == 0 {
+		log.Errorf("無尚未充能且已經學習的技能")
 		return gameJson.HeroSpellJsonData{}, false
 	}
 	spell, err := utility.GetRandomTFromSlice(spells)
@@ -153,10 +155,13 @@ func (player *Player) GetRandomUnchargedSpell() (gameJson.HeroSpellJsonData, boo
 	return spell, true
 }
 
-// 取得此英雄尚未充滿能的技能
-func (player *Player) GetUnchargedSpells() []gameJson.HeroSpellJsonData {
+// 取得此英雄所有尚未充滿能且已經學習過的技能
+func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData {
 	spells := make([]gameJson.HeroSpellJsonData, 0)
 	for i, v := range player.DBPlayer.SpellCharges {
+		if player.MyHero.SpellLVs[i] <= 0 { // 尚未學習的技能就跳過
+			continue
+		}
 		spell, err := player.MyHero.GetSpell((i + 1))
 		if err != nil {
 			log.Errorf("%s GetUnchargedSpells時GetUnchargedSpells錯誤: %v", logger.LOG_Player, err)

@@ -25,6 +25,8 @@ const (
 	DROPSPELL             = "DROPSPELL"             // (TCP)掉落施法
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
+	LVUPSPELL             = "LVUPSPELL"             // (TCP)升級技能
+	LVUPSPELL_TOCLIENT    = "LVUPSPELL_TOCLIENT"    // (TCP)升級技能-送Client
 	UDPAUTH               = "UDPAUTH"               // (UDP)身分驗證
 	UPDATEGAME            = "UPDATEGAME"            // (UDP)遊戲狀態更新(太久沒收到回傳會將該玩家從房間踢出)
 	UPDATEGAME_TOCLIENT   = "UPDATEGAME_TOCLIENT"   // (UDP)遊戲狀態更新-送Client(每GAMEUPDATE_MS毫秒會送一次)

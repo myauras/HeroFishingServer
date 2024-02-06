@@ -11,10 +11,11 @@ import (
 )
 
 type Hero struct {
-	ID     int                           // 英雄ID
-	SkinID string                        // SkinID
-	EXP    int                           // 英雄經驗
-	Spells [3]gameJson.HeroSpellJsonData // 英雄技能
+	ID             int                           // 英雄ID
+	SkinID         string                        // SkinID
+	Spells         [3]gameJson.HeroSpellJsonData // 英雄技能
+	SpellLVs       [3]int                        // 英雄技能等級
+	UsedSpellPoint int                           // 已使用的英雄技能點
 }
 
 // 取得英雄技能

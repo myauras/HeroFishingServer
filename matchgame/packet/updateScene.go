@@ -14,16 +14,17 @@ type UpdateScene_ToClient struct {
 
 type Spawn struct {
 	CMDContent
-	RouteJsonID int        // 路徑JsonID
-	SpawnTime   float64    // 在遊戲時間第X秒時被產生的
-	IsBoss      bool       // 是否為Boss生怪
-	Monsters    []*Monster // 怪物清單
+	RID   int        // 路徑JsonID, RouteJsonID
+	STime float64    // 在遊戲時間第X秒時被產生的, SpawnTime
+	IsB   bool       // 是否為Boss生怪, IsBoss
+	Ms    []*Monster // 怪物清單, Monsters
 }
 
 type Monster struct {
-	JsonID  int             // 怪物JsonID
+	ID      int             // 怪物JsonID, JsonID
 	Idx     int             // 怪物索引
 	Death   bool            // 是否已死亡
+	LTime   float64         // 離開時間, LeaveTime
 	Effects []MonsterEffect // 怪物效果清單(還沒結束的效果 跟 永久影響的效果才需要傳)
 }
 

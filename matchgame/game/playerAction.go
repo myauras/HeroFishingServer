@@ -20,7 +20,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
 	if event, ok := room.AttackEvents[attackID]; ok {
 		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
-			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
+			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Action, attackID)
 			return
 		}
 	}
@@ -38,7 +38,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
-		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
 	// 取rtp
@@ -59,27 +59,27 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 				ErrMsg:  "HandleAttack時取技能索引ID錯誤",
 				Content: &packet.Hit_ToClient{},
 			})
-			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Room, err)
+			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Action, err)
 			return
 		}
 		// 檢查CD
 		if spellIdx < 1 || spellIdx > 3 {
-			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Room, spellIdx)
+			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Action, spellIdx)
 			return
 		}
 		passSec := room.GameTime - player.LastSpellsTime[spellIdx-1] // 距離上次攻擊經過的秒數
 		if passSec < spellJson.CD {
-			log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能施放技能, passSec: %v cd: %v", logger.LOG_Room, player.DBPlayer.ID, passSec, spellJson.CD)
+			log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能施放技能, passSec: %v cd: %v", logger.LOG_Action, player.DBPlayer.ID, passSec, spellJson.CD)
 			return
 		}
 		// 檢查是否可以施放該技能
 		if player.CanSpell(spellIdx) {
-			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Room)
+			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Action)
 			return
 		}
 		spell, getSpellErr := player.MyHero.GetSpell(spellIdx)
 		if getSpellErr != nil {
-			log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Room, getSpellErr)
+			log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Action, getSpellErr)
 			return
 		}
 
@@ -91,14 +91,14 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 		// passSec := room.GameTime - player.LastAttackTime // 距離上次攻擊經過的秒數
 		// cd := spellJson.CD / player.GetAttackCDBuff()    // CD秒數
 		// if passSec < cd {
-		// 	log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊, passSec: %v cd: %v", logger.LOG_Room, player.DBPlayer.ID, passSec, cd)
+		// 	log.Errorf("%s 玩家%s的攻擊仍在CD中, 不應該能攻擊, passSec: %v cd: %v", logger.LOG_Action, player.DBPlayer.ID, passSec, cd)
 		// 	return
 		// }
 
 		// (先關閉點數不足檢測)
 		// 檢查點數
 		// if player.DBPlayer.Point < needPoint {
-		// 	log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Room)
+		// 	log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Action)
 		// 	return
 		// }
 		spendPoint = -int64(room.DBmap.Bet)
@@ -159,7 +159,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
 	if event, ok := room.AttackEvents[attackID]; ok {
 		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
-			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Room, attackID)
+			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Action, attackID)
 			return
 		}
 	}
@@ -168,7 +168,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
 		room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤", pack))
-		log.Errorf("%s HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Room, err)
+		log.Errorf("%s HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
 	// 取rtp
@@ -190,12 +190,12 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		if monster, ok := room.MSpawner.Monsters[monsterIdx]; !ok {
 			errStr := fmt.Sprintf("目標不存在(或已死亡) monsterIdx:%d", monsterIdx)
 			room.SendPacketToPlayer(player.Index, newHitErrorPack(errStr, pack))
-			log.Errorf("%s %s", logger.LOG_Room, errStr)
+			log.Errorf("%s %s", logger.LOG_Action, errStr)
 			continue
 		} else {
 			if monster == nil {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("room.MSpawner.Monsters中的monster is null", pack))
-				log.Errorf("%s room.MSpawner.Monsters中的monster is null", logger.LOG_Room)
+				log.Errorf("%s room.MSpawner.Monsters中的monster is null", logger.LOG_Action)
 				continue
 			}
 
@@ -205,14 +205,14 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			odds, err := strconv.ParseFloat(monster.MonsterJson.Odds, 64)
 			if err != nil {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物賠率錯誤", pack))
-				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Room, err)
+				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Action, err)
 				return
 			}
 			// 取得怪物經驗
 			monsterExp, err := strconv.ParseFloat(monster.MonsterJson.EXP, 64)
 			if err != nil {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物經驗錯誤", pack))
-				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Room, err)
+				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Action, err)
 				return
 			}
 
@@ -225,12 +225,12 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
 					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表錯誤", pack))
-					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Room, err)
+					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Action, err)
 					return
 				}
 				dropID64, err = strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
 				if err != nil {
-					log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Room, err)
+					log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 					return
 				}
 				// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
@@ -238,7 +238,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 					addOdds, err := strconv.ParseFloat(dropJson.RTP, 64)
 					if err != nil {
 						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
-						log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Room, err)
+						log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Action, err)
 						return
 					}
 					dropAddOdds += addOdds
@@ -250,8 +250,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 
 			// 計算是否造成擊殺
 			kill := false
-			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomUnchargedSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
-			if !isSpellAttack {                                                      // 普攻
+			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
+			if !isSpellAttack {                                                       // 普攻
 				// 擊殺判定
 				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell)
 				kill = utility.GetProbResult(attackKP)
@@ -273,7 +273,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 					if utility.GetProbResult(dropChargeP) {
 						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 						if err != nil {
-							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID)錯誤: %v", logger.LOG_Room, err)
+							log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID)錯誤: %v", logger.LOG_Action, err)
 							room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時解析第X技能索引錯誤", pack))
 							return
 						}
@@ -309,7 +309,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		attackEvent = room.AttackEvents[attackID]
 		if attackEvent == nil {
 			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時room.AttackEvents[attackID]為nil", pack))
-			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Room)
+			log.Errorf("%s room.AttackEvents[attackID]為nil", logger.LOG_Action)
 			return
 		}
 	}
@@ -354,7 +354,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 
 	var content *packet.Hit_ToClient
 	if c, ok := hitPack.Content.(*packet.Hit_ToClient); !ok {
-		log.Errorf("%s hitPack.Content無法斷言為Hit_ToClient", logger.LOG_Room)
+		log.Errorf("%s hitPack.Content無法斷言為Hit_ToClient", logger.LOG_Action)
 		return
 	} else {
 		content = c
@@ -399,24 +399,24 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content packet.DropSpell) {
 	dropSpellJson, err := gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))
 	if err != nil {
-		log.Errorf("%s HandleDropSpell時gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))錯誤: %v", logger.LOG_Room, err)
+		log.Errorf("%s HandleDropSpell時gameJson.GetDropSpellByID(strconv.Itoa(content.DropSpellJsonID))錯誤: %v", logger.LOG_Action, err)
 		return
 	}
 	dropSpellID, err := strconv.ParseInt(dropSpellJson.ID, 10, 64)
 	if err != nil {
-		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Room, err)
+		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
 	ownedDrop := player.IsOwnedDrop(int(dropSpellID))
 	if !ownedDrop {
-		log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Room, player.DBPlayer.ID, dropSpellID)
+		log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Action, player.DBPlayer.ID, dropSpellID)
 		return
 	}
 	switch dropSpellJson.EffectType {
 	case "Frozen": // 冰風暴
 		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
 		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
@@ -435,12 +435,12 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 	case "Speedup": // 急速神符
 		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
 		value, err := strconv.ParseFloat(dropSpellJson.EffectValue2, 64)
 		if err != nil {
-			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue2, 64)錯誤: %v", logger.LOG_Room, dropSpellJson.EffectType, err)
+			log.Errorf("%s HandleDropSpell的EffectType為%s時 strconv.ParseFloat(dropSpellJson.EffectValue2, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
 		player.PlayerBuffs = append(player.PlayerBuffs, packet.PlayerBuff{
@@ -457,7 +457,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			},
 		})
 	default:
-		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Room, dropSpellJson.EffectType)
+		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Action, dropSpellJson.EffectType)
 		return
 	}
 	// 施法後要移除該掉落
@@ -474,6 +474,54 @@ func (room *Room) HandleAuto(player *Player, pack packet.Pack, content packet.Au
 			IsAuto: isAuto,
 		},
 	})
+
+}
+
+// 處理收到的技能升級封包(TCP)
+func (room *Room) HandleLvUpSpell(player *Player, pack packet.Pack, content packet.LvUpSpell) {
+
+	// 錯誤回送
+	errSend := func(errMsg string) {
+		room.SendPacketToPlayer(player.Index, &packet.Pack{
+			CMD:    packet.AUTO_TOCLIENT,
+			PackID: -1,
+			ErrMsg: errMsg,
+			Content: &packet.LvUpSpell_ToClient{
+				Success: false,
+			},
+		})
+	}
+
+	heroLV, err := gameJson.GetHeroLVByEXP(player.DBPlayer.HeroExp)
+	log.Errorf("heroExp: %v , heroLV: %v usedSpellPoint: %v", player.DBPlayer.HeroExp, heroLV, player.MyHero.UsedSpellPoint)
+
+	if err != nil {
+		errStr := fmt.Sprintf("%s gameJson.GetHeroLVByEXP錯誤: %v", logger.LOG_Action, err)
+		log.Errorf(errStr)
+		errSend(errStr)
+	}
+	remainSpellPoint := heroLV - player.MyHero.UsedSpellPoint
+	if remainSpellPoint <= 0 {
+		errStr := fmt.Sprintf("%s 技能點數不足 remainSpellPoint: %v", logger.LOG_Action, remainSpellPoint)
+		log.Errorf(errStr)
+		errSend(errStr)
+	}
+	if content.SpellIdx < 0 && content.SpellIdx > 2 { // 英雄技能索引只會是0~2
+		errStr := fmt.Sprintf("%s 英雄技能索引只會是0~2 content.SpellIdx: %v", logger.LOG_Action, content.SpellIdx)
+		log.Errorf(errStr)
+		errSend(errStr)
+	}
+
+	player.MyHero.UsedSpellPoint++             // 已使用的點數++
+	player.MyHero.SpellLVs[content.SpellIdx]++ // 英雄技能等級++
+
+	room.SendPacketToPlayer(player.Index, &packet.Pack{
+		CMD:    packet.AUTO_TOCLIENT,
+		PackID: -1,
+		Content: &packet.LvUpSpell_ToClient{
+			Success: true,
+		},
+	})
 }
 
 // 取得hitError封包
@@ -488,11 +536,11 @@ func newHitErrorPack(errStr string, pack packet.Pack) *packet.Pack {
 
 // 將房間資料寫入DB(只有開房時執行1次)
 func (room *Room) WriteMatchgameToDB() {
-	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Room)
+	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Action)
 	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, room.DBMatchgame)
 	if err != nil {
-		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Room, err)
+		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Action, err)
 		return
 	}
-	log.Infof("%s 寫入Matchgame到DB完成", logger.LOG_Room)
+	log.Infof("%s 寫入Matchgame到DB完成", logger.LOG_Action)
 }

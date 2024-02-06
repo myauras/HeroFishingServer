@@ -64,7 +64,7 @@ func GetHeroEXPByID(id string) (HeroEXPJsonData, error) {
 }
 
 // 傳入經驗取得等級
-func GetLVByEXP(exp int) (int, error) {
+func GetHeroLVByEXP(exp int) (int, error) {
 	datas, err := getJsonDataByName(JsonName.HeroEXP)
 	if err != nil {
 		return 1, err

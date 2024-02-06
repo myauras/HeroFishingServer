@@ -5,6 +5,7 @@ import (
 	"herofishingGoModule/utility"
 	"matchgame/logger"
 	"matchgame/packet"
+	"math"
 	"strconv"
 	"sync"
 	"time"
@@ -247,19 +248,20 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 
 		// 紀錄怪物清單
 		monsters = append(monsters, &packet.Monster{
-			JsonID:  int(monsterJsonID),
+			ID:      int(monsterJsonID),
 			Idx:     monsterIdx,
 			Death:   false,
+			LTime:   math.Round(leaveTime),
 			Effects: nil,
 		})
 
 	}
 	// 紀錄生怪清單
 	ms.Spawns = append(ms.Spawns, packet.Spawn{
-		RouteJsonID: int(routeJsonID),
-		SpawnTime:   MyRoom.GameTime,
-		IsBoss:      spawn.IsBoss,
-		Monsters:    monsters,
+		RID:   int(routeJsonID),
+		STime: MyRoom.GameTime,
+		IsB:   spawn.IsBoss,
+		Ms:    monsters,
 	})
 	// 廣播給所有玩家
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
@@ -291,13 +293,13 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 	// 檢查Spawn清單是否有Spawn沒有存活的怪物了, 沒有就移除該Spawn事件
 	needRemoveSpawnIdxs := make([]int, 0)
 	for i, spawn := range ms.Spawns {
-		if spawn.Monsters == nil {
+		if spawn.Ms == nil {
 			needRemoveSpawnIdxs = append(needRemoveSpawnIdxs, i)
 			continue
 		}
 
 		noAliveMonster := true // 此Spawn是否沒有怪物存活了
-		for _, monster := range spawn.Monsters {
+		for _, monster := range spawn.Ms {
 			if _, exists := killSet[monster.Idx]; exists {
 				monster.Death = true // 設定為已死亡
 			}
@@ -308,7 +310,7 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 		// 如果此Spawn沒有任何怪物存活就把此Spawn加到要移除清單中
 		if noAliveMonster {
 			needRemoveSpawnIdxs = append(needRemoveSpawnIdxs, i)
-			if spawn.IsBoss {
+			if spawn.IsB {
 				ms.MutexLock.Lock()
 				ms.BossExist = false
 				ms.MutexLock.Unlock()

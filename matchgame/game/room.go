@@ -121,7 +121,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
-	go RoomLoop()                // 開始房間循環
+	go RoomLoop() // 開始房間循環
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
@@ -233,15 +233,9 @@ func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
 	}
 	spellJsons := heroJson.GetSpellJsons()
 
-	heroEXP := 0
-	// spellCharges := [3]int{0, 0, 0}
-	if player.MyHero != nil {
-		heroEXP = player.MyHero.EXP
-	}
 	player.MyHero = &Hero{
 		ID:     heroID,
 		SkinID: heroSkinID,
-		EXP:    heroEXP,
 		Spells: spellJsons,
 	}
 }
@@ -473,6 +467,13 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleAuto(player, pack, content)
+	case packet.LVUPSPELL:
+		content := packet.LvUpSpell{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
+		}
+		MyRoom.HandleLvUpSpell(player, pack, content)
 	}
 
 	return nil
