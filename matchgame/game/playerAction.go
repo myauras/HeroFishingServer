@@ -508,8 +508,8 @@ func (room *Room) HandleLvUpSpell(player *Player, pack packet.Pack, content pack
 		errSend(errStr)
 		return
 	}
-	if content.SpellIdx < 0 && content.SpellIdx > 2 { // 英雄技能索引只會是0~2
-		errStr := fmt.Sprintf("%s 英雄技能索引只會是0~2 content.SpellIdx: %v", logger.LOG_Action, content.SpellIdx)
+	if content.SpellIdx < 1 && content.SpellIdx > 3 { // 英雄技能索引只會是1~3
+		errStr := fmt.Sprintf("%s 英雄技能索引只會是1~3 content.SpellIdx: %v", logger.LOG_Action, content.SpellIdx)
 		log.Errorf(errStr)
 		errSend(errStr)
 		return

@@ -14,7 +14,7 @@ type Hero struct {
 	ID             int                           // 英雄ID
 	SkinID         string                        // SkinID
 	Spells         [3]gameJson.HeroSpellJsonData // 英雄技能
-	SpellLVs       [3]int                        // 英雄技能等級, SpellLV是0~3, 0是尚未學習,s 3是等級3
+	SpellLVs       [4]int                        // 英雄技能等級, SpellLVs索引只使用1~3(技能1~技能3), SpellLV值是0~3, 0是尚未學習,s 3是等級3
 	UsedSpellPoint int                           // 已使用的英雄技能點
 }
 
