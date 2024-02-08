@@ -150,7 +150,6 @@ func (player *Player) GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bo
 	spells := player.GetLearnedAndChargeableSpells()
 
 	if len(spells) == 0 {
-		log.Errorf("無尚未充能且已經學習的技能")
 		return gameJson.HeroSpellJsonData{}, false
 	}
 	spell, err := utility.GetRandomTFromSlice(spells)

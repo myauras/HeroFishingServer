@@ -28,6 +28,7 @@ type RedisPlayer struct {
 type DBPlayer struct {
 	ID           string `redis:"id"`
 	Point        int64  `redis:"point"`        // 點數
+	PointBuffer  int64  `redis:"pointBuffer"`  // 點數
 	HeroExp      int    `redis:"heroExp"`      // 英雄經驗
 	SpellCharge1 int    `redis:"spellCharge1"` // 技能充能1
 	SpellCharge2 int    `redis:"spellCharge2"` // 技能充能2
@@ -164,6 +165,7 @@ func (rPlayer *RedisPlayer) AddPoint(value int64) {
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.pointBuffer += value
 }
+
 // 增加點數溢位
 func (rPlayer *RedisPlayer) AddPTBuffer(value int64) {
 	rPlayer.MutexLock.Lock()

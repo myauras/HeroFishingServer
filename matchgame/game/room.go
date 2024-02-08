@@ -112,7 +112,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		DBMatchgame: &dbMatchgame,
 		GameTime:    0,
 		MathModel: &gamemath.Model{
-			GameRTP:        dbMap.RTP,            // 遊戲RTP
+			GameRTP:        10,                   // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
 		},
 	}
@@ -325,6 +325,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			// 更新玩家DB資料
 			updatePlayerBson := bson.D{
 				{Key: "point", Value: player.DBPlayer.Point},               // 設定玩家點數
+				{Key: "pointBuffer", Value: player.DBPlayer.PointBuffer},   // 設定玩家點數溢位
 				{Key: "leftGameAt", Value: time.Now()},                     // 設定離開遊戲時間
 				{Key: "inMatchgameID", Value: ""},                          // 設定玩家不在遊戲房內了
 				{Key: "redisSync", Value: true},                            // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
