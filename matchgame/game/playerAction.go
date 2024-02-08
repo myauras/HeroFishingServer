@@ -183,6 +183,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
 	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
 	gainDrops := make([]int, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := int64(0)               // 點數溢位
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	content.MonsterIdxs = utility.RemoveDuplicatesFromSlice(content.MonsterIdxs) // 移除重複的命中索引
 	for _, monsterIdx := range content.MonsterIdxs {
@@ -249,21 +250,21 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			rewardPoint := int64((odds + dropAddOdds) * float64(room.DBmap.Bet))
 
 			// 計算是否造成擊殺
-			kill := false
 			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
-			if !isSpellAttack {                                                       // 普攻
+			attackKP := float64(0)
+			tmpPTBuffer := int64(0)
+			if !isSpellAttack { // 普攻
 				// 擊殺判定
-				attackKP := room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell)
-				kill = utility.GetProbResult(attackKP)
+				attackKP, tmpPTBuffer = room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell, room.DBmap.Bet)
 				// log.Infof("======spellMaxHits:%v odds:%v attackKP:%v kill:%v ", spellMaxHits, odds, attackKP, kill)
 			} else { // 技能攻擊
-				attackKP := room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits))
-				kill = utility.GetProbResult(attackKP)
+				attackKP, tmpPTBuffer = room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits), room.DBmap.Bet)
 				// log.Infof("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", spellMaxHits, rtp, odds, attackKP, kill)
 			}
-
+			kill := utility.GetProbResult(attackKP)
 			// 如果有擊殺就加到清單中
 			if kill {
+				ptBuffer += tmpPTBuffer
 				// 技能充能掉落
 				dropChargeP := 0.0
 				gainSpellCharges = append(gainSpellCharges, -1)
@@ -339,6 +340,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			GainHeroExps:     gainHeroExps,
 			GainSpellCharges: gainSpellCharges,
 			GainDrops:        gainDrops,
+			PTBuffer:         ptBuffer,
 		}}
 	attackEvent.Hit_ToClientPacks = append(attackEvent.Hit_ToClientPacks, hitPack)
 	// log.Errorf("attackEvent.Paid: %v   killMonsterIdxs: %v", attackEvent.Paid, killMonsterIdxs)
@@ -363,6 +365,11 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	totalGainPoint := utility.SliceSum(content.GainPoints) // 把 每個擊殺獲得點數加總就是 總獲得點數
 	if totalGainPoint != 0 {
 		player.AddPoint(totalGainPoint)
+	}
+
+	// 玩家點數溢位
+	if content.PTBuffer != 0 {
+		player.AddPTBuffer(content.PTBuffer)
 	}
 
 	// 英雄增加經驗

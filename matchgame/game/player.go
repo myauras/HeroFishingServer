@@ -36,6 +36,12 @@ func (player *Player) AddPoint(value int64) {
 	player.GainPoint += value
 }
 
+// 玩家點數溢位增減
+func (player *Player) AddPTBuffer(value int64) {
+	player.RedisPlayer.AddPTBuffer(value)
+	player.DBPlayer.PointBuffer += int64(value)
+}
+
 // 英雄經驗增減
 func (player *Player) AddHeroExp(value int) {
 	player.RedisPlayer.AddHeroExp(value)

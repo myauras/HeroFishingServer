@@ -121,6 +121,7 @@ type DBPlayer struct {
 	HeroExp       int       `bson:"heroExp"`
 	SpellCharges  [3]int    `bson:"spellCharges"`
 	Drops         [3]int    `bson:"drops"`
+	PointBuffer   int64     `bson:"pointBuffer"`
 
 	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`

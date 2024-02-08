@@ -24,7 +24,7 @@ type Hit_ToClient struct {
 	GainHeroExps     []int   // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
 	GainSpellCharges []int   // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
 	GainDrops        []int   // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-
+	PTBuffer         int64   // 溢位的Point
 }
 
 func (hit *Hit) Parse(common CMDContent) bool {

@@ -18,6 +18,7 @@ var players map[string]*RedisPlayer
 type RedisPlayer struct {
 	id                 string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
 	pointBuffer        int64  // 暫存點數修改
+	ptBufferBuffer     int64  // 暫存點數溢位修改
 	heroExpBuffer      int    // 暫存經驗修改
 	spellChargesBuffer [3]int // 暫存技能充能
 	dropsBuffer        [3]int // 暫存掉落道具
@@ -47,6 +48,14 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		}
 		rPlayer.pointBuffer = 0
 	}
+	if rPlayer.ptBufferBuffer != 0 {
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "pointBuffer", int64(rPlayer.ptBufferBuffer)).Result()
+		if err != nil {
+			log.Errorf("%s writePlayerUpdateToRedis pointBuffer錯誤: %v", logger.LOG_Redis, err)
+		}
+		rPlayer.ptBufferBuffer = 0
+	}
+
 	if rPlayer.heroExpBuffer != 0 {
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "heroExp", int64(rPlayer.heroExpBuffer)).Result() // 轉換為 int64
 		if err != nil {
@@ -94,7 +103,7 @@ func (player *RedisPlayer) ClosePlayer() {
 }
 
 // 建立玩家資料
-func CreatePlayerData(playerID string, point int, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
+func CreatePlayerData(playerID string, point int, ptBuffer, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
@@ -103,6 +112,7 @@ func CreatePlayerData(playerID string, point int, heroExp int, spellCharges [3]i
 		_, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
 			"id":           playerID,
 			"point":        point,
+			"pointBuffer":  ptBuffer,
 			"heroExp":      heroExp,
 			"spellCharge1": spellCharges[0],
 			"spellCharge2": spellCharges[1],
@@ -153,6 +163,12 @@ func (rPlayer *RedisPlayer) AddPoint(value int64) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.pointBuffer += value
+}
+// 增加點數溢位
+func (rPlayer *RedisPlayer) AddPTBuffer(value int64) {
+	rPlayer.MutexLock.Lock()
+	defer rPlayer.MutexLock.Unlock()
+	rPlayer.ptBufferBuffer += value
 }
 
 // 增加英雄經驗
