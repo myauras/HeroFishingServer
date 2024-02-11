@@ -252,19 +252,33 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			// 計算是否造成擊殺
 			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
 			attackKP := float64(0)
-			tmpPTBuffer := int64(0)
+			tmpPTBufferAdd := int64(0)
 			if !isSpellAttack { // 普攻
 				// 擊殺判定
-				attackKP, tmpPTBuffer = room.MathModel.GetAttackKP(odds, int(spellMaxHits), gotUnchargedSpell, room.DBmap.Bet)
+				hitData := HitData{
+					AttackRTP:  room.MathModel.GameRTP,
+					TargetOdds: odds,
+					MaxHit:     int(spellMaxHits),
+					ChargeDrop: gotUnchargedSpell,
+					MapBet:     room.DBmap.Bet,
+				}
+				attackKP, tmpPTBufferAdd = room.MathModel.GetAttackKP(hitData, player)
 				// log.Infof("======spellMaxHits:%v odds:%v attackKP:%v kill:%v ", spellMaxHits, odds, attackKP, kill)
 			} else { // 技能攻擊
-				attackKP, tmpPTBuffer = room.MathModel.GetSpellKP(rtp, odds, int(spellMaxHits), room.DBmap.Bet)
+				hitData := HitData{
+					AttackRTP:  rtp,
+					TargetOdds: odds,
+					MaxHit:     int(spellMaxHits),
+					ChargeDrop: false,
+					MapBet:     room.DBmap.Bet,
+				}
+				attackKP, tmpPTBufferAdd = room.MathModel.GetSpellKP(hitData, player)
 				// log.Infof("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", spellMaxHits, rtp, odds, attackKP, kill)
 			}
 			kill := utility.GetProbResult(attackKP)
 			// 如果有擊殺就加到清單中
 			if kill {
-				ptBuffer += tmpPTBuffer
+				ptBuffer += tmpPTBufferAdd
 				// 技能充能掉落
 				dropChargeP := 0.0
 				gainSpellCharges = append(gainSpellCharges, -1)

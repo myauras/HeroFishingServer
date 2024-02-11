@@ -7,8 +7,8 @@ import (
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
+
 	// "matchgame/agones"
-	"matchgame/gamemath"
 	logger "matchgame/logger"
 	"matchgame/packet"
 	gSetting "matchgame/setting"
@@ -48,7 +48,7 @@ type Room struct {
 	DBmap        *mongo.DBMap                   // DB地圖設定
 	GameTime     float64                        // 遊戲開始X秒
 	ErrorLogs    []string                       // ErrorLogs
-	MathModel    *gamemath.Model                // 數學模型
+	MathModel    *MathModel                     // 數學模型
 	MSpawner     *MonsterSpawner                // 生怪器
 	AttackEvents map[string]*AttackEvent        // 攻擊事件
 	SceneEffects []packet.SceneEffect           // 場景效果
@@ -111,7 +111,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		DBmap:       &dbMap,
 		DBMatchgame: &dbMatchgame,
 		GameTime:    0,
-		MathModel: &gamemath.Model{
+		MathModel: &MathModel{
 			GameRTP:        10,                   // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
 		},
