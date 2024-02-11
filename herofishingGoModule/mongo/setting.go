@@ -111,17 +111,19 @@ const (
 
 // DB玩家資料
 type DBPlayer struct {
-	ID            string    `bson:"_id"`
-	CreatedAt     time.Time `bson:"createdAt"`
-	Point         int64     `bson:"point"`
-	Ban           bool      `bson:"ban"`
-	InMatchgameID string    `bson:"inMatchgameID"`
-	LeftGameAt    time.Time `bson:"leftGameAt"`
-	RedisSync     bool      `bson:"redisSync"`
-	HeroExp       int       `bson:"heroExp"`
-	SpellCharges  [3]int    `bson:"spellCharges"`
-	Drops         [3]int    `bson:"drops"`
-	PointBuffer   int64     `bson:"pointBuffer"`
+	ID               string    `bson:"_id"`
+	CreatedAt        time.Time `bson:"createdAt"`
+	Point            int64     `bson:"point"`
+	Ban              bool      `bson:"ban"`
+	InMatchgameID    string    `bson:"inMatchgameID"`
+	LeftGameAt       time.Time `bson:"leftGameAt"`
+	RedisSync        bool      `bson:"redisSync"`
+	HeroExp          int       `bson:"heroExp"`
+	SpellCharges     [3]int    `bson:"spellCharges"`
+	Drops            [3]int    `bson:"drops"`
+	PointBuffer      int64     `bson:"pointBuffer"`
+	TotalWin         int64     `bson:"totalWin"`
+	TotalExpenditure int64     `bson:"totalExpenditure "`
 
 	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`

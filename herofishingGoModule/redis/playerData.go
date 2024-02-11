@@ -16,26 +16,30 @@ var dbWriteMinMiliSecs = 1000
 var players map[string]*RedisPlayer
 
 type RedisPlayer struct {
-	id                 string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
-	pointBuffer        int64  // 暫存點數修改
-	ptBufferBuffer     int64  // 暫存點數溢位修改
-	heroExpBuffer      int    // 暫存經驗修改
-	spellChargesBuffer [3]int // 暫存技能充能
-	dropsBuffer        [3]int // 暫存掉落道具
-	updateOn           bool   // 資料定時更新上RedisDB程序開關
-	MutexLock          sync.Mutex
+	id                     string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
+	pointBuffer            int64  // 暫存點數修改
+	ptBufferBuffer         int64  // 暫存點數溢位修改
+	totalWinBuffer         int64  // 暫存總贏點數修改
+	totalExpenditureBuffer int64  // 暫存總花費點數修改
+	heroExpBuffer          int    // 暫存經驗修改
+	spellChargesBuffer     [3]int // 暫存技能充能
+	dropsBuffer            [3]int // 暫存掉落道具
+	updateOn               bool   // 資料定時更新上RedisDB程序開關
+	MutexLock              sync.Mutex
 }
 type DBPlayer struct {
-	ID           string `redis:"id"`
-	Point        int64  `redis:"point"`        // 點數
-	PointBuffer  int64  `redis:"pointBuffer"`  // 點數
-	HeroExp      int    `redis:"heroExp"`      // 英雄經驗
-	SpellCharge1 int    `redis:"spellCharge1"` // 技能充能1
-	SpellCharge2 int    `redis:"spellCharge2"` // 技能充能2
-	SpellCharge3 int    `redis:"spellCharge3"` // 技能充能3
-	Drop1        int    `redis:"drop1"`        // 掉落道具1
-	Drop2        int    `redis:"drop2"`        // 掉落道具2
-	Drop3        int    `redis:"drop3"`        // 掉落道具3
+	ID               string `redis:"id"`
+	Point            int64  `redis:"point"`             // 點數
+	PointBuffer      int64  `redis:"pointBuffer"`       // 點數
+	TotalWin         int64  `redis:"totalWin"`          // 總贏點數
+	TotalExpenditure int64  `redis:"totalExpenditure "` // 總花費點數
+	HeroExp          int    `redis:"heroExp"`           // 英雄經驗
+	SpellCharge1     int    `redis:"spellCharge1"`      // 技能充能1
+	SpellCharge2     int    `redis:"spellCharge2"`      // 技能充能2
+	SpellCharge3     int    `redis:"spellCharge3"`      // 技能充能3
+	Drop1            int    `redis:"drop1"`             // 掉落道具1
+	Drop2            int    `redis:"drop2"`             // 掉落道具2
+	Drop3            int    `redis:"drop3"`             // 掉落道具3
 }
 
 // 將暫存的數據寫入RedisDB
@@ -56,7 +60,20 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		}
 		rPlayer.ptBufferBuffer = 0
 	}
-
+	if rPlayer.totalWinBuffer != 0 {
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalWinB", int64(rPlayer.totalWinBuffer)).Result()
+		if err != nil {
+			log.Errorf("%s writePlayerUpdateToRedis totalWinB錯誤: %v", logger.LOG_Redis, err)
+		}
+		rPlayer.totalWinBuffer = 0
+	}
+	if rPlayer.totalExpenditureBuffer != 0 {
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalExpenditure", int64(rPlayer.totalExpenditureBuffer)).Result()
+		if err != nil {
+			log.Errorf("%s writePlayerUpdateToRedis totalExpenditure錯誤: %v", logger.LOG_Redis, err)
+		}
+		rPlayer.totalExpenditureBuffer = 0
+	}
 	if rPlayer.heroExpBuffer != 0 {
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "heroExp", int64(rPlayer.heroExpBuffer)).Result() // 轉換為 int64
 		if err != nil {
@@ -104,23 +121,25 @@ func (player *RedisPlayer) ClosePlayer() {
 }
 
 // 建立玩家資料
-func CreatePlayerData(playerID string, point int, ptBuffer, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
+func CreatePlayerData(playerID string, point int, ptBuffer, totalWin int, totalExpenditure int, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
 	if err != nil || dbPlayer.ID == "" {
 		// 建立玩家RedisDB資料
 		_, err := rdb.HMSet(ctx, playerID, map[string]interface{}{
-			"id":           playerID,
-			"point":        point,
-			"pointBuffer":  ptBuffer,
-			"heroExp":      heroExp,
-			"spellCharge1": spellCharges[0],
-			"spellCharge2": spellCharges[1],
-			"spellCharge3": spellCharges[2],
-			"drop1":        drops[0],
-			"drop2":        drops[1],
-			"drop3":        drops[2],
+			"id":               playerID,
+			"point":            point,
+			"pointBuffer":      ptBuffer,
+			"totalWin":         totalWin,
+			"totalExpenditure": totalExpenditure,
+			"heroExp":          heroExp,
+			"spellCharge1":     spellCharges[0],
+			"spellCharge2":     spellCharges[1],
+			"spellCharge3":     spellCharges[2],
+			"drop1":            drops[0],
+			"drop2":            drops[1],
+			"drop3":            drops[2],
 		}).Result()
 		if err != nil {
 			return nil, fmt.Errorf("%s createPlayerData錯誤: %v", logger.LOG_Redis, err)
@@ -171,6 +190,20 @@ func (rPlayer *RedisPlayer) AddPTBuffer(value int64) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.ptBufferBuffer += value
+}
+
+// 增加總贏點數
+func (rPlayer *RedisPlayer) AddTotalWin(value int64) {
+	rPlayer.MutexLock.Lock()
+	defer rPlayer.MutexLock.Unlock()
+	rPlayer.totalWinBuffer += value
+}
+
+// 增加總花費點數
+func (rPlayer *RedisPlayer) AddTotalExpenditure(value int64) {
+	rPlayer.MutexLock.Lock()
+	defer rPlayer.MutexLock.Unlock()
+	rPlayer.totalExpenditureBuffer += value
 }
 
 // 增加英雄經驗

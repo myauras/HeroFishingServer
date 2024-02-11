@@ -33,13 +33,26 @@ type Player struct {
 func (player *Player) AddPoint(value int64) {
 	player.RedisPlayer.AddPoint(value)
 	player.DBPlayer.Point += int64(value)
-	player.GainPoint += value
+
 }
 
 // 玩家點數溢位增減
 func (player *Player) AddPTBuffer(value int64) {
 	player.RedisPlayer.AddPTBuffer(value)
 	player.DBPlayer.PointBuffer += int64(value)
+}
+
+// 玩家總贏點數增減
+func (player *Player) AddTotalWin(value int64) {
+	player.RedisPlayer.AddTotalWin(value)
+	player.DBPlayer.TotalWin += int64(value)
+	player.GainPoint += value
+}
+
+// 玩家總花費點數增減
+func (player *Player) AddTotalExpenditure(value int64) {
+	player.RedisPlayer.AddTotalExpenditure(value)
+	player.DBPlayer.TotalExpenditure += int64(value)
 }
 
 // 英雄經驗增減

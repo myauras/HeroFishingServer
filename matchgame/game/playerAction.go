@@ -101,7 +101,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 		// 	log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Action)
 		// 	return
 		// }
-		spendPoint = -int64(room.DBmap.Bet)
+		spendPoint = int64(room.DBmap.Bet)
 		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	}
 	// =============建立攻擊事件=============
@@ -131,7 +131,8 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	// =============是合法的攻擊就進行資源消耗與回送封包=============
 
 	// 玩家點數變化
-	player.AddPoint(spendPoint)
+	player.AddPoint(-spendPoint)
+	player.AddTotalExpenditure(spendPoint)
 	// 施放技能的話要減少英雄技能充能
 	if spellIdx != 0 && spendSpellCharge != 0 {
 		player.AddSpellCharge(spellIdx, -spendSpellCharge)
@@ -379,6 +380,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	totalGainPoint := utility.SliceSum(content.GainPoints) // 把 每個擊殺獲得點數加總就是 總獲得點數
 	if totalGainPoint != 0 {
 		player.AddPoint(totalGainPoint)
+		player.AddTotalWin(totalGainPoint)
 	}
 	log.Errorf("content.PTBuffer: %v", content.PTBuffer)
 	// 玩家點數溢位
