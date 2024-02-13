@@ -10,6 +10,7 @@ import (
 type MathModel struct {
 	GameRTP        float64
 	SpellSharedRTP float64
+	RTPAdjust      float64
 }
 type HitData struct {
 	AttackRTP  float64
@@ -17,6 +18,10 @@ type HitData struct {
 	MaxHit     int
 	ChargeDrop bool
 	MapBet     int32
+}
+
+func (modle *MathModel) GetPlayerCurRTP(player *Player) float64 {
+	return float64(player.DBPlayer.TotalWin / player.DBPlayer.TotalExpenditure)
 }
 
 // 取得普攻擊殺率
@@ -31,15 +36,15 @@ func (model *MathModel) GetAttackKP(hitData HitData, player *Player) (float64, i
 		return 0, 0
 	}
 	hitData.AttackRTP = attackRTP
-	return model.GetKPandPointBuffer(hitData, player)
+	return model.getKPandAddPTBuffer(hitData, player)
 }
 
 // 取得技能擊殺率
 func (model *MathModel) GetSpellKP(hitData HitData, player *Player) (float64, int64) {
-	return model.GetKPandPointBuffer(hitData, player)
+	return model.getKPandAddPTBuffer(hitData, player)
 }
 
-func (model *MathModel) GetKPandPointBuffer(hitData HitData, player *Player) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int64) {
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	pointBuffer := player.DBPlayer.PointBuffer

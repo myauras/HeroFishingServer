@@ -113,7 +113,8 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		GameTime:    0,
 		MathModel: &MathModel{
 			GameRTP:        10,                   // 遊戲RTP
-			SpellSharedRTP: dbMap.SpellSharedRTP, // 攻擊RTP
+			SpellSharedRTP: dbMap.SpellSharedRTP, // 分配給技能掉落的RTP
+			RTPAdjust:      0.1,                  // 當玩家實際RTP偏離遊戲RTP時, 要校正的值(參考規劃文件的RTP分頁)
 		},
 	}
 	log.Infof("%s 初始生怪器", logger.LOG_Room)
