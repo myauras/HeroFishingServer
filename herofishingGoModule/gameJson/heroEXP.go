@@ -64,13 +64,13 @@ func GetHeroEXPByID(id string) (HeroEXPJsonData, error) {
 }
 
 // 傳入經驗取得等級
-func GetHeroLVByEXP(exp int) (int, error) {
+func GetHeroLVByEXP(exp int32) (int32, error) {
 	datas, err := getJsonDataByName(JsonName.HeroEXP)
 	if err != nil {
 		return 1, err
 	}
 
-	privousLV := 1
+	privousLV := int32(1)
 	for _, data := range datas {
 		if expJson, ok := data.(HeroEXPJsonData); ok {
 			lv, lvErr := strconv.ParseInt(expJson.ID, 10, 32)
@@ -84,7 +84,7 @@ func GetHeroLVByEXP(exp int) (int, error) {
 			if int64(exp) < needEXP {
 				return privousLV, nil
 			}
-			privousLV = int(lv)
+			privousLV = int32(lv)
 		} else {
 			return 1, fmt.Errorf("資料類型不匹配: %T", data)
 		}

@@ -39,31 +39,31 @@ func (player *Player) AddPoint(value int64) {
 // 玩家點數溢位增減
 func (player *Player) AddPTBuffer(value int64) {
 	player.RedisPlayer.AddPTBuffer(value)
-	player.DBPlayer.PointBuffer += int64(value)
+	player.DBPlayer.PointBuffer += value
 }
 
 // 玩家總贏點數增減
 func (player *Player) AddTotalWin(value int64) {
 	player.RedisPlayer.AddTotalWin(value)
-	player.DBPlayer.TotalWin += int64(value)
+	player.DBPlayer.TotalWin += value
 	player.GainPoint += value
 }
 
 // 玩家總花費點數增減
 func (player *Player) AddTotalExpenditure(value int64) {
 	player.RedisPlayer.AddTotalExpenditure(value)
-	player.DBPlayer.TotalExpenditure += int64(value)
+	player.DBPlayer.TotalExpenditure += value
 }
 
 // 英雄經驗增減
-func (player *Player) AddHeroExp(value int) {
+func (player *Player) AddHeroExp(value int32) {
 	player.RedisPlayer.AddHeroExp(value)
 	player.DBPlayer.HeroExp += value
 
 }
 
 // 技能充能增減, idx傳入1~3
-func (player *Player) AddSpellCharge(idx int, value int) {
+func (player *Player) AddSpellCharge(idx int32, value int32) {
 	if idx < 1 || idx > 3 {
 		log.Errorf("%s AddSpellCharge傳入錯誤索引: %v", logger.LOG_Player, idx)
 		return
@@ -77,7 +77,7 @@ func (player *Player) AddSpellCharge(idx int, value int) {
 }
 
 // 新增掉落
-func (player *Player) AddDrop(value int) {
+func (player *Player) AddDrop(value int32) {
 	if value == 0 {
 		log.Errorf("%s AddDrop傳入值為0", logger.LOG_Player)
 		return
@@ -103,7 +103,7 @@ func (player *Player) AddDrop(value int) {
 }
 
 // 移除掉落
-func (player *Player) RemoveDrop(value int) {
+func (player *Player) RemoveDrop(value int32) {
 	if value == 0 {
 		log.Errorf("%s RemoveDrop傳入值為0", logger.LOG_Player)
 		return
@@ -130,7 +130,7 @@ func (player *Player) RemoveDrop(value int) {
 }
 
 // 是否已經擁有此道具
-func (player *Player) IsOwnedDrop(value int) bool {
+func (player *Player) IsOwnedDrop(value int32) bool {
 	for _, v := range player.DBPlayer.Drops {
 		if v == value {
 			return true
@@ -180,7 +180,7 @@ func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonDa
 		if player.MyHero.SpellLVs[i] <= 0 { // 尚未學習的技能就跳過
 			continue
 		}
-		spell, err := player.MyHero.GetSpell((i + 1))
+		spell, err := player.MyHero.GetSpell(int32(i + 1))
 		if err != nil {
 			log.Errorf("%s GetUnchargedSpells時GetUnchargedSpells錯誤: %v", logger.LOG_Player, err)
 			continue
@@ -193,7 +193,7 @@ func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonDa
 }
 
 // 檢查是否可以施法
-func (player *Player) CanSpell(idx int) bool {
+func (player *Player) CanSpell(idx int32) bool {
 
 	spell, err := player.MyHero.GetSpell(idx)
 	if err != nil {

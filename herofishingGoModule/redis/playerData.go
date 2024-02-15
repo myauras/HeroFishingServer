@@ -2,6 +2,8 @@ package redis
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,66 +18,90 @@ var dbWriteMinMiliSecs = 1000
 var players map[string]*RedisPlayer
 
 type RedisPlayer struct {
-	id                     string // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
-	pointBuffer            int64  // 暫存點數修改
-	ptBufferBuffer         int64  // 暫存點數溢位修改
-	totalWinBuffer         int64  // 暫存總贏點數修改
-	totalExpenditureBuffer int64  // 暫存總花費點數修改
-	heroExpBuffer          int    // 暫存經驗修改
-	spellChargesBuffer     [3]int // 暫存技能充能
-	dropsBuffer            [3]int // 暫存掉落道具
-	updateOn               bool   // 資料定時更新上RedisDB程序開關
+	id                     string   // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
+	pointBuffer            int64    // 暫存點數修改
+	ptBufferBuffer         int64    // 暫存點數溢位修改
+	totalWinBuffer         int64    // 暫存總贏點數修改
+	totalExpenditureBuffer int64    // 暫存總花費點數修改
+	heroExpBuffer          int32    // 暫存經驗修改
+	spellChargesBuffer     [3]int32 // 暫存技能充能
+	dropsBuffer            [3]int32 // 暫存掉落道具
+	updateOn               bool     // 資料定時更新上RedisDB程序開關
 	MutexLock              sync.Mutex
 }
-type DBPlayer struct {
+
+// ※注意: 因為RedisDB都是存成字串, 所以有新增非字串的類型要定義DecodeHook
+type RedisDBPlayer struct {
 	ID               string `redis:"id"`
 	Point            int64  `redis:"point"`             // 點數
 	PointBuffer      int64  `redis:"pointBuffer"`       // 點數
 	TotalWin         int64  `redis:"totalWin"`          // 總贏點數
 	TotalExpenditure int64  `redis:"totalExpenditure "` // 總花費點數
-	HeroExp          int    `redis:"heroExp"`           // 英雄經驗
-	SpellCharge1     int    `redis:"spellCharge1"`      // 技能充能1
-	SpellCharge2     int    `redis:"spellCharge2"`      // 技能充能2
-	SpellCharge3     int    `redis:"spellCharge3"`      // 技能充能3
-	Drop1            int    `redis:"drop1"`             // 掉落道具1
-	Drop2            int    `redis:"drop2"`             // 掉落道具2
-	Drop3            int    `redis:"drop3"`             // 掉落道具3
+	HeroExp          int32  `redis:"heroExp"`           // 英雄經驗
+	SpellCharge1     int32  `redis:"spellCharge1"`      // 技能充能1
+	SpellCharge2     int32  `redis:"spellCharge2"`      // 技能充能2
+	SpellCharge3     int32  `redis:"spellCharge3"`      // 技能充能3
+	Drop1            int32  `redis:"drop1"`             // 掉落道具1
+	Drop2            int32  `redis:"drop2"`             // 掉落道具2
+	Drop3            int32  `redis:"drop3"`             // 掉落道具3
 }
+
+// 定義DecodeHook，將特定字串轉換為指定類型
+var decodeHook = mapstructure.ComposeDecodeHookFunc(
+	mapstructure.StringToSliceHookFunc(","),
+	mapstructure.StringToTimeHookFunc(time.RFC3339),
+	func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() == reflect.String {
+			strData := data.(string)
+			switch t {
+			case reflect.TypeOf(int(0)):
+				parsed, err := strconv.ParseInt(strData, 10, 64)
+				return int(parsed), err
+			case reflect.TypeOf(int32(0)):
+				parsed, err := strconv.ParseInt(strData, 10, 32)
+				return int32(parsed), err
+			case reflect.TypeOf(int64(0)):
+				return strconv.ParseInt(strData, 10, 64)
+			}
+		}
+		return data, nil
+	},
+)
 
 // 將暫存的數據寫入RedisDB
 func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	if rPlayer.pointBuffer != 0 {
-		_, err := rdb.HIncrBy(ctx, rPlayer.id, "point", int64(rPlayer.pointBuffer)).Result()
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "point", rPlayer.pointBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis point錯誤: %v", logger.LOG_Redis, err)
 		}
 		rPlayer.pointBuffer = 0
 	}
 	if rPlayer.ptBufferBuffer != 0 {
-		_, err := rdb.HIncrBy(ctx, rPlayer.id, "pointBuffer", int64(rPlayer.ptBufferBuffer)).Result()
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "pointBuffer", rPlayer.ptBufferBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis pointBuffer錯誤: %v", logger.LOG_Redis, err)
 		}
 		rPlayer.ptBufferBuffer = 0
 	}
 	if rPlayer.totalWinBuffer != 0 {
-		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalWinB", int64(rPlayer.totalWinBuffer)).Result()
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalWinB", rPlayer.totalWinBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis totalWinB錯誤: %v", logger.LOG_Redis, err)
 		}
 		rPlayer.totalWinBuffer = 0
 	}
 	if rPlayer.totalExpenditureBuffer != 0 {
-		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalExpenditure", int64(rPlayer.totalExpenditureBuffer)).Result()
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalExpenditure", rPlayer.totalExpenditureBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis totalExpenditure錯誤: %v", logger.LOG_Redis, err)
 		}
 		rPlayer.totalExpenditureBuffer = 0
 	}
 	if rPlayer.heroExpBuffer != 0 {
-		_, err := rdb.HIncrBy(ctx, rPlayer.id, "heroExp", int64(rPlayer.heroExpBuffer)).Result() // 轉換為 int64
+		_, err := rdb.HIncrBy(ctx, rPlayer.id, "heroExp", int64(rPlayer.heroExpBuffer)).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis heroExp錯誤: %v", logger.LOG_Redis, err)
 		}
@@ -83,7 +109,7 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	}
 	for i, charge := range rPlayer.spellChargesBuffer {
 		if charge != 0 {
-			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("spellCharge%d", (i+1)), int64(charge)).Result()
+			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("spellCharge%d", (i+1)), charge).Result()
 			if err != nil {
 				log.Errorf("%s writePlayerUpdateToRedis spellCharge錯誤: %v", logger.LOG_Redis, err)
 			}
@@ -92,7 +118,7 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	}
 	for i, drop := range rPlayer.dropsBuffer {
 		if drop != 0 {
-			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("drop%d", (i+1)), int64(drop)).Result()
+			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("drop%d", (i+1)), drop).Result()
 			if err != nil {
 				log.Errorf("%s writePlayerUpdateToRedis drop錯誤: %v", logger.LOG_Redis, err)
 			}
@@ -121,7 +147,7 @@ func (player *RedisPlayer) ClosePlayer() {
 }
 
 // 建立玩家資料
-func CreatePlayerData(playerID string, point int, ptBuffer, totalWin int, totalExpenditure int, heroExp int, spellCharges [3]int, drops [3]int) (*RedisPlayer, error) {
+func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int64, totalExpenditure int64, heroExp int32, spellCharges [3]int32, drops [3]int32) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
@@ -149,8 +175,8 @@ func CreatePlayerData(playerID string, point int, ptBuffer, totalWin int, totalE
 
 	player := RedisPlayer{
 		id:                 playerID,
-		spellChargesBuffer: [3]int{0, 0, 0},
-		dropsBuffer:        [3]int{0, 0, 0},
+		spellChargesBuffer: [3]int32{0, 0, 0},
+		dropsBuffer:        [3]int32{0, 0, 0},
 		updateOn:           true,
 	}
 	go player.updatePlayer()
@@ -207,14 +233,14 @@ func (rPlayer *RedisPlayer) AddTotalExpenditure(value int64) {
 }
 
 // 增加英雄經驗
-func (rPlayer *RedisPlayer) AddHeroExp(value int) {
+func (rPlayer *RedisPlayer) AddHeroExp(value int32) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.heroExpBuffer += value
 }
 
 // 設定技能充能, idx傳入1~3
-func (rPlayer *RedisPlayer) AddSpellCharge(idx int, value int) {
+func (rPlayer *RedisPlayer) AddSpellCharge(idx int32, value int32) {
 	if idx < 1 || idx > 3 {
 		log.Errorf("%s AddSpellCharge傳入錯誤索引: %v", logger.LOG_Redis, idx)
 		return
@@ -225,7 +251,7 @@ func (rPlayer *RedisPlayer) AddSpellCharge(idx int, value int) {
 }
 
 // 設定掉落道具
-func (rPlayer *RedisPlayer) SetDrop(idx int, value int) {
+func (rPlayer *RedisPlayer) SetDrop(idx int, value int32) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.dropsBuffer[idx] = value
@@ -254,11 +280,10 @@ func (player *RedisPlayer) GetPlayerDBData() {
 }
 
 // 取得RedisDB中Player資料, 找不到玩家資料時DBPlayer會返回0值
-func GetPlayerDBData(playerID string) (DBPlayer, error) {
-	var player DBPlayer
-	log.Infof("rdb= %v", rdb)
-	log.Infof("ctx= %v", ctx)
-	log.Infof("playerID= %v", playerID)
+func GetPlayerDBData(playerID string) (RedisDBPlayer, error) {
+	var player RedisDBPlayer
+	playerID = "player-" + playerID
+	log.Infof("%s Redis playerID: %v", logger.LOG_Redis, playerID)
 	val, err := rdb.HGetAll(ctx, playerID).Result()
 	if err != nil {
 		log.Errorf("GetPlayerDBData錯誤: %v", err)
@@ -267,9 +292,18 @@ func GetPlayerDBData(playerID string) (DBPlayer, error) {
 	if len(val) == 0 { // 找不到資料回傳0值
 		return player, nil
 	}
-	err = mapstructure.Decode(val, &player)
-	if err != nil {
-		return player, fmt.Errorf("RedisDB Plaeyr 反序列化錯誤: %v", err)
+
+	config := &mapstructure.DecoderConfig{ // 使用自定義的Decode Hook
+		DecodeHook: decodeHook,
+		Result:     &player,
+	}
+	decoder, newDecoderErr := mapstructure.NewDecoder(config)
+	if newDecoderErr != nil {
+		return player, fmt.Errorf("mapstructure.NewDecoder錯誤: %v", newDecoderErr)
+	}
+	decodeErr := decoder.Decode(val)
+	if decodeErr != nil {
+		return player, fmt.Errorf("RedisDB Plaeyr 反序列化錯誤: %v", decodeErr)
 	}
 	// log.Infof("%s playerID: %s point: %d heroExp: %d\n", logger.LOG_Redis, player.ID, player.Point, player.HeroExp)
 	return player, nil

@@ -48,7 +48,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	pointBuffer := player.DBPlayer.PointBuffer
-	log.Infof("原pointBufer: %v 原KP: %v ", pointBuffer, originalKP)
+	log.Infof("修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
 		gainKP = float64(pointBuffer) / rewardPoint // 計算點數溢位獲得的擊殺率
@@ -71,7 +71,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 		pointBuffer = 0
 	}
 	ptBufferChanged := pointBuffer - player.DBPlayer.PointBuffer // PointBuffer改變值
-	log.Infof("pointBufer: %v kp: %v ptBufferChanged: %v", pointBuffer, kp, ptBufferChanged)
+	log.Infof("修正後=======pointBufer: %v KP: %v pt改變值: %v", pointBuffer, kp, ptBufferChanged)
 	return kp, ptBufferChanged
 }
 

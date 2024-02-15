@@ -43,15 +43,15 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	}
 	// 取rtp
 	rtp := spellJson.RTP
-	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
-	spellIdx := 0             // 釋放第幾個技能, 0就代表是普攻
-	spendSpellCharge := 0     // 花費技能充能
-	spendPoint := int64(0)    // 花費點數
+	isSpellAttack := rtp != 0    // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+	spellIdx := int32(0)         // 釋放第幾個技能, 0就代表是普攻
+	spendSpellCharge := int32(0) // 花費技能充能
+	spendPoint := int64(0)       // 花費點數
 
 	// 如果是技能攻擊, 設定spellIdx(第幾招技能), 並檢查充能是否足夠
 	if isSpellAttack {
 		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
-		spellIdx = idx
+		spellIdx = int32(idx)
 		if err != nil {
 			room.SendPacketToPlayer(player.Index, &packet.Pack{
 				CMD:     packet.HIT_TOCLIENT,
@@ -179,12 +179,12 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	spellMaxHits := spellJson.MaxHits
 
 	// hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
-	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
-	gainPoints := make([]int64, 0)     // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
-	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
-	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
-	gainDrops := make([]int, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-	ptBuffer := int64(0)               // 點數溢位
+	killMonsterIdxs := make([]int, 0)    // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
+	gainPoints := make([]int64, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
+	gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
+	gainDrops := make([]int32, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := int64(0)                 // 點數溢位
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	content.MonsterIdxs = utility.RemoveDuplicatesFromSlice(content.MonsterIdxs) // 移除重複的命中索引
 	for _, monsterIdx := range content.MonsterIdxs {
@@ -211,7 +211,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				return
 			}
 			// 取得怪物經驗
-			monsterExp, err := strconv.ParseFloat(monster.MonsterJson.EXP, 64)
+			monsterExp, err := strconv.ParseInt(monster.MonsterJson.EXP, 10, 32)
 			if err != nil {
 				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物經驗錯誤", pack))
 				log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Action, err)
@@ -219,8 +219,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			}
 
 			// 取得怪物掉落道具
-			dropAddOdds := 0.0   // 掉落道具增加的總RTP
-			dropID64 := int64(0) // 怪物掉落ID
+			dropAddOdds := 0.0       // 掉落道具增加的總RTP
+			parsedDropID := int64(0) // 怪物掉落ID
 			// 怪物必須有掉落物才需要考慮怪物掉落
 			if monster.MonsterJson.DropID != "" {
 				log.Errorf("monster.MonsterJson.DropID= %s", monster.MonsterJson.DropID)
@@ -230,13 +230,13 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 					log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Action, err)
 					return
 				}
-				dropID64, err = strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)
+				parsedDropID, err = strconv.ParseInt(monster.MonsterJson.DropID, 10, 32)
 				if err != nil {
 					log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 					return
 				}
 				// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
-				if !player.IsOwnedDrop(int(dropID64)) {
+				if !player.IsOwnedDrop(int32(parsedDropID)) {
 					addOdds, err := strconv.ParseFloat(dropJson.RTP, 64)
 					if err != nil {
 						room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
@@ -277,9 +277,9 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				// log.Infof("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v kill:%v", spellMaxHits, rtp, odds, attackKP, kill)
 			}
 			kill := utility.GetProbResult(attackKP)
+			ptBuffer += tmpPTBufferAdd
 			// 如果有擊殺就加到清單中
 			if kill {
-				ptBuffer += tmpPTBufferAdd
 				// 技能充能掉落
 				dropChargeP := 0.0
 				gainSpellCharges = append(gainSpellCharges, -1)
@@ -293,15 +293,15 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 							room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時解析第X技能索引錯誤", pack))
 							return
 						}
-						gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
+						gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
 					}
 				}
 				// log.Errorf("擊殺怪物: %v", monsterIdx)
 				killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 				gainPoints = append(gainPoints, rewardPoint)
-				gainHeroExps = append(gainHeroExps, int(monsterExp))
-				if dropID64 != 0 {
-					gainDrops[len(gainDrops)-1] = int(dropID64)
+				gainHeroExps = append(gainHeroExps, int32(monsterExp))
+				if parsedDropID != 0 {
+					gainDrops[len(gainDrops)-1] = int32(parsedDropID)
 				}
 			}
 		}
@@ -390,7 +390,7 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 
 	// 英雄增加經驗
 	totalGainHeroExps := utility.SliceSum(content.GainHeroExps) // 把 每個擊殺獲得英雄經驗加總就是 總獲得英雄經驗
-	player.AddHeroExp(totalGainHeroExps)
+	player.AddHeroExp(int32(totalGainHeroExps))
 	// 擊殺怪物增加英雄技能充能
 	for _, v := range content.GainSpellCharges {
 		if v <= 0 { // 因為有擊殺但沒掉落充能時, gainSpellCharges仍會填入-1, 所以要加判斷
@@ -430,7 +430,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
-	ownedDrop := player.IsOwnedDrop(int(dropSpellID))
+	ownedDrop := player.IsOwnedDrop(int32(dropSpellID))
 	if !ownedDrop {
 		log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Action, player.DBPlayer.ID, dropSpellID)
 		return
@@ -484,7 +484,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		return
 	}
 	// 施法後要移除該掉落
-	player.RemoveDrop(int(dropSpellID))
+	player.RemoveDrop(int32(dropSpellID))
 }
 
 // 處理收到的自動攻擊封包(TCP)

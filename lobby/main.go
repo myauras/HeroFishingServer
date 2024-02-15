@@ -90,6 +90,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("%s handleSyncRedisCheck時取dbplayer資料發生錯誤: %v", logger.LOG_Main, getPlayerDocErr)
 		return
 	}
+	log.Infof("%s mongoPlayerDoc.RedisSync: %v", logger.LOG_Main, mongoPlayerDoc.RedisSync)
 	if mongoPlayerDoc.RedisSync { // RedisSync為true就不需要進行資料同步
 		// 回傳
 		response := map[string]string{
@@ -97,6 +98,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 			"error":  "",
 		}
 		json.NewEncoder(w).Encode(response)
+		log.Infof("%s 玩家 %s 不須同步redisDB資料 redisSync為true", logger.LOG_Main, mongoPlayerDoc.ID)
 		return
 	}
 	// 取redisDB player
@@ -106,6 +108,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if redisPlayer.ID == "" {
+		log.Infof("%s 玩家 %s 不須同步redisDB資料 redisPlayer.ID為空", logger.LOG_Main, mongoPlayerDoc.ID)
 		// 回傳
 		response := map[string]string{
 			"result": "success",
@@ -117,8 +120,8 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s 玩家 %s 須同步redisDB資料", logger.LOG_Main, mongoPlayerDoc.ID)
 
 	// 更新玩家mongoDB資料
-	spellCharges := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
-	drops := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	spellCharges := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	drops := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	updatePlayerBson := bson.D{
 		{Key: "point", Value: redisPlayer.Point},             // 設定玩家點數
 		{Key: "pointBuffer", Value: redisPlayer.PointBuffer}, // 設定玩家點數溢位

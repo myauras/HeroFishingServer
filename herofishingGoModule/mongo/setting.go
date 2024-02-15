@@ -118,9 +118,9 @@ type DBPlayer struct {
 	InMatchgameID    string    `bson:"inMatchgameID"`
 	LeftGameAt       time.Time `bson:"leftGameAt"`
 	RedisSync        bool      `bson:"redisSync"`
-	HeroExp          int       `bson:"heroExp"`
-	SpellCharges     [3]int    `bson:"spellCharges"`
-	Drops            [3]int    `bson:"drops"`
+	HeroExp          int32     `bson:"heroExp"`
+	SpellCharges     [3]int32  `bson:"spellCharges"`
+	Drops            [3]int32  `bson:"drops"`
 	PointBuffer      int64     `bson:"pointBuffer"`
 	TotalWin         int64     `bson:"totalWin"`
 	TotalExpenditure int64     `bson:"totalExpenditure "`

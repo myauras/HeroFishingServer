@@ -112,7 +112,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		DBMatchgame: &dbMatchgame,
 		GameTime:    0,
 		MathModel: &MathModel{
-			GameRTP:        10,                   // 遊戲RTP
+			GameRTP:        0.95,                 // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 分配給技能掉落的RTP
 			RTPAdjust:      0.1,                  // 當玩家實際RTP偏離遊戲RTP時, 要校正的值(參考規劃文件的RTP分頁)
 		},
@@ -558,6 +558,7 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
+			r.KickPlayer(v.ConnTCP.Conn, "BroadCastPacket錯誤")
 		}
 	}
 }

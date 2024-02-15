@@ -12,8 +12,8 @@ type HeroSpellJsonData struct {
 	ID      string  `json:"ID"`
 	RTP     float64 `json:"RTP"`
 	CD      float64 `json:"CD"`
-	Cost    int     `json:"Cost"`
-	MaxHits int     `json:"MaxHits"`
+	Cost    int32   `json:"Cost"`
+	MaxHits int32   `json:"MaxHits"`
 }
 
 func (jsonData HeroSpellJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
@@ -66,14 +66,18 @@ func (spellJson *HeroSpellJsonData) UnmarshalJSON(data []byte) error {
 		}
 	}
 	if aux.Cost != "" {
-		if spellJson.Cost, err = strconv.Atoi(aux.Cost); err != nil {
+		var intVal int64
+		if intVal, err = strconv.ParseInt(aux.Cost, 10, 32); err != nil {
 			return err
 		}
+		spellJson.Cost = int32(intVal)
 	}
 	if aux.MaxHits != "" {
-		if spellJson.MaxHits, err = strconv.Atoi(aux.MaxHits); err != nil {
+		var intVal int64
+		if intVal, err = strconv.ParseInt(aux.MaxHits, 10, 32); err != nil {
 			return err
 		}
+		spellJson.MaxHits = int32(intVal)
 	}
 
 	return nil
