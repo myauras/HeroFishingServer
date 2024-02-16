@@ -223,7 +223,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			parsedDropID := int64(0) // 怪物掉落ID
 			// 怪物必須有掉落物才需要考慮怪物掉落
 			if monster.MonsterJson.DropID != "" {
-				log.Errorf("monster.MonsterJson.DropID= %s", monster.MonsterJson.DropID)
 				dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
 				if err != nil {
 					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表錯誤", pack))

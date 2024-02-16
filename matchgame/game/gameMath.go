@@ -90,13 +90,13 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	if adjustRTP {
 		log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
 		playerRTP := float64(player.DBPlayer.TotalWin) / float64(player.DBPlayer.TotalExpenditure) // 計算玩家實際RTP
-		log.Infof("RTP差: %v", math.Abs(model.GameRTP-playerRTP))
-		if math.Abs(model.GameRTP-playerRTP) < model.RtpAdjust_RTPThreshold { // RTP差>RTP校正閥值才考慮RTP校正
+		log.Infof("RTP差: %v", model.GameRTP-playerRTP)
+		if math.Abs(model.GameRTP-playerRTP) >= model.RtpAdjust_RTPThreshold { // RTP差>=RTP校正閥值才考慮RTP校正
 			expectedTotalWin := float64(player.DBPlayer.TotalExpenditure) * model.GameRTP
-			pointDiff := math.Abs(expectedTotalWin - float64(player.DBPlayer.TotalWin)) // 計算玩家分差(玩家總贏與期望總贏差)
+			pointDiff := expectedTotalWin - float64(player.DBPlayer.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
 			pointDiffThreshold := rewardPoint * model.RtpAdjust_KillRateValue
 			log.Infof("分差: %v 分差校正閥值: %v 期望總贏: %v", pointDiff, pointDiffThreshold, expectedTotalWin)
-			if pointDiff >= pointDiffThreshold { // 分差 >= 分差校正閥值才進行RTP校正
+			if math.Abs(pointDiff) >= pointDiffThreshold { // 分差 >= 分差校正閥值才進行RTP校正
 				// 進行RTP校正
 				if playerRTP < model.GameRTP {
 					kp += model.RtpAdjust_KillRateValue

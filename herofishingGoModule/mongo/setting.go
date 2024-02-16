@@ -123,7 +123,7 @@ type DBPlayer struct {
 	Drops            [3]int32  `bson:"drops"`
 	PointBuffer      int64     `bson:"pointBuffer"`
 	TotalWin         int64     `bson:"totalWin"`
-	TotalExpenditure int64     `bson:"totalExpenditure "`
+	TotalExpenditure int64     `bson:"totalExpenditure"`
 
 	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`

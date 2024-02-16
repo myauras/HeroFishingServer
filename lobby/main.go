@@ -129,15 +129,18 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		{Key: "totalExpenditure", Value: redisPlayer.TotalExpenditure}, // 玩家總花費點數
 		{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
 		{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
-		{Key: "redisSync", Value: true},                                // redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		{Key: "heroExp", Value: redisPlayer.HeroExp},                   // 英雄經驗
 		{Key: "spellCharges", Value: spellCharges},                     // 技能充能
 		{Key: "drops", Value: drops},                                   // 掉落道具
 		{Key: "redisSync", Value: true},                                // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 	}
-	mongo.UpdateDocByBsonD(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
+	_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
+	if updateErr != nil {
+		log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Main, mongoPlayerDoc.ID, updateErr)
+	} else {
+		log.Infof("%s 玩家 %s redisDB資料同步完成", logger.LOG_Main, mongoPlayerDoc.ID)
+	}
 
-	log.Infof("%s 玩家 %s redisDB資料同步完成", logger.LOG_Main, mongoPlayerDoc.ID)
 	// 回傳
 	response := map[string]string{
 		"result": "success",

@@ -121,7 +121,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		MathModel: &MathModel{
 			GameRTP:        0.95,                 // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 分配給技能掉落的RTP
-			
+
 			// ※RTP校正規則參考英雄捕魚規劃的RTP與期望值計算分頁
 			RtpAdjust_KillRateValue: dbGameConfig.RTPAdjust_KillRateValue, // 當玩家實際RTP與遊戲RTP差值大於RTP校正閥值才會進行校正
 			RtpAdjust_RTPThreshold:  dbGameConfig.RTPAdjust_RTPThreshold,  // 代表校正時, 擊殺率的改變值
@@ -342,14 +342,17 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 				{Key: "totalExpenditure", Value: player.DBPlayer.TotalExpenditure}, // 玩家總花費點數
 				{Key: "leftGameAt", Value: time.Now()},                             // 離開遊戲時間
 				{Key: "inMatchgameID", Value: ""},                                  // 玩家不在遊戲房內了
-				{Key: "redisSync", Value: true},                                    // redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 				{Key: "heroExp", Value: player.DBPlayer.HeroExp},                   // 英雄經驗
 				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},         // 技能充能
 				{Key: "drops", Value: player.DBPlayer.Drops},                       // 掉落道具
 				{Key: "redisSync", Value: player.DBPlayer.RedisSync},               // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 			}
-			mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
-			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
+			_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
+			if updateErr != nil {
+				log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.DBPlayer.ID, updateErr)
+			} else {
+				log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
+			}
 		} else {
 			log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.DBPlayer.ID)
 		}
