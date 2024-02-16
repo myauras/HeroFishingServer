@@ -382,7 +382,6 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 		player.AddPoint(totalGainPoint)
 		player.AddTotalWin(totalGainPoint)
 	}
-	log.Errorf("content.PTBuffer: %v", content.PTBuffer)
 	// 玩家點數溢位
 	if content.PTBuffer != 0 {
 		player.AddPTBuffer(content.PTBuffer)

@@ -80,13 +80,12 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		log.Errorf("%s MyRoom已經被初始化過", logger.LOG_Room)
 		return
 	}
-
 	// 依據dbMapID從DB中取dbMap設定
 	log.Infof("%s 取DBMap資料", logger.LOG_Room)
 	var dbMap mongo.DBMap
-	err := mongo.GetDocByID(mongo.ColName.Map, dbMapID, &dbMap)
-	if err != nil {
-		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤", logger.LOG_Room)
+	dbMapErr := mongo.GetDocByID(mongo.ColName.Map, dbMapID, &dbMap)
+	if dbMapErr != nil {
+		log.Errorf("%s InitGameRoom時取dbmap資料發生錯誤: %v", logger.LOG_Room, dbMapErr)
 	}
 	log.Infof("%s 取DBMap資料成功 DBMapID: %s JsonMapID: %v", logger.LOG_Room, dbMap.ID, dbMap.JsonMapID)
 
@@ -104,6 +103,14 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	dbMatchgame.MatchmakerPodName = matchmakerPodName
 
 	log.Infof("%s 初始化房間設定", logger.LOG_Room)
+	// 取gameSetting表並設定MatchModel
+	log.Infof("%s 取GameSetting資料", logger.LOG_Room)
+	var dbGameConfig mongo.DBGameConfig
+	dbConfigErr := mongo.GetDocByID(mongo.ColName.GameSetting, "GameConfig", &dbGameConfig)
+	if dbConfigErr != nil {
+		log.Errorf("%s InitGameRoom時取dbGameConfig資料發生錯誤: %v", logger.LOG_Room, dbConfigErr)
+	}
+	log.Infof("%s 取DBMap資料成功 DBMapID: %s JsonMapID: %v", logger.LOG_Room, dbMap.ID, dbMap.JsonMapID)
 	// 初始化房間設定
 	MyRoom = &Room{
 		RoomName:    roomName,
@@ -114,7 +121,10 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 		MathModel: &MathModel{
 			GameRTP:        0.95,                 // 遊戲RTP
 			SpellSharedRTP: dbMap.SpellSharedRTP, // 分配給技能掉落的RTP
-			RTPAdjust:      0.1,                  // 當玩家實際RTP偏離遊戲RTP時, 要校正的值(參考規劃文件的RTP分頁)
+			
+			// ※RTP校正規則參考英雄捕魚規劃的RTP與期望值計算分頁
+			RtpAdjust_KillRateValue: dbGameConfig.RTPAdjust_KillRateValue, // 當玩家實際RTP與遊戲RTP差值大於RTP校正閥值才會進行校正
+			RtpAdjust_RTPThreshold:  dbGameConfig.RTPAdjust_RTPThreshold,  // 代表校正時, 擊殺率的改變值
 		},
 	}
 	log.Infof("%s 初始生怪器", logger.LOG_Room)
@@ -322,17 +332,21 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			log.Errorf("%s 取mongoDB player doc資料發生錯誤: %v", logger.LOG_Room, getPlayerDocErr)
 			return
 		}
-		if !mongoPlayerDoc.RedisSync { // RedisSync為false才需要進行資料同步 如果為false就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
+		if !mongoPlayerDoc.RedisSync { // RedisSync為false才需要進行資料同步 如果為true就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
+			mongoPlayerDoc.RedisSync = true // 將RedisSync為設為true
 			// 更新玩家DB資料
 			updatePlayerBson := bson.D{
-				{Key: "point", Value: player.DBPlayer.Point},               // 設定玩家點數
-				{Key: "pointBuffer", Value: player.DBPlayer.PointBuffer},   // 設定玩家點數溢位
-				{Key: "leftGameAt", Value: time.Now()},                     // 設定離開遊戲時間
-				{Key: "inMatchgameID", Value: ""},                          // 設定玩家不在遊戲房內了
-				{Key: "redisSync", Value: true},                            // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
-				{Key: "heroExp", Value: player.DBPlayer.HeroExp},           // 設定英雄經驗
-				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges}, // 設定技能充能
-				{Key: "drops", Value: player.DBPlayer.Drops},               // 設定掉落道具
+				{Key: "point", Value: player.DBPlayer.Point},                       // 玩家點數
+				{Key: "pointBuffer", Value: player.DBPlayer.PointBuffer},           // 玩家點數溢位
+				{Key: "totalWin", Value: player.DBPlayer.TotalWin},                 // 玩家總贏點數
+				{Key: "totalExpenditure", Value: player.DBPlayer.TotalExpenditure}, // 玩家總花費點數
+				{Key: "leftGameAt", Value: time.Now()},                             // 離開遊戲時間
+				{Key: "inMatchgameID", Value: ""},                                  // 玩家不在遊戲房內了
+				{Key: "redisSync", Value: true},                                    // redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+				{Key: "heroExp", Value: player.DBPlayer.HeroExp},                   // 英雄經驗
+				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},         // 技能充能
+				{Key: "drops", Value: player.DBPlayer.Drops},                       // 掉落道具
+				{Key: "redisSync", Value: player.DBPlayer.RedisSync},               // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 			}
 			mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
 			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)

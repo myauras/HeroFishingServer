@@ -10,6 +10,6 @@ const (
 	LOG_Pack           = "[Pake]"
 	LOG_Setting        = "[Setting]"
 	LOG_MonsterSpawner = "[MonsterSpawner]"
-	LOG_MathModel      = "[MathModel]"
+	LOG_GameMath       = "[GameMath]"
 	LOG_gRPC           = "[gRPC]"
 )

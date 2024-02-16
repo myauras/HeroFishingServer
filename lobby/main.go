@@ -123,14 +123,17 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	spellCharges := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	drops := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	updatePlayerBson := bson.D{
-		{Key: "point", Value: redisPlayer.Point},             // 設定玩家點數
-		{Key: "pointBuffer", Value: redisPlayer.PointBuffer}, // 設定玩家點數溢位
-		{Key: "leftGameAt", Value: time.Now()},               // 設定離開遊戲時間
-		{Key: "heroExp", Value: redisPlayer.HeroExp},         // 設定英雄經驗
-		{Key: "spellCharges", Value: spellCharges},           // 設定技能充能
-		{Key: "drops", Value: drops},                         // 設定道具掉落
-		{Key: "inMatchgameID", Value: ""},                    // 設定玩家不在遊戲房內了
-		{Key: "redisSync", Value: true},                      // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+		{Key: "point", Value: redisPlayer.Point},                       // 玩家點數
+		{Key: "pointBuffer", Value: redisPlayer.PointBuffer},           // 玩家點數溢位
+		{Key: "totalWin", Value: redisPlayer.TotalWin},                 // 玩家總贏點數
+		{Key: "totalExpenditure", Value: redisPlayer.TotalExpenditure}, // 玩家總花費點數
+		{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
+		{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
+		{Key: "redisSync", Value: true},                                // redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+		{Key: "heroExp", Value: redisPlayer.HeroExp},                   // 英雄經驗
+		{Key: "spellCharges", Value: spellCharges},                     // 技能充能
+		{Key: "drops", Value: drops},                                   // 掉落道具
+		{Key: "redisSync", Value: true},                                // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 	}
 	mongo.UpdateDocByBsonD(mongo.ColName.Player, mongoPlayerDoc.ID, updatePlayerBson)
 

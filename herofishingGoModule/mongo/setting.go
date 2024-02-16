@@ -134,7 +134,7 @@ type DBPlayer struct {
 
 }
 
-// DB玩家資料
+// gameSetting的GameState文件
 type DBGameState struct {
 	ID                 string    `bson:"_id"`
 	CreatedAt          time.Time `bson:"createdAt"`
@@ -150,6 +150,14 @@ type DBTimer struct {
 	CreatedAt           time.Time `bson:"createdAt"`
 	PlayerOfflineMinute int       `bson:"playerOfflineMinute"`
 	ResetHeroExpMinute  int       `bson:"resetHeroExpMinute"`
+}
+
+// gameSetting的GameConfig文件
+type DBGameConfig struct {
+	ID                      string    `bson:"_id"`
+	CreatedAt               time.Time `bson:"createdAt"`
+	RTPAdjust_KillRateValue float64   `bson:"rtpAdjust_KillRateValue"`
+	RTPAdjust_RTPThreshold  float64   `bson:"rtpAdjust_RTPThreshold"`
 }
 
 // DB玩家狀態資料
