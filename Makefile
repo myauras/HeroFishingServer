@@ -149,6 +149,12 @@ deployMatchgame:
 	.\CICD_Matchgame_Dev\Dev_DeployMatchgame.bat
 	@echo "==============Matchgame Deploy Finished=============="
 
+# 部屬matchgame-testver
+deployMatchgame-testver:
+	@echo "==============Start Deploy Matchgame=============="
+	.\CICD_Matchgame_Dev\Dev_DeployMatchgameTestVer.bat
+	@echo "==============Matchgame Deploy Finished=============="
+
 # 移除matchgame舊版本pods
 deleteMatchgameOldPods:
 	@echo "==============Start Delete Old Matchgame Pods=============="
@@ -158,3 +164,5 @@ deleteMatchgameOldPods:
 
 # 建構+部屬matchgame
 matchgame: vetMatchgame autoVersioning-Matchgame buildMatchgame deployMatchgame deleteMatchgameOldPods
+# 建構+部屬matchgame-testver
+matchgame-testver: vetMatchgame autoVersioning-Matchgame buildMatchgame deployMatchgame-testver

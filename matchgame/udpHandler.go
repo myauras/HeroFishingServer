@@ -14,11 +14,11 @@ import (
 	"net"
 	"time"
 
-	sdk "agones.dev/agones/sdks/go"
+	// sdk "agones.dev/agones/sdks/go"
 )
 
 // 開啟UDP連線
-func openConnectUDP(s *sdk.SDK, stop chan struct{}, src string) {
+func openConnectUDP(stop chan struct{}, src string) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("%s OpenConnectUDP error: %v.\n", logger.LOG_Main, err)

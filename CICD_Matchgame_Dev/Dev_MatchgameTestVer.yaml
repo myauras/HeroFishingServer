@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: herofishing-matchgame-testver-tcp
+  namespace: herofishing-gameserver
+  labels:
+    app: herofishing-matchgame-testver
+spec:
+  type: LoadBalancer
+  selector:
+    app: herofishing-matchgame-testver
+  ports:
+    - protocol: TCP
+      port: 7654
+      targetPort: 7654
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: herofishing-matchgame-testver-udp
+  namespace: herofishing-gameserver
+  labels:
+    app: herofishing-matchgame-testver
+spec:
+  type: LoadBalancer
+  selector:
+    app: herofishing-matchgame-testver
+  ports:
+    - protocol: UDP
+      port: 7654
+      targetPort: 7654
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: herofishing-matchgame-testver
+  namespace: herofishing-gameserver
+spec:
+  selector:
+    matchLabels:
+      app: herofishing-matchgame-testver
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: herofishing-matchgame-testver
+    spec:
+      serviceAccountName: default # 指定使用default serviceAccount
+      containers:
+      - name: herofishing-matchgame-testver
+        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.161
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "64Mi"
+            cpu: "80m"
+        env:
+        - name: "ImgVer"
+          value: "0.2.161" # Image版本
+        - name: NodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: PodName
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: "Mode"
+            value: "non-agones" # 個人測試模式(不使用Agones服務)
+        - name: "PORT"
+          value: "7654"
+        - name: "Version"
+          value: "Dev"      
+        # mongodb相關
+        - name: MongoAPIPublicKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPublicKey
+        - name: MongoAPIPrivateKey
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoAPIPrivateKey
+        - name: MongoUser
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoUser
+        - name: MongoPW
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MongoPW

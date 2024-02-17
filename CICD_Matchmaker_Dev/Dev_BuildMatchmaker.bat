@@ -2,7 +2,7 @@
 REM 可在powershell中執行.\批次檔名稱.bat
 REM Build Image並推上google artifact registry, google放image的地方)
 
-REM 如果puch image發生錯誤可以跑以下重新登入跟認證流程試試看
+REM 如果push image發生錯誤可以跑以下重新登入跟認證流程試試看
 @REM gcloud auth revoke
 @REM gcloud auth login
 @REM docker logout asia-east1-docker.pkg.dev
