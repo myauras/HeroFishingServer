@@ -6,8 +6,9 @@ const (
 	NAMESPACE_GAMESERVER    = "herofishing-gameserver" // 遊戲伺服器命名空間
 
 	// 服務名稱
-	MATCHMAKER = "herofishing-matchmaker" // 配對伺服器名稱
-	MATCHGAME  = "herofishing-matchgame"  // 遊戲房名稱
+	MATCHMAKER        = "herofishing-matchmaker"            // 配對伺服器Services名稱
+	MATCHGAME         = "herofishing-matchgame"             // 遊戲房Services名稱
+	MATCHGAME_TESTVER = "herofishing-matchgame-testver-tcp" // 個人測試用遊戲房Services名稱
 
 	// 遊戲房舍定
 	PLAYER_NUMBER = 4 // 遊戲房最多X位玩家

@@ -567,7 +567,7 @@ func newHitErrorPack(errStr string, pack packet.Pack) *packet.Pack {
 // 將房間資料寫入DB(只有開房時執行1次)
 func (room *Room) WriteMatchgameToDB() {
 	log.Infof("%s 開始寫入Matchgame到DB", logger.LOG_Action)
-	_, err := mongo.AddDocByStruct(mongo.ColName.Matchgame, room.DBMatchgame)
+	_, err := mongo.AddOrUpdateDocByStruct(mongo.ColName.Matchgame, room.DBMatchgame.ID, room.DBMatchgame)
 	if err != nil {
 		log.Errorf("%s writeMatchgameToDB: %v", logger.LOG_Action, err)
 		return

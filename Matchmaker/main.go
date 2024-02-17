@@ -101,7 +101,7 @@ func main() {
 		if ip != "" {
 			log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
 			log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
-			setExternalID(ip) // 寫入對外ID到DB中
+			setExternalIP(ip) // 寫入對外ID到DB中
 			break
 		}
 	}
@@ -152,8 +152,8 @@ func initMonogo(mongoAPIPublicKey string, mongoAPIPrivateKey string, user string
 	log.Infof("%s 初始化mongo完成", logger.LOG_Main)
 }
 
-// 寫入對外ID到DB中
-func setExternalID(ip string) {
+// 寫入對外IP到DB中
+func setExternalIP(ip string) {
 	// 設定要更新的資料
 	data := bson.D{
 		{Key: "matchmakerIP", Value: ip},

@@ -9,6 +9,7 @@ import (
 	// gSetting "matchgame/setting"
 
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"flag"
 
@@ -32,8 +33,13 @@ const (
 	ENV_RELEASE = "Release"
 )
 
-var Env string     // 環境版本
-var Mode string    // standard:一般版本 non-agones: 個人測試模式(不使用Agones服務)
+var Env string // 環境版本
+
+// Mode模式分為以下:
+// standard:一般版本
+// non-agones: 個人測試模式(不使用Agones服務, non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
+var Mode string
+
 var PodName string // Pod名稱
 
 func main() {
@@ -148,66 +154,80 @@ func main() {
 			}
 		})
 	} else if Mode == "non-agones" { // non-agones模式
+
 		log.Infof("%s 開始房間建立", logger.LOG_Main)
 
-		port := int32(0)
-		if portStr := os.Getenv("PORT"); portStr != "" {
-			log.Infof("%s PORT為: %s", logger.LOG_Main, portStr)
-			myPort, parsePortErr := strconv.ParseInt(portStr, 10, 32)
-			if parsePortErr != nil {
-				log.Errorf("%s parse Port錯誤: %v", logger.LOG_Main, parsePortErr)
+		go func() {
+
+			port := int32(0)
+			if portStr := os.Getenv("PORT"); portStr != "" {
+				log.Infof("%s PORT為: %s", logger.LOG_Main, portStr)
+				myPort, parsePortErr := strconv.ParseInt(portStr, 10, 32)
+				if parsePortErr != nil {
+					log.Errorf("%s parse Port錯誤: %v", logger.LOG_Main, parsePortErr)
+				} else {
+					port = int32(myPort)
+				}
 			} else {
-				port = int32(myPort)
+				log.Errorf("%s 取不到環境變數: PORT", logger.LOG_Main)
 			}
-		} else {
-			log.Errorf("%s 取不到環境變數: PORT", logger.LOG_Main)
-		}
 
-		// 取Loadbalancer分配給此pod的對外IP並寫入資料庫
-		log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
-		ip := ""
-		for {
-			// 因為pod啟動後Loadbalancer並不會立刻就分配好ip(會有延遲) 所以每5秒取一次 直到取到ip才往下跑
-			time.Sleep(5 * time.Second) // 每5秒取一次ip
-			getIP, getIPErr := getExternalIP()
-			if getIPErr != nil {
-				// 取得ip失敗
-				break
+			// 初始化MongoDB設定
+			mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
+			mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
+			mongoUser := os.Getenv("MongoUser")
+			mongoPW := os.Getenv("MongoPW")
+			initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
+
+			// 取Loadbalancer分配給此pod的對外IP並寫入資料庫(non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
+			log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
+			ip := ""
+			for {
+				// 因為pod啟動後Loadbalancer並不會立刻就分配好ip(會有延遲) 所以每5秒取一次 直到取到ip才往下跑
+				time.Sleep(5 * time.Second) // 每5秒取一次ip
+				getIP, getIPErr := getExternalIP()
+				if getIPErr != nil {
+					// 取得ip失敗
+					break
+				}
+				if getIP != "" {
+					ip = getIP
+					log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
+					log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
+					setExternalIPandPort(ip, port)
+					break
+				}
 			}
-			if getIP != "" {
-				ip = getIP
-				log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
-				log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
-				break
+
+			matchmakerPodName := ""
+			playerIDs := [setting.PLAYER_NUMBER]string{}
+
+			// 依據DBGameSetting中取GameState設定
+			log.Infof("%s 取DBGameState資料", logger.LOG_Main)
+			var dbGameState mongo.DBGameState
+			dbGameStateErr := mongo.GetDocByID(mongo.ColName.GameSetting, "GameState", &dbGameState)
+			if dbGameStateErr != nil {
+				log.Errorf("%s InitGameRoom時取DBGameState資料發生錯誤: %v", logger.LOG_Main, dbGameStateErr)
 			}
-		}
+			log.Infof("%s 取DBGameState資料成功", logger.LOG_Main)
 
-		matchmakerPodName := ""
-		playerIDs := [setting.PLAYER_NUMBER]string{}
+			dbMapID := dbGameState.MatchgameTestverMapID
+			roomName := dbGameState.MatchgameTestverRoomName
+			nodeName := os.Getenv("NodeName")
+			log.Infof("%s ==============開始初始化房間==============", logger.LOG_Main)
+			log.Infof("%s podName: %v", logger.LOG_Main, PodName)
+			log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
+			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
+			log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
+			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
+			log.Infof("%s Address: %s", logger.LOG_Main, ip)
+			log.Infof("%s Port: %v", logger.LOG_Main, port)
+			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
-		// 初始化MongoDB設定
-		mongoAPIPublicKey := os.Getenv("MongoAPIPublicKey")
-		mongoAPIPrivateKey := os.Getenv("MongoAPIPrivateKey")
-		mongoUser := os.Getenv("MongoUser")
-		mongoPW := os.Getenv("MongoPW")
-		initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
+			game.InitGameRoom(dbMapID, playerIDs, roomName, ip, port, PodName, nodeName, matchmakerPodName, roomChan)
 
-		dbMapID := "Quick-1"
-		roomName := "non-agones"
-		nodeName := os.Getenv("NodeName")
-		log.Infof("%s ==============開始初始化房間==============", logger.LOG_Main)
-		log.Infof("%s podName: %v", logger.LOG_Main, PodName)
-		log.Infof("%s nodeName: %v", logger.LOG_Main, nodeName)
-		log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
-		log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
-		log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
-		log.Infof("%s Address: %s", logger.LOG_Main, ip)
-		log.Infof("%s Port: %v", logger.LOG_Main, port)
-		log.Infof("%s Get Info Finished", logger.LOG_Main)
-
-		game.InitGameRoom(dbMapID, playerIDs, roomName, ip, port, PodName, nodeName, matchmakerPodName, roomChan)
-
-		log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
+			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
+		}()
 	}
 
 	// go TestLoop() // 測試Loop
@@ -270,11 +290,26 @@ func main() {
 
 // 取Loadbalancer分配給此pod的對外IP
 func getExternalIP() (string, error) {
-	ip, err := k8s.GetLoadBalancerExternalIP(setting.NAMESPACE_MATCHERSERVER, setting.MATCHMAKER)
+	ip, err := k8s.GetLoadBalancerExternalIP(setting.NAMESPACE_GAMESERVER, setting.MATCHGAME_TESTVER)
 	if err != nil {
 		log.Errorf("%s GetLoadBalancerExternalIP error: %v.\n", logger.LOG_Main, err)
 	}
 	return ip, err
+}
+
+// 寫入對外ID到DB中
+func setExternalIPandPort(ip string, port int32) {
+	// 設定要更新的資料
+	data := bson.D{
+		{Key: "matchgame-testver-ip", Value: ip},
+		{Key: "matchgame-testver-port", Value: port},
+	}
+	// 更新資料
+	_, err := mongo.UpdateDocByBsonD(mongo.ColName.GameSetting, "GameState", data)
+	if err != nil {
+		log.Errorf("%s SetExternalID失敗: %v", logger.LOG_Main, err)
+		return
+	}
 }
 
 // 房間循環

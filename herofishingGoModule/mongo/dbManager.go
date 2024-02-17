@@ -180,3 +180,18 @@ func AddDocByStruct(col string, addData interface{}) (*mongoDriver.InsertOneResu
 	}
 	return result, nil
 }
+
+// 文件存在就更新不存在就新增
+func AddOrUpdateDocByStruct(col string, docID string, addData interface{}) (*mongoDriver.UpdateResult, error) {
+
+	filter := bson.D{{Key: "_id", Value: docID}}
+	update := bson.D{{Key: "$set", Value: addData}}
+
+	opts := options.Update().SetUpsert(true)
+
+	result, err := DB.Collection(col).UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

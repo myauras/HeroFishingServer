@@ -136,12 +136,16 @@ type DBPlayer struct {
 
 // gameSetting的GameState文件
 type DBGameState struct {
-	ID                 string    `bson:"_id"`
-	CreatedAt          time.Time `bson:"createdAt"`
-	EnvVersion         string    `bson:"envVersion"`
-	GameVersion        string    `bson:"gameVersion"`
-	MinimumGameVersion string    `bson:"minimumGameVersion"`
-	IosReview          bool      `bson:"iosReview"`
+	ID                       string    `bson:"_id"`
+	CreatedAt                time.Time `bson:"createdAt"`
+	EnvVersion               string    `bson:"envVersion"`
+	GameVersion              string    `bson:"gameVersion"`
+	MinimumGameVersion       string    `bson:"minimumGameVersion"`
+	IosReview                bool      `bson:"iosReview"`
+	MatchgameTestverRoomName string    `bson:"matchgame-testver-roomName"`
+	MatchgameTestverMapID    string    `bson:"matchgame-testver-mapID"`
+	MatchgameTestverIP       string    `bson:"matchgame-testver-ip"`
+	MatchgameTestverPort     int32     `bson:"matchgame-testver-port"`
 }
 
 // gameSetting的Timer文件
