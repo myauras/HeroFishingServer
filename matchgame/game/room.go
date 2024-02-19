@@ -461,7 +461,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		MyRoom.HandleAttack(player, pack, content)
+		MyRoom.HandleAttack(player, pack.PackID, content)
 	// ==========擊中怪物==========
 	case packet.HIT:
 		content := packet.Hit{}
@@ -563,7 +563,6 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 	// if pack.CMD != packet.SPAWN_TOCLIENT {
 	// 	log.Infof("廣播封包給其他玩家 CMD: %v", pack.CMD)
 	// }
-
 	// 送封包給所有房間中的玩家
 	for i, v := range r.Players {
 		if i == exceptPlayerIdx {

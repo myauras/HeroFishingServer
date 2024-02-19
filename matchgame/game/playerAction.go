@@ -13,7 +13,7 @@ import (
 )
 
 // 處理收到的攻擊事件
-func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.Attack) {
+func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack) {
 
 	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
@@ -41,9 +41,8 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
-	// 取rtp
-	rtp := spellJson.RTP
-	isSpellAttack := rtp != 0    // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+
+	isSpellAttack := spellJson.IsSpell()
 	spellIdx := int32(0)         // 釋放第幾個技能, 0就代表是普攻
 	spendSpellCharge := int32(0) // 花費技能充能
 	spendPoint := int64(0)       // 花費點數
@@ -55,7 +54,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 		if err != nil {
 			room.SendPacketToPlayer(player.Index, &packet.Pack{
 				CMD:     packet.HIT_TOCLIENT,
-				PackID:  pack.PackID,
+				PackID:  packID,
 				ErrMsg:  "HandleAttack時取技能索引ID錯誤",
 				Content: &packet.Hit_ToClient{},
 			})
@@ -141,7 +140,7 @@ func (room *Room) HandleAttack(player *Player, pack packet.Pack, content packet.
 	// 廣播給client
 	room.BroadCastPacket(player.Index, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,
-		PackID: pack.PackID,
+		PackID: packID,
 		Content: &packet.Attack_ToClient{
 			PlayerIdx:   player.Index,
 			SpellJsonID: content.SpellJsonID,
@@ -173,8 +172,16 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		return
 	}
 	// 取rtp
-	rtp := spellJson.RTP
-	isSpellAttack := rtp != 0 // 此攻擊的spell表的RTP不是0就代表是技能攻擊
+	rtp := float64(0)
+	isSpellAttack := spellJson.IsSpell()
+	if isSpellAttack {
+		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+		if err != nil {
+			log.Errorf("%s HandleHit時utility.ExtractLastDigit(spellJson.ID錯誤: %v", logger.LOG_Action, err)
+		} else {
+			rtp = spellJson.GetRTP(player.MyHero.SpellLVs[idx])
+		}
+	}
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 
@@ -251,6 +258,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 
 			// 計算是否造成擊殺
 			rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
+
 			attackKP := float64(0)
 			tmpPTBufferAdd := int64(0)
 			if !isSpellAttack { // 普攻
@@ -284,7 +292,17 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				gainSpellCharges = append(gainSpellCharges, -1)
 				gainDrops = append(gainDrops, -1)
 				if gotUnchargedSpell {
-					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpell.RTP, odds)
+					rndUnchargedSpellRTP := float64(0)
+
+					spellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+					if err != nil {
+						log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID錯誤: %v", logger.LOG_Action, err)
+					} else {
+						// log.Errorf("技能ID: %v 索引: %v 技能等級: %v", rndUnchargedSpell.ID, spellIdx, player.MyHero.SpellLVs[spellIdx])
+						rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.SpellLVs[spellIdx])
+					}
+					// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
+					dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, odds)
 					if utility.GetProbResult(dropChargeP) {
 						dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 						if err != nil {
@@ -446,6 +464,15 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			Duration: duration,
 		})
 		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.DROPSPELL_TOCLIENT,
+			PackID: -1,
+			Content: &packet.DropSpell_ToClient{
+				Success:         true,
+				PlayerIdx:       player.Index,
+				DropSpellJsonID: content.DropSpellJsonID,
+			},
+		})
+		room.BroadCastPacket(player.Index, &packet.Pack{
 			CMD:    packet.UPDATESCENE_TOCLIENT,
 			PackID: -1,
 			Content: &packet.UpdateScene_ToClient{
@@ -471,12 +498,39 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			Duration: duration,
 		})
 		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.DROPSPELL_TOCLIENT,
+			PackID: -1,
+			Content: &packet.DropSpell_ToClient{
+				Success:         true,
+				PlayerIdx:       player.Index,
+				DropSpellJsonID: content.DropSpellJsonID,
+			},
+		})
+		room.BroadCastPacket(player.Index, &packet.Pack{
 			CMD:    packet.UPDATEPLAYER_TOCLIENT,
 			PackID: -1,
 			Content: &packet.UpdatePlayer_ToClient{
 				Players: room.GetPacketPlayers(),
 			},
 		})
+	case "HeroSpell":
+		heroSpellID := dropSpellJson.ID + "_drop_spell"
+		attackPack := packet.Attack{
+			AttackID:    content.AttackID,
+			SpellJsonID: heroSpellID,
+			MonsterIdx:  -1,
+		}
+		room.HandleAttack(player, -1, attackPack)
+		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.DROPSPELL_TOCLIENT,
+			PackID: -1,
+			Content: &packet.DropSpell_ToClient{
+				Success:         true,
+				PlayerIdx:       player.Index,
+				DropSpellJsonID: content.DropSpellJsonID,
+			},
+		})
+
 	default:
 		log.Errorf("%s HandleDropSpell傳入尚未定義的EffectType類型: %v", logger.LOG_Action, dropSpellJson.EffectType)
 		return

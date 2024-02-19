@@ -11,6 +11,15 @@ type DropSpell struct {
 	CMDContent
 	DropSpellJsonID int // DropSpell表ID
 	// 其他使用道具需要的參數
+	AttackID int
+}
+
+// 使用道具回傳client
+type DropSpell_ToClient struct {
+	CMDContent
+	Success         bool
+	PlayerIdx       int // 玩家座位索引
+	DropSpellJsonID int // DropSpell表ID
 }
 
 func (dropSpell *DropSpell) Parse(common CMDContent) bool {

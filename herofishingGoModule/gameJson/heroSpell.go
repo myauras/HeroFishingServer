@@ -3,17 +3,18 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	"herofishingGoModule/utility"
 	"strconv"
 	// "herofishingGoModule/logger"
 )
 
 // HeroSpell JSON
 type HeroSpellJsonData struct {
-	ID      string  `json:"ID"`
-	RTP     float64 `json:"RTP"`
-	CD      float64 `json:"CD"`
-	Cost    int32   `json:"Cost"`
-	MaxHits int32   `json:"MaxHits"`
+	ID      string    `json:"ID"`
+	RTP     []float64 `json:"RTP"`
+	CD      float64   `json:"CD"`
+	Cost    int32     `json:"Cost"`
+	MaxHits int32     `json:"MaxHits"`
 }
 
 func (jsonData HeroSpellJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
@@ -56,9 +57,12 @@ func (spellJson *HeroSpellJsonData) UnmarshalJSON(data []byte) error {
 
 	var err error
 	if aux.RTP != "" {
-		if spellJson.RTP, err = strconv.ParseFloat(aux.RTP, 64); err != nil {
+
+		rtps, err := utility.Split_FLOAT(aux.RTP, ",")
+		if err != nil {
 			return err
 		}
+		spellJson.RTP = rtps
 	}
 	if aux.CD != "" {
 		if spellJson.CD, err = strconv.ParseFloat(aux.CD, 64); err != nil {
@@ -81,6 +85,20 @@ func (spellJson *HeroSpellJsonData) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// 此HeroSpellJsonData是否為技能, 是技能回傳true, 是普攻回傳false
+func (heroSpellJsonData HeroSpellJsonData) IsSpell() bool {
+	return len(heroSpellJsonData.RTP) != 0
+}
+
+// 取得該技能等級對應的RTP, 等級傳入1就是等級1的技能, 如果該技能沒有該等級的RTP就會回傳0
+func (heroSpellJsonData HeroSpellJsonData) GetRTP(lv int) float64 {
+	lv -= 1
+	if lv < 0 || lv >= len(heroSpellJsonData.RTP) {
+		return 0
+	}
+	return heroSpellJsonData.RTP[lv]
 }
 
 func GetHeroSpells() ([]HeroSpellJsonData, error) {

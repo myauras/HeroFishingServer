@@ -23,6 +23,7 @@ const (
 	HIT                   = "HIT"                   // (TCP)擊中
 	HIT_TOCLIENT          = "HIT_TOCLIENT"          // (TCP)擊中-送Client
 	DROPSPELL             = "DROPSPELL"             // (TCP)掉落施法
+	DROPSPELL_TOCLIENT    = "DROPSPELL_TOCLIENT"    // (TCP)掉落施法-送Client
 	UPDATEPLAYER_TOCLIENT = "UPDATEPLAYER_TOCLIENT" // (TCP)更新玩家-送Client
 	SPAWN_TOCLIENT        = "SPAWN_TOCLIENT"        // (TCP)生怪-送Client
 	LVUPSPELL             = "LVUPSPELL"             // (TCP)升級技能

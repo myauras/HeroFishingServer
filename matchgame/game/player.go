@@ -177,7 +177,7 @@ func (player *Player) GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bo
 func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData {
 	spells := make([]gameJson.HeroSpellJsonData, 0)
 	for i, v := range player.DBPlayer.SpellCharges {
-		if player.MyHero.SpellLVs[i] <= 0 { // 尚未學習的技能就跳過
+		if player.MyHero.SpellLVs[i+1] <= 0 { // 尚未學習的技能就跳過
 			continue
 		}
 		spell, err := player.MyHero.GetSpell(int32(i + 1))
@@ -186,6 +186,7 @@ func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonDa
 			continue
 		}
 		if v < spell.Cost {
+			// log.Errorf("已學習且尚未充滿能的技能: %v", spell.ID)
 			spells = append(spells, spell)
 		}
 	}

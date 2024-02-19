@@ -8,6 +8,9 @@ import (
 
 // 將傳入的字串以傳入的字元分隔並轉為[]int
 func Split_INT(str string, char string) ([]int, error) {
+	if str == "" {
+		return []int{}, nil
+	}
 	parts := strings.Split(str, char)
 	nums := make([]int, 0, len(parts))
 
@@ -24,6 +27,9 @@ func Split_INT(str string, char string) ([]int, error) {
 
 // 將傳入的字串以傳入的字元分隔並轉為[]float64
 func Split_FLOAT(str string, char string) ([]float64, error) {
+	if str == "" {
+		return []float64{}, nil
+	}
 	parts := strings.Split(str, char)
 	nums := make([]float64, 0, len(parts))
 

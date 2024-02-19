@@ -12,7 +12,7 @@ type Attack struct {
 	CMDContent
 	AttackID    int    // 攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	SpellJsonID string // 技能表ID
-	MonsterIdx  int    // 目標怪物索引
+	MonsterIdx  int    // 目標怪物索引, -1就是沒有指定目標
 	// 攻擊施放需要的參數(位置, 角度等)
 	AttackLock bool      // 是否為鎖定攻擊
 	AttackPos  []float64 // 攻擊施放位置
