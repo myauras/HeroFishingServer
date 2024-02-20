@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	logger "matchgame/logger"
 	gSetting "matchgame/setting"
 
@@ -16,7 +17,6 @@ import (
 	"matchgame/packet"
 	"net"
 	"time"
-
 	// sdk "agones.dev/agones/sdks/go"
 )
 
@@ -53,6 +53,18 @@ type packReadReadResult struct {
 // 處理TCP連線封包
 func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	remoteAddr := conn.RemoteAddr().String()
+
+	for _, v := range game.MyRoom.Players {
+		if v == nil {
+			continue
+		}
+		if v.ConnTCP.Conn.RemoteAddr().String() == remoteAddr {
+			logStr := fmt.Sprintf("IP為 %v 的玩家重複登入 踢掉玩家:%v", remoteAddr, v.DBPlayer.ID)
+			game.MyRoom.KickPlayer(v.ConnTCP.Conn, logStr)
+			break
+		}
+	}
+
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
 	defer conn.Close()
 	defer func() {
@@ -65,19 +77,19 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	decoder := json.NewDecoder(conn)
 	conn.SetReadDeadline(time.Now().Add(gSetting.TCP_CONN_TIMEOUT_SEC * time.Second))
 	readResultChan := make(chan packReadReadResult)
-	closeConnChan := make(chan string)
 
-	packReadStopChan := make(chan struct{})
+	packReadStopChan := make(chan struct{}, 1)
 
 	// 封包接收
 	go func() {
 		for {
 			select {
 			case <-packReadStopChan:
-				return
+				log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
+				return // 終止goroutine
 			default:
 				pack, err := packet.ReadPack(decoder)
-				readResultChan <- packReadReadResult{pack, err}
+				readResultChan <- packReadReadResult{pack, err} // 讀取封包
 			}
 		}
 	}()
@@ -86,16 +98,13 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
-			packReadStopChan <- struct{}{}
-			log.Errorf("%s (TCP)強制終止連線", logger.LOG_Main)
-			return
-		case playerID := <-closeConnChan:
-			packReadStopChan <- struct{}{}
-			log.Infof("%s (TCP)關閉玩家(%s)連線", logger.LOG_Main, playerID)
-			return
+			log.Errorf("%s (TCP)終止連線", logger.LOG_Main)
+			close(packReadStopChan)
+			return 
 		case result := <-readResultChan:
 			if result.Err != nil {
 				log.Errorf("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, result.Err)
+				close(packReadStopChan)
 				return
 			}
 			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, result.Pack.CMD)
@@ -103,13 +112,14 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			//未驗證前，除了Auth指令進來其他都擋掉
 			if !isAuth && result.Pack.CMD != packet.AUTH {
 				log.Infof("%s 收到未驗證的封包", logger.LOG_Main)
+				close(packReadStopChan)
 				return
 			}
 			if result.Pack.CMD == packet.AUTH {
 				authContent := packet.Auth{}
 				if ok := authContent.Parse(result.Pack.Content); !ok {
 					log.Errorf("%s 反序列化AUTH封包失敗", logger.LOG_Main)
-					return
+					continue
 				}
 				// 像mongodb atlas驗證token並取得playerID 有通過驗證後才處理後續
 				playerID, authErr := mongo.PlayerVerify(authContent.Token)
@@ -173,10 +183,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					LastUpdateAt: time.Now(),
 					PlayerBuffs:  []packet.PlayerBuff{},
 					ConnTCP: &gSetting.ConnectionTCP{
-						Conn:      conn,
-						CloseChan: closeConnChan,
-						Encoder:   encoder,
-						Decoder:   decoder,
+						Conn:    conn,
+						Encoder: encoder,
+						Decoder: decoder,
 					},
 					ConnUDP: &gSetting.ConnectionUDP{
 						ConnToken: newConnToken,
@@ -185,6 +194,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				joined := game.MyRoom.JoinPlayer(&player)
 				if !joined {
 					log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
+					close(packReadStopChan)
 					return
 				}
 				// 回送client
@@ -198,7 +208,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					},
 				})
 				if err != nil {
-					return
+					continue
 				}
 
 			} else {
@@ -206,7 +216,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				if err != nil {
 					log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
 					game.MyRoom.KickPlayer(conn, "處理GameRoom封包錯誤")
-					return
+					continue
 				}
 			}
 		}

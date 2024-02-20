@@ -146,7 +146,6 @@ func (player *Player) CloseConnection() {
 		return
 	}
 	if player.ConnTCP.Conn != nil {
-		player.ConnTCP.CloseChan <- player.DBPlayer.ID
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 		player.ConnTCP = nil

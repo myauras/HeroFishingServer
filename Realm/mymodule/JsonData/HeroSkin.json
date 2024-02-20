@@ -1,0 +1,7 @@
+{"HeroSkin":[
+	{	"ID":"1_1",	"Prefab":"missFortune",	"Texture":"MissFortune_t_classic"},
+	{	"ID":"2_1",	"Prefab":"Ezreal",	"Texture":"Ezreal_t_01"},
+	{	"ID":"7_1",	"Prefab":"Mirana",	"Texture":"Mirana_t_01"},
+	{	"ID":"19_1",	"Prefab":"ashe",	"Texture":"ashe_classic"},
+	{	"ID":"19_2",	"Prefab":"ashe",	"Texture":"ashe_t_skin1"}
+]}

@@ -2,6 +2,8 @@ package packet
 
 import (
 	"encoding/json"
+	"io"
+	"strings"
 
 	logger "matchgame/logger"
 
@@ -65,15 +67,31 @@ func ReadPack(decoder *json.Decoder) (Pack, error) {
 	// 	"error":   packet.ErrMsg,
 	// }).Infof("%s Read: %s", logger.LOG_Pack, packet.CMD)
 	if err != nil {
-		if err.Error() == "EOF" { // 玩家已經斷線
-		} else {
-			// 寫LOG
+		// 檢查是否為EOF錯誤
+		if err == io.EOF {
+			// 玩家已經斷線，記錄斷線日誌
 			log.WithFields(log.Fields{
-				"error": packet.ErrMsg,
-			}).Errorf("Decode packet error: %s", err.Error())
-		}
-	}
+				"error": err.Error(),
+			}).Info("目標玩家已斷線-EOF")
+		} else if strings.Contains(err.Error(), "connection reset by peer") {
+			// 連接被對端重置，記錄斷線日誌
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Info("目標玩家已斷線-connection reset by peer")
 
+		} else if strings.Contains(err.Error(), "use of closed network connection") {
+			// 連接被對端重置，記錄斷線日誌
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Info("目標玩家已斷線-use of closed network connection")
+		} else {
+			// 處理其他類型的錯誤
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("解包packet錯誤")
+		}
+		return packet, err
+	}
 	return packet, err
 }
 

@@ -48,7 +48,7 @@ spec:
       serviceAccountName: default # 指定使用default serviceAccount
       containers:
       - name: herofishing-matchgame-testver
-        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.187
+        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.207
         resources:
           requests:
             memory: "32Mi"
@@ -58,7 +58,7 @@ spec:
             cpu: "80m"
         env:
         - name: "ImgVer"
-          value: "0.2.187"
+          value: "0.2.207"
         - name: NodeName
           valueFrom:
             fieldRef:

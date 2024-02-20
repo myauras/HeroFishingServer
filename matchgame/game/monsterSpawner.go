@@ -49,7 +49,7 @@ func NewMonsterSpawner() *MonsterSpawner {
 		spawnTimerMap: make(map[int]int),
 		Monsters:      make(map[int]*Monster),
 		Spawns:        make([]packet.Spawn, 0),
-		controlChan:   make(chan bool),
+		controlChan:   make(chan bool, 1),
 	}
 }
 
@@ -96,16 +96,18 @@ func (ms *MonsterSpawner) SpawnSwitch(setOn bool) {
 func (ms *MonsterSpawner) SpawnTimer() {
 
 	running := false
-
+	count := 0
 	for {
+
 		select {
 		case isOn := <-ms.controlChan:
 			running = isOn
 		default:
+			time.Sleep(1000 * time.Millisecond) // 每X豪秒檢查一次
+			count++
 			if !running {
 				continue
 			}
-			time.Sleep(1000 * time.Millisecond) // 每X豪秒檢查一次
 			// 怪物移除檢查
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {

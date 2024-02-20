@@ -366,7 +366,6 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 	r.MutexLock.Unlock()
 	player.CloseConnection() // 關閉連線
 	r.OnRoomPlayerChange()
-
 	// 廣播玩家離開封包
 	r.BroadCastPacket(seatIndex, &packet.Pack{
 		CMD: packet.LEAVE_TOCLIENT,
@@ -392,6 +391,8 @@ func (r *Room) OnRoomPlayerChange() {
 		return
 	}
 	playerCount := r.PlayerCount()
+	// log.Infof("%s 根據玩家數量決定是否升怪 玩家數量: %v", logger.LOG_MonsterSpawner, playerCount)
+
 	if playerCount >= setting.PLAYER_NUMBER { // 滿房
 		r.MSpawner.SpawnSwitch(true) // 生怪
 	} else if playerCount == 0 { // 空房間處理
