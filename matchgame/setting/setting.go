@@ -16,9 +16,10 @@ const (
 )
 
 type ConnectionTCP struct {
-	Conn    net.Conn      // TCP連線
-	Encoder *json.Encoder // 連線編碼
-	Decoder *json.Decoder // 連線解碼
+	Conn             net.Conn      // TCP連線
+	PackReadStopChan chan struct{} // 關閉連線Chan
+	Encoder          *json.Encoder // 連線編碼
+	Decoder          *json.Decoder // 連線解碼
 }
 type ConnectionUDP struct {
 	Conn      net.PacketConn // UDP連線

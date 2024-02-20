@@ -68,7 +68,9 @@ kubectl annotate serviceaccount agones-sdk -n herofishing-gameserver iam.gke.io/
 # 使用以下語法來查詢是否都有將k8s的服務帳戶綁定到GCP的服務帳戶
 gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --project fourth-waters-410202
 
-# 建立防火牆
+# 建立防火牆(這個沒設定會沒辦法透過UDP連線到server)
+gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
+# 測試用個人Server防火牆
 gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
 
 # 設定應用程式認證(ADC, Application Default Credentials)

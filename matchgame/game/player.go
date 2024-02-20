@@ -146,6 +146,7 @@ func (player *Player) CloseConnection() {
 		return
 	}
 	if player.ConnTCP.Conn != nil {
+		close(player.ConnTCP.PackReadStopChan)
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 		player.ConnTCP = nil

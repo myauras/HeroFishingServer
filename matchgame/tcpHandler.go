@@ -68,8 +68,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
 	defer conn.Close()
 	defer func() {
+		log.Infof("%s 關閉handleConnectionTCP", logger.LOG_Main)
 		if err := recover(); err != nil {
-			log.Errorf("%s (TCP)handleConnectionTCP錯誤: %v.", logger.LOG_Main, err)
+			// log.Errorf("%s (TCP)handleConnectionTCP錯誤: %v.", logger.LOG_Main, err)
 		}
 	}()
 	isAuth := false
@@ -98,12 +99,12 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
-			log.Errorf("%s (TCP)終止連線", logger.LOG_Main)
+			log.Errorf("%s (TCP)強制終止連線", logger.LOG_Main)
 			close(packReadStopChan)
-			return 
+			return
 		case result := <-readResultChan:
 			if result.Err != nil {
-				log.Errorf("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, result.Err)
+				log.Infof("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, result.Err)
 				close(packReadStopChan)
 				return
 			}
@@ -183,9 +184,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					LastUpdateAt: time.Now(),
 					PlayerBuffs:  []packet.PlayerBuff{},
 					ConnTCP: &gSetting.ConnectionTCP{
-						Conn:    conn,
-						Encoder: encoder,
-						Decoder: decoder,
+						Conn:             conn,
+						PackReadStopChan: packReadStopChan,
+						Encoder:          encoder,
+						Decoder:          decoder,
 					},
 					ConnUDP: &gSetting.ConnectionUDP{
 						ConnToken: newConnToken,
