@@ -1,32 +1,19 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: herofishing-matchgame-testver-tcp
+  name: herofishing-matchgame
   namespace: herofishing-gameserver
-  labels:
-    app: herofishing-matchgame-testver
 spec:
   type: LoadBalancer
   selector:
-    app: herofishing-matchgame-testver
+    app: herofishing-matchgame-testver-tcpudp
   ports:
-    - protocol: TCP
+    - name: tcp-port
+      protocol: TCP
       port: 7654
       targetPort: 7654
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: herofishing-matchgame-testver-udp
-  namespace: herofishing-gameserver
-  labels:
-    app: herofishing-matchgame-testver
-spec:
-  type: LoadBalancer
-  selector:
-    app: herofishing-matchgame-testver
-  ports:
-    - protocol: UDP
+    - name: udp-port
+      protocol: UDP
       port: 7654
       targetPort: 7654
 ---
@@ -48,7 +35,7 @@ spec:
       serviceAccountName: default # 指定使用default serviceAccount
       containers:
       - name: herofishing-matchgame-testver
-        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.209
+        image: asia-east1-docker.pkg.dev/fourth-waters-410202/herofishing/herofishing-matchgame:0.2.214
         resources:
           requests:
             memory: "32Mi"
@@ -58,7 +45,7 @@ spec:
             cpu: "80m"
         env:
         - name: "ImgVer"
-          value: "0.2.209"
+          value: "0.2.214"
         - name: NodeName
           valueFrom:
             fieldRef:

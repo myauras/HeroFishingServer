@@ -13,7 +13,6 @@ import (
 	"matchgame/packet"
 	"net"
 	"time"
-
 	// sdk "agones.dev/agones/sdks/go"
 )
 
@@ -30,7 +29,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 		log.Errorf("%s (UDP)偵聽失敗: %v.\n", logger.LOG_Main, err)
 	}
 	defer conn.Close()
-	log.Infof("%s (UDP)開始偵聽 %s", logger.LOG_Main, src)
+	log.Errorf("%s (UDP)開始偵聽 %s", logger.LOG_Main, src)
 
 	for {
 		// 取得收到的封包
@@ -43,6 +42,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 		if n <= 0 {
 			continue
 		}
+		log.Errorf("%s (UDP)收到來自 %s 的封包\n", logger.LOG_Main, addr.String())
 		// 解析json數據
 		var pack packet.UDPReceivePack
 		unmarshalErr := json.Unmarshal(buffer[:n], &pack)
@@ -50,6 +50,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 			log.Errorf("%s (UDP)解析封包錯誤: %s", logger.LOG_Main, unmarshalErr.Error())
 			continue
 		}
+		log.Errorf("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 		// 玩家驗證
 		player := game.MyRoom.GetPlayerByConnToken(pack.ConnToken)
 
@@ -60,7 +61,6 @@ func openConnectUDP(stop chan struct{}, src string) {
 		if pack.CMD != packet.UPDATEGAME {
 			log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 		}
-		// log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 
 		// 執行命令
 		if pack.CMD == packet.UDPAUTH {
