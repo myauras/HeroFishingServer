@@ -6,17 +6,17 @@ const (
 	NAMESPACE_GAMESERVER    = "herofishing-gameserver" // 遊戲伺服器命名空間
 
 	// 服務名稱
-	MATCHMAKER        = "herofishing-matchmaker"            // 配對伺服器Services名稱
-	MATCHGAME         = "herofishing-matchgame"             // 遊戲房Services名稱
-	MATCHGAME_TESTVER = "herofishing-matchgame-testver-tcp" // 個人測試用遊戲房Services名稱
+	MATCHMAKER            = "herofishing-matchmaker"    // 配對伺服器Services名稱
+	MATCHGAME_TESTVER_TCP = "herofishing-matchgame-tcp" // 個人測試用遊戲房Services TCP名稱
+	MATCHGAME_TESTVER_UDP = "herofishing-matchgame-udp" // 個人測試用遊戲房Services UDP名稱
 
 	// 遊戲房舍定
 	PLAYER_NUMBER = 4 // 遊戲房最多X位玩家
 )
 
 var EnvGCPProject = map[string]string{
-	"Dev":     "fourth-waters-410202", // 開發版
-	"Release": "herofishing-release",  // 正式版
+	"Dev":     "testgcpproject1-415003", // 開發版
+	"Release": "herofishing-release",    // 正式版
 }
 
 // 環境版本

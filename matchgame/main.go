@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"herofishingGoModule/k8s"
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
@@ -180,23 +181,46 @@ func main() {
 			initMonogo(mongoAPIPublicKey, mongoAPIPrivateKey, mongoUser, mongoPW)
 
 			// 取Loadbalancer分配給此pod的對外IP並寫入資料庫(non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
+			// 因為每個LoadBalancer Service似乎不支持
 			log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
 			ip := ""
-			for {
+			gotTCPIP := false
+			gotUDPIP := false
+			for !gotTCPIP && !gotUDPIP {
 				// 因為pod啟動後Loadbalancer並不會立刻就分配好ip(會有延遲) 所以每5秒取一次 直到取到ip才往下跑
 				time.Sleep(5 * time.Second) // 每5秒取一次ip
-				getIP, getIPErr := getExternalIP()
-				if getIPErr != nil {
-					// 取得ip失敗
-					break
+				// 取TCP服務開放的對外IP
+				if !gotTCPIP {
+					getTcpIP, getTcpIPErr := getExternalIP(setting.MATCHGAME_TESTVER_TCP)
+					if getTcpIPErr != nil {
+						// 取得ip失敗
+						break
+					}
+					if getTcpIP != "" {
+						ip = getTcpIP
+						log.Infof("%s 取得對外TCP IP成功: %s .\n", logger.LOG_Main, ip)
+						log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
+						setExternalIPandPort("tcp", ip, port)
+						gotTCPIP = true
+					}
 				}
-				if getIP != "" {
-					ip = getIP
-					log.Infof("%s 取得對外IP成功: %s .\n", logger.LOG_Main, ip)
-					log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
-					setExternalIPandPort(ip, port)
-					break
+
+				// 取UDP服務開放的對外IP
+				if !gotUDPIP {
+					getUdpIP, getUdpIPErr := getExternalIP(setting.MATCHGAME_TESTVER_UDP)
+					if getUdpIPErr != nil {
+						// 取得ip失敗
+						break
+					}
+					if getUdpIP != "" {
+						ip = getUdpIP
+						log.Infof("%s 取得對外UDP IP成功: %s .\n", logger.LOG_Main, ip)
+						log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
+						setExternalIPandPort("udp", ip, port)
+						gotUDPIP = true
+					}
 				}
+
 			}
 
 			matchmakerPodName := ""
@@ -288,9 +312,9 @@ func main() {
 
 }
 
-// 取Loadbalancer分配給此pod的對外IP
-func getExternalIP() (string, error) {
-	ip, err := k8s.GetLoadBalancerExternalIP(setting.NAMESPACE_GAMESERVER, setting.MATCHGAME_TESTVER)
+// 取Loadbalancer分配給此pod的對外
+func getExternalIP(_serviceName string) (string, error) {
+	ip, err := k8s.GetLoadBalancerExternalIP(setting.NAMESPACE_GAMESERVER, _serviceName)
 	if err != nil {
 		log.Errorf("%s GetLoadBalancerExternalIP error: %v.\n", logger.LOG_Main, err)
 	}
@@ -298,10 +322,11 @@ func getExternalIP() (string, error) {
 }
 
 // 寫入對外ID到DB中
-func setExternalIPandPort(ip string, port int32) {
+func setExternalIPandPort(serviceType string, ip string, port int32) {
+	ipKey := fmt.Sprintf("matchgame-testver-%s-ip", serviceType)
 	// 設定要更新的資料
 	data := bson.D{
-		{Key: "matchgame-testver-ip", Value: ip},
+		{Key: ipKey, Value: ip},
 		{Key: "matchgame-testver-port", Value: port},
 	}
 	// 更新資料

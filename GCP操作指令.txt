@@ -29,11 +29,11 @@ kubectl create namespace herofishing-service
 # 移除namespace
 kubectl delete namespace herofishing-service
 # 查看防火牆設定
-gcloud compute firewall-rules list --project=fourth-waters-410202
+gcloud compute firewall-rules list --project=testgcpproject1-415003
 # 新增火牆
 gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"
 # 刪除火牆
-gcloud compute firewall-rules delete herofishing-firewall-udp --project=fourth-waters-410202
+gcloud compute firewall-rules delete herofishing-firewall-udp --project=testgcpproject1-415003
 # 查詢某tag的nodes
 gcloud compute instances list --filter="tags.items:herofishing"
 # 查看node的tag

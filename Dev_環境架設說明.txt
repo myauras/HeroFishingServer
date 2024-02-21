@@ -10,7 +10,42 @@
 gcloud init 
 gcloud components install kubectl
 gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project testgcpproject1-415003
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+
+
+
+# 在開始建環境先確保登入的GCP帳戶擁有Project IAM Admin權限(在專案持有帳戶加), 如果是使用帳戶擁有者就可以不用執行此步驟
+# 透過cli補其他權限, 要參考iam腳色清單可以查看官方文件: https://cloud.google.com/iam/docs/understanding-roles
+# projectID跟目標帳戶要記得改, 反註解並使用以下語法:
+# gcloud projects add-iam-policy-binding testgcpproject1-415003 `
+# --member=user:scoz@auro.gg `
+# --role=roles/editor `
+# --role=roles/artifactregistry.admin `
+# --role=roles/container.admin `
+# --role=roles/container.clusterAdmin `
+# --role=roles/resourcemanager.projectIamAdmin `
+# --role=roles/iam.serviceAccountAdmin `
+# --role=roles/serviceusage.serviceUsageConsumer `
+# --role=roles/storage.admin
+
+
+
+# 服務帳戶管理員
+# 編輯者
+# Kubernetes Engine 開發人員
+# Service Management 管理員
+# Storage 管理員
+
+# 可以用以下指令來查看是否Iam都有加到
+gcloud projects get-iam-policy testgcpproject1-415003
+
+
+# 設定GCS GameJson位置
+# 1. 搜尋herofishing_gamejson_dev並取代目前的位置
+# 2. Enable GCS 並 建立對應位置資料夾
+
+
 
 
 # =========建立cluster步驟=========
@@ -20,10 +55,10 @@ gcloud config set project YOUR_PROJECT_ID
 # node用2台就好
 # 機器類型使用e2-standard-4, 這是相對便宜的機器, 機器類型可以參考 https://cloud.google.com/compute/docs/general-purpose-machines
 # --workload-pool是啟用Workload Identity(用於讓k8s下的pod能使用GCP的服務), 使用方式為--workload-pool PROJECT_ID.svc.id.goog
-gcloud container clusters create cluster-herofishing --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=1 --enable-image-streaming --machine-type=e2-standard-4 --workload-pool=fourth-waters-410202.svc.id.goog
+gcloud container clusters create cluster-herofishing --zone=asia-east1-c --release-channel=regular --tags=herofishing --scopes=gke-default --num-nodes=1 --enable-image-streaming --machine-type=e2-standard-4 --workload-pool=testgcpproject1-415003.svc.id.goog
 # 官方建議新建一個Agones專用的node pool, 避免跟遊戲server的機器共用, 但是Dev環境可以不用這麼做，所以註解掉，如果有需要可以使用註解的內容
 # gcloud container node-pools create agones-system --cluster=cluster-herofishing --zone=asia-east1-c --node-taints agones.dev/agones-system=true:NoExecute --node-labels agones.dev/agones-system=true --num-nodes=1 --machine-type=e2-standard-4
-# gcloud container clusters update cluster-herofishing --zone=asia-east1-c --workload-pool=fourth-waters-410202.svc.id.goog
+# gcloud container clusters update cluster-herofishing --zone=asia-east1-c --workload-pool=testgcpproject1-415003.svc.id.goog
 # 新增命名空間matchmaker(配房伺服器) 與 matchgame(遊戲伺服器)
 kubectl create namespace herofishing-service
 kubectl create namespace herofishing-gameserver
@@ -32,20 +67,23 @@ gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --for
 # kubectl annotate serviceaccount --namespace herofishing-service [SERVICE_ACCOUNT_NAME] iam.gke.io/gcp-service-account=[GCP_SERVICE_ACCOUNT_EMAIL]
 
 # 設定K8s上下文(使用yaml佈署應用時, 會根據k8s上下文決定佈署到哪個專案的哪個cluster)
-gcloud container clusters get-credentials cluster-herofishing --zone=asia-east1-c --project fourth-waters-410202
+gcloud container clusters get-credentials cluster-herofishing --zone=asia-east1-c --project testgcpproject1-415003
+
 
 
 # =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
-# 為命名空間添加Annotation(註解), 註解是key=value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcseditor@fourth-waters-410202.iam.gserviceaccount.com
-kubectl annotate namespace herofishing-service "iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com"
-kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com"
+# 建立service account
+gcloud iam service-accounts create gcseditor --description "編輯storage 用" --display-name "GCSEditor"
+# 為命名空間添加Annotation(註解), 註解是key=value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcseditor@testgcpproject1-415003.iam.gserviceaccount.com
+kubectl annotate namespace herofishing-service "iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com"
+kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com"
 # 為 herofishing-service 命名空間的 default 服務帳戶綁定 IAM 策略
-gcloud iam service-accounts add-iam-policy-binding gcseditor@fourth-waters-410202.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:fourth-waters-410202.svc.id.goog[herofishing-service/default]"
+gcloud iam service-accounts add-iam-policy-binding gcseditor@testgcpproject1-415003.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:testgcpproject1-415003.svc.id.goog[herofishing-service/default]"
 # 為 herofishing-gameserver 命名空間的 default 服務帳戶綁定 IAM 策略
-gcloud iam service-accounts add-iam-policy-binding gcseditor@fourth-waters-410202.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:fourth-waters-410202.svc.id.goog[herofishing-gameserver/default]"
+gcloud iam service-accounts add-iam-policy-binding gcseditor@testgcpproject1-415003.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:testgcpproject1-415003.svc.id.goog[herofishing-gameserver/default]"
 # 將K8s的服務帳戶與GCP的服務帳戶綁定(讓k8s的default綁定GCP的gcseditor綁定)
-kubectl annotate serviceaccount default -n herofishing-service iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com
-kubectl annotate serviceaccount default -n herofishing-gameserver iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com
+kubectl annotate serviceaccount default -n herofishing-service iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com
+kubectl annotate serviceaccount default -n herofishing-gameserver iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com
 
 # =========安裝Agones步驟=========
 # 使用helm安裝agones, 參考官方文件: https://agones.dev/site/docs/installation/install-agones/helm/
@@ -63,10 +101,10 @@ kubectl get pods -n agones-system -o wide # 取得k8s的pods來確認部屬與�
 helm uninstall helm-release-herofishing --namespace=agones-system
 
 # 將K8s的服務帳戶與GCP的服務帳戶綁定(agones fleet建出來的gameserver pod是使用agones-sdk這個serviceAccount, 所以讓k8s的agones-sdk綁定GCP的gcseditor綁定)
-gcloud iam service-accounts add-iam-policy-binding gcseditor@fourth-waters-410202.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:fourth-waters-410202.svc.id.goog[herofishing-gameserver/agones-sdk]"
-kubectl annotate serviceaccount agones-sdk -n herofishing-gameserver iam.gke.io/gcp-service-account=gcseditor@fourth-waters-410202.iam.gserviceaccount.com
+gcloud iam service-accounts add-iam-policy-binding gcseditor@testgcpproject1-415003.iam.gserviceaccount.com --role roles/iam.workloadIdentityUser --member "serviceAccount:testgcpproject1-415003.svc.id.goog[herofishing-gameserver/agones-sdk]"
+kubectl annotate serviceaccount agones-sdk -n herofishing-gameserver iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com
 # 使用以下語法來查詢是否都有將k8s的服務帳戶綁定到GCP的服務帳戶
-gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --project fourth-waters-410202
+gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --project testgcpproject1-415003
 
 # 建立防火牆(這個沒設定會沒辦法透過UDP連線到server)
 gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
