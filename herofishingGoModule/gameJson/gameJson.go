@@ -153,7 +153,7 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 	}
 	items, err := unmarshaler.UnmarshalJSONData(jsonName, jsonData)
 	if err != nil {
-		log.Errorf("%s Unmarshal失敗: %v", logger.LOG_GameJson, err)
+		log.Errorf("%s %s表Unmarshal失敗: %v", logger.LOG_GameJson, jsonName, err)
 		return err
 	}
 	jsonDic[jsonName] = items

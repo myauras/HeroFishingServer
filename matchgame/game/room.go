@@ -71,8 +71,12 @@ type AttackEvent struct {
 
 const CHAN_BUFFER = 4
 
-var Env string   // 環境版本
 var MyRoom *Room // 房間
+
+// Mode模式分為以下:
+// standard:一般版本
+// non-agones: 個人測試模式(不使用Agones服務, non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
+var Mode string
 
 func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
 	log.Infof("%s InitGameRoom開始", logger.LOG_Room)

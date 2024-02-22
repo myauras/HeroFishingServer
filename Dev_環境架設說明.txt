@@ -11,7 +11,7 @@ gcloud init
 gcloud components install kubectl
 gcloud auth login
 gcloud config set project testgcpproject1-415003
-gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+gcloud auth application-default set-quota-project testgcpproject1-415003
 
 
 
@@ -74,6 +74,10 @@ gcloud container clusters get-credentials cluster-herofishing --zone=asia-east1-
 # =========K8s服務帳戶綁定GCP IAM服務帳戶步驟=========
 # 建立service account
 gcloud iam service-accounts create gcseditor --description "編輯storage 用" --display-name "GCSEditor"
+# 為service account加入GCS Viewer權限
+gcloud projects add-iam-policy-binding testgcpproject1-415003 `
+  --member="serviceAccount:gcseditor@testgcpproject1-415003.iam.gserviceaccount.com" `
+  --role="roles/storage.objectViewer"
 # 為命名空間添加Annotation(註解), 註解是key=value的形式讓同個命名空間可以取用, 下面的例子key是iam.gke.io/gcp-service-account, value是gcseditor@testgcpproject1-415003.iam.gserviceaccount.com
 kubectl annotate namespace herofishing-service "iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com"
 kubectl annotate namespace herofishing-gameserver "iam.gke.io/gcp-service-account=gcseditor@testgcpproject1-415003.iam.gserviceaccount.com"
@@ -107,7 +111,11 @@ kubectl annotate serviceaccount agones-sdk -n herofishing-gameserver iam.gke.io/
 gcloud container clusters describe cluster-herofishing --zone=asia-east1-c --project testgcpproject1-415003
 
 # 建立防火牆(這個沒設定會沒辦法透過UDP連線到server)
+gcloud compute firewall-rules create herofishing-matchmaker-firewall-tcp --allow tcp:32680 --target-tags herofishing --description "Firewall to allow Herofishing matchmaker TCP traffic"
+gcloud compute firewall-rules create herofishing-matchgame-firewall-tcp --allow tcp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server tcp traffic"
 gcloud compute firewall-rules create herofishing-matchgame-firewall-udp --allow udp:7000-8000 --target-tags herofishing --description "Herofishing firewall to allow game server udp traffic"
+
+
 
 # 設定應用程式認證(ADC, Application Default Credentials)
 # 先移除應用程式認證, 再重新認證(如果不是全新環境, 可能本地已經有使用的ADC文件, 換新專案時也要一併更新ADC文件)

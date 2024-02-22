@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"herofishingGoModule/k8s"
 	"herofishingGoModule/setting"
 	logger "matchgame/logger"
@@ -36,11 +35,6 @@ const (
 
 var Env string // 環境版本
 
-// Mode模式分為以下:
-// standard:一般版本
-// non-agones: 個人測試模式(不使用Agones服務, non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
-var Mode string
-
 var PodName string // Pod名稱
 
 func main() {
@@ -70,10 +64,10 @@ func main() {
 	} else {
 		log.Errorf("%s 取不到環境變數: ImgVer", logger.LOG_Main)
 	}
-	if Mode = os.Getenv("Mode"); Mode != "" {
-		log.Infof("%s Mode為: %s", logger.LOG_Main, Mode)
+	if game.Mode = os.Getenv("Mode"); game.Mode != "" {
+		log.Infof("%s Mode為: %s", logger.LOG_Main, game.Mode)
 	} else {
-		Mode = "standard"
+		game.Mode = "standard"
 		log.Errorf("%s 取不到環境變數: Mode", logger.LOG_Main)
 	}
 	if PodName = os.Getenv("PodName"); PodName != "" {
@@ -85,7 +79,7 @@ func main() {
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
 	}
-	if Mode != "non-agones" { // non-agones模式下不要呼叫初始化Agones
+	if game.Mode != "non-agones" { // non-agones模式下不要呼叫初始化Agones
 		err := agones.InitAgones()
 		if err != nil {
 			log.Errorf("%s %s", logger.LOG_Main, err)
@@ -95,7 +89,7 @@ func main() {
 	roomChan := make(chan *game.Room)
 	var packID = int64(0)
 
-	if Mode == "standard" { // standard模式
+	if game.Mode == "standard" { // standard模式
 		var matchmakerPodName string
 		var err error
 		roomInit := false
@@ -154,23 +148,15 @@ func main() {
 				}
 			}
 		})
-	} else if Mode == "non-agones" { // non-agones模式
+	} else if game.Mode == "non-agones" { // non-agones模式
 
 		log.Infof("%s 開始房間建立", logger.LOG_Main)
 
 		go func() {
 
-			port := int32(0)
-			if portStr := os.Getenv("PORT"); portStr != "" {
-				log.Infof("%s PORT為: %s", logger.LOG_Main, portStr)
-				myPort, parsePortErr := strconv.ParseInt(portStr, 10, 32)
-				if parsePortErr != nil {
-					log.Errorf("%s parse Port錯誤: %v", logger.LOG_Main, parsePortErr)
-				} else {
-					port = int32(myPort)
-				}
-			} else {
-				log.Errorf("%s 取不到環境變數: PORT", logger.LOG_Main)
+			myPort, parsePortErr := strconv.ParseInt(*port, 10, 32)
+			if parsePortErr != nil {
+				log.Errorf("%s parse Port錯誤: %v", logger.LOG_Main, parsePortErr)
 			}
 
 			// 初始化MongoDB設定
@@ -183,46 +169,39 @@ func main() {
 			// 取Loadbalancer分配給此pod的對外IP並寫入資料庫(non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
 			// 因為每個LoadBalancer Service似乎不支持
 			log.Infof("%s 取Loadbalancer分配給此pod的對外IP.\n", logger.LOG_Main)
-			ip := ""
-			gotTCPIP := false
-			gotUDPIP := false
-			for !gotTCPIP && !gotUDPIP {
+			tcpIP := ""
+			udpIP := ""
+			for tcpIP == "" && udpIP == "" {
 				// 因為pod啟動後Loadbalancer並不會立刻就分配好ip(會有延遲) 所以每5秒取一次 直到取到ip才往下跑
 				time.Sleep(5 * time.Second) // 每5秒取一次ip
 				// 取TCP服務開放的對外IP
-				if !gotTCPIP {
+				if tcpIP == "" {
 					getTcpIP, getTcpIPErr := getExternalIP(setting.MATCHGAME_TESTVER_TCP)
 					if getTcpIPErr != nil {
 						// 取得ip失敗
 						break
 					}
 					if getTcpIP != "" {
-						ip = getTcpIP
-						log.Infof("%s 取得對外TCP IP成功: %s .\n", logger.LOG_Main, ip)
-						log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
-						setExternalIPandPort("tcp", ip, port)
-						gotTCPIP = true
+						tcpIP = getTcpIP
+						log.Infof("%s 取得對外TCP IP成功: %s .\n", logger.LOG_Main, tcpIP)
 					}
 				}
 
 				// 取UDP服務開放的對外IP
-				if !gotUDPIP {
+				if udpIP == "" {
 					getUdpIP, getUdpIPErr := getExternalIP(setting.MATCHGAME_TESTVER_UDP)
 					if getUdpIPErr != nil {
 						// 取得ip失敗
 						break
 					}
 					if getUdpIP != "" {
-						ip = getUdpIP
-						log.Infof("%s 取得對外UDP IP成功: %s .\n", logger.LOG_Main, ip)
-						log.Infof("%s 開始寫入對外ID到DB.\n", logger.LOG_Main)
-						setExternalIPandPort("udp", ip, port)
-						gotUDPIP = true
+						udpIP = getUdpIP
+						log.Infof("%s 取得對外UDP IP成功: %s .\n", logger.LOG_Main, udpIP)
 					}
 				}
 
 			}
-
+			setExternalIPandPort(tcpIP, udpIP, int32(myPort))
 			matchmakerPodName := ""
 			playerIDs := [setting.PLAYER_NUMBER]string{}
 
@@ -244,11 +223,10 @@ func main() {
 			log.Infof("%s PlayerIDs: %s", logger.LOG_Main, playerIDs)
 			log.Infof("%s dbMapID: %s", logger.LOG_Main, dbMapID)
 			log.Infof("%s roomName: %s", logger.LOG_Main, roomName)
-			log.Infof("%s Address: %s", logger.LOG_Main, ip)
 			log.Infof("%s Port: %v", logger.LOG_Main, port)
 			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
-			game.InitGameRoom(dbMapID, playerIDs, roomName, ip, port, PodName, nodeName, matchmakerPodName, roomChan)
+			game.InitGameRoom(dbMapID, playerIDs, roomName, "", int32(myPort), PodName, nodeName, matchmakerPodName, roomChan)
 
 			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
 		}()
@@ -258,7 +236,7 @@ func main() {
 
 	stopChan := make(chan struct{})
 	endGameChan := make(chan struct{})
-	if Mode != "non-agones" {
+	if game.Mode != "non-agones" {
 		agones.SetServerState(agonesv1.GameServerStateReady) // 設定房間為Ready(才會被Matchmaker分配玩家進來)
 		go agones.AgonesHealthPin(stopChan)                  // Agones伺服器健康檢查
 	}
@@ -280,8 +258,7 @@ func main() {
 	// 開始生怪計時器
 	go room.MSpawner.SpawnTimer()
 	room.MSpawner.SpawnSwitch(false)
-
-	if packID != 0 { // non-agones模式下不需與Matchmaker溝通
+	if game.Mode != "non-agones" { // non-agones模式下不需與Matchmaker溝通
 		room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
 		go room.SubMatchmakerMsg()          // 訂閱MatchmakerMsg
 	}
@@ -291,7 +268,7 @@ func main() {
 		// 錯誤發生寫入Log
 		// FirebaseFunction.DeleteGameRoom(RoomName)
 		log.Infof("%s game stop chan", logger.LOG_Main)
-		if Mode != "non-agones" {
+		if game.Mode != "non-agones" { // non-agones模式下不使用agones服務
 			agones.ShutdownServer()
 		}
 
@@ -300,13 +277,13 @@ func main() {
 		// 遊戲房關閉寫入Log
 		// FirebaseFunction.DeleteGameRoom(RoomName)
 		log.Infof("%s End game chan", logger.LOG_Main)
-		if Mode != "non-agones" {
+		if game.Mode != "non-agones" { // non-agones模式下不使用agones服務
 			agones.DelayShutdownServer(60*time.Second, stopChan)
 		}
 	}
 	<-stopChan
 
-	if Mode != "non-agones" {
+	if game.Mode != "non-agones" { // non-agones模式下不使用agones服務
 		agones.ShutdownServer() // 關閉Server
 	}
 
@@ -322,11 +299,12 @@ func getExternalIP(_serviceName string) (string, error) {
 }
 
 // 寫入對外ID到DB中
-func setExternalIPandPort(serviceType string, ip string, port int32) {
-	ipKey := fmt.Sprintf("matchgame-testver-%s-ip", serviceType)
+func setExternalIPandPort(tcpIP string, udpIP string, port int32) {
+	log.Infof("%s 開始寫入對外IP到DB tcpIP:%s udpIP:%s port:%v.\n", logger.LOG_Main, tcpIP, udpIP, port)
 	// 設定要更新的資料
 	data := bson.D{
-		{Key: ipKey, Value: ip},
+		{Key: "matchgame-testver-tcp-ip", Value: tcpIP},
+		{Key: "matchgame-testver-udp-ip", Value: udpIP},
 		{Key: "matchgame-testver-port", Value: port},
 	}
 	// 更新資料
@@ -335,6 +313,7 @@ func setExternalIPandPort(serviceType string, ip string, port int32) {
 		log.Errorf("%s SetExternalID失敗: %v", logger.LOG_Main, err)
 		return
 	}
+	log.Infof("%s 寫入對外IP完成.\n", logger.LOG_Main)
 }
 
 // 房間循環

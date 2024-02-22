@@ -38,7 +38,7 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
-		log.Errorf("%s gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Action, err)
+		log.Errorf("%s HandleAttack時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID) SpellJsonID: %s 錯誤: %v", logger.LOG_Action, content.SpellJsonID, err)
 		return
 	}
 
@@ -167,8 +167,9 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
-		room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤", pack))
-		log.Errorf("%s HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID)錯誤: %v", logger.LOG_Action, err)
+		errStr := fmt.Sprintf("%s HandleHit時gameJson.GetHeroSpellByID(hitCMD.SpellJsonID) SpellJsonID: %s 錯誤: %v", logger.LOG_Action, content.SpellJsonID, err)
+		room.SendPacketToPlayer(player.Index, newHitErrorPack(errStr, pack))
+		log.Errorf("%s %s", logger.LOG_Action, errStr)
 		return
 	}
 	// 取rtp

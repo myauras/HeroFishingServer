@@ -10,6 +10,9 @@ import (
 
 // 送玩家離開訊息給Matchmaker
 func (r *Room) PubPlayerLeftMsg(playerID string) {
+	if Mode == "non-agones" {
+		return
+	}
 	publishChannelName := "Matchgame-" + r.RoomName
 	playerLeftContent := redis.PlayerLeft{
 		PlayerID: playerID,
@@ -38,6 +41,9 @@ func (r *Room) PubPlayerLeftMsg(playerID string) {
 
 // 送房間建立訊息給Matchmaker
 func (r *Room) PubGameCreatedMsg(packID int) {
+	if Mode == "non-agones" {
+		return
+	}
 	publishChannelName := "Matchgame-" + r.RoomName
 	gameCreatedContent := redis.GameCreated{
 		MatchgameID: r.DBMatchgame.ID,
