@@ -3,6 +3,7 @@ package setting
 import (
 	"encoding/json"
 	"net"
+	"sync"
 )
 
 // 伺服器設定
@@ -16,11 +17,24 @@ const (
 )
 
 type ConnectionTCP struct {
-	Conn             net.Conn      // TCP連線
-	PackReadStopChan chan struct{} // 關閉連線Chan
-	Encoder          *json.Encoder // 連線編碼
-	Decoder          *json.Decoder // 連線解碼
+	Conn           net.Conn      // TCP連線
+	Encoder        *json.Encoder // 連線編碼
+	Decoder        *json.Decoder // 連線解碼
+	MyPackReadChan *PackReadChan
 }
+
+// 關閉PackReadStopChan通道
+func (packReadChan *PackReadChan) ClosePackReadStopChan() {
+	packReadChan.ChanCloseOnce.Do(func() {
+		close(packReadChan.PackReadStopChan)
+	})
+}
+
+type PackReadChan struct {
+	PackReadStopChan chan struct{} // 讀取封包Chan
+	ChanCloseOnce    sync.Once
+}
+
 type ConnectionUDP struct {
 	Conn      net.PacketConn // UDP連線
 	Addr      net.Addr       // 玩家連線地址

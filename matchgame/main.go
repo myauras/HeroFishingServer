@@ -53,7 +53,6 @@ func main() {
 	}()
 
 	log.Infof("%s ==============MATCHGAME 啟動==============", logger.LOG_Main)
-	go signalListen()
 	port := flag.String("port", "7654", "The port to listen to tcp traffic on")
 	if ep := os.Getenv("PORT"); ep != "" {
 		port = &ep
@@ -79,11 +78,12 @@ func main() {
 	if ep := os.Getenv("Version"); ep != "" {
 		Env = ep
 	}
-	if game.Mode != "non-agones" { // non-agones模式下不要呼叫初始化Agones
+	if game.Mode != "non-agones" { // non-agones模式下不要呼叫初始化Agones, 也不要偵聽agones訊號
 		err := agones.InitAgones()
 		if err != nil {
 			log.Errorf("%s %s", logger.LOG_Main, err)
 		}
+		go signalListen()
 	}
 	InitGameJson() // 初始化遊戲Json資料
 	roomChan := make(chan *game.Room)

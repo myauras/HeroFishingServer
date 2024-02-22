@@ -5,6 +5,7 @@ import (
 	"fmt"
 	logger "matchgame/logger"
 	gSetting "matchgame/setting"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -69,9 +70,9 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 	defer func() {
 		log.Infof("%s 關閉handleConnectionTCP", logger.LOG_Main)
-		if err := recover(); err != nil {
-			// log.Errorf("%s (TCP)handleConnectionTCP錯誤: %v.", logger.LOG_Main, err)
-		}
+		// if err := recover(); err != nil {
+		// 	// log.Errorf("%s (TCP)handleConnectionTCP錯誤: %v.", logger.LOG_Main, err)
+		// }
 	}()
 	isAuth := false
 	encoder := json.NewEncoder(conn)
@@ -79,13 +80,16 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	conn.SetReadDeadline(time.Now().Add(gSetting.TCP_CONN_TIMEOUT_SEC * time.Second))
 	readResultChan := make(chan packReadReadResult)
 
-	packReadStopChan := make(chan struct{}, 1)
+	packReadChan := &gSetting.PackReadChan{
+		PackReadStopChan: make(chan struct{}, 1),
+		ChanCloseOnce:    sync.Once{},
+	}
 
 	// 封包接收
 	go func() {
 		for {
 			select {
-			case <-packReadStopChan:
+			case <-packReadChan.PackReadStopChan:
 				log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
 				return // 終止goroutine
 			default:
@@ -100,12 +104,12 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		select {
 		case <-stop:
 			log.Errorf("%s (TCP)強制終止連線", logger.LOG_Main)
-			close(packReadStopChan)
+			packReadChan.ClosePackReadStopChan()
 			return
 		case result := <-readResultChan:
 			if result.Err != nil {
 				log.Infof("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, result.Err)
-				close(packReadStopChan)
+				packReadChan.ClosePackReadStopChan()
 				return
 			}
 			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, result.Pack.CMD)
@@ -113,7 +117,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			//未驗證前，除了Auth指令進來其他都擋掉
 			if !isAuth && result.Pack.CMD != packet.AUTH {
 				log.Infof("%s 收到未驗證的封包", logger.LOG_Main)
-				close(packReadStopChan)
+				packReadChan.ClosePackReadStopChan()
 				return
 			}
 			if result.Pack.CMD == packet.AUTH {
@@ -184,10 +188,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					LastUpdateAt: time.Now(),
 					PlayerBuffs:  []packet.PlayerBuff{},
 					ConnTCP: &gSetting.ConnectionTCP{
-						Conn:             conn,
-						PackReadStopChan: packReadStopChan,
-						Encoder:          encoder,
-						Decoder:          decoder,
+						Conn:           conn,
+						MyPackReadChan: packReadChan,
+						Encoder:        encoder,
+						Decoder:        decoder,
 					},
 					ConnUDP: &gSetting.ConnectionUDP{
 						ConnToken: newConnToken,
@@ -196,7 +200,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				joined := game.MyRoom.JoinPlayer(&player)
 				if !joined {
 					log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
-					close(packReadStopChan)
+					packReadChan.ClosePackReadStopChan()
 					return
 				}
 				// 回送client

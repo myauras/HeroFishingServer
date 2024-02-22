@@ -656,7 +656,7 @@ func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
 func (r *Room) RoomTimer(stop chan struct{}) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("%s UpdateTimer錯誤: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
+			log.Errorf("%s RoomTimer錯誤: %v.\n%s", logger.LOG_Room, err, string(debug.Stack()))
 			stop <- struct{}{}
 		}
 	}()

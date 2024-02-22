@@ -53,7 +53,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 		player := game.MyRoom.GetPlayerByConnToken(pack.ConnToken)
 
 		if player == nil {
-			log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
+			// log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 			continue
 		}
 		if pack.CMD != packet.UPDATEGAME {
