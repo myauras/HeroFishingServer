@@ -17,26 +17,27 @@ const (
 )
 
 type ConnectionTCP struct {
-	Conn           net.Conn      // TCP連線
-	Encoder        *json.Encoder // 連線編碼
-	Decoder        *json.Decoder // 連線解碼
-	MyPackReadChan *PackReadChan
+	Conn       net.Conn      // TCP連線
+	Encoder    *json.Encoder // 連線編碼
+	Decoder    *json.Decoder // 連線解碼
+	MyLoopChan *LoopChan
 }
 
 // 關閉PackReadStopChan通道
-func (packReadChan *PackReadChan) ClosePackReadStopChan() {
-	packReadChan.ChanCloseOnce.Do(func() {
-		close(packReadChan.PackReadStopChan)
+func (loopChan *LoopChan) ClosePackReadStopChan() {
+	loopChan.ChanCloseOnce.Do(func() {
+		close(loopChan.StopChan)
 	})
 }
 
-type PackReadChan struct {
-	PackReadStopChan chan struct{} // 讀取封包Chan
-	ChanCloseOnce    sync.Once
+type LoopChan struct {
+	StopChan      chan struct{} // 讀取封包Chan
+	ChanCloseOnce sync.Once
 }
 
 type ConnectionUDP struct {
-	Conn      net.PacketConn // UDP連線
-	Addr      net.Addr       // 玩家連線地址
-	ConnToken string         // 驗證Token
+	Conn       net.PacketConn // UDP連線
+	Addr       net.Addr       // 玩家連線地址
+	ConnToken  string         // 驗證Token
+	MyLoopChan *LoopChan
 }

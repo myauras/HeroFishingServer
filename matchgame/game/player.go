@@ -146,12 +146,13 @@ func (player *Player) CloseConnection() {
 		return
 	}
 	if player.ConnTCP.Conn != nil {
-		player.ConnTCP.MyPackReadChan.ClosePackReadStopChan()
+		player.ConnTCP.MyLoopChan.ClosePackReadStopChan()
 		player.ConnTCP.Conn.Close()
 		player.ConnTCP.Conn = nil
 		player.ConnTCP = nil
 	}
 	if player.ConnUDP.Conn != nil {
+		player.ConnUDP.MyLoopChan.ClosePackReadStopChan()
 		player.ConnUDP.Conn = nil
 		player.ConnUDP = nil
 	}

@@ -1,4 +1,4 @@
 # 測試連線
 Test-NetConnection -ComputerName 34.81.100.28 -Port 7450
 
-Test-NetConnection -ComputerName 35.221.178.64 -Port 80
+Test-NetConnection -ComputerName 34.81.177.115 -Port 7654

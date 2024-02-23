@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	logger "matchgame/logger"
 	gSetting "matchgame/setting"
 	"sync"
@@ -55,17 +54,6 @@ type packReadReadResult struct {
 func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	remoteAddr := conn.RemoteAddr().String()
 
-	for _, v := range game.MyRoom.Players {
-		if v == nil {
-			continue
-		}
-		if v.ConnTCP.Conn.RemoteAddr().String() == remoteAddr {
-			logStr := fmt.Sprintf("IP為 %v 的玩家重複登入 踢掉玩家:%v", remoteAddr, v.DBPlayer.ID)
-			game.MyRoom.KickPlayer(v.ConnTCP.Conn, logStr)
-			break
-		}
-	}
-
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
 	defer conn.Close()
 	defer func() {
@@ -80,16 +68,16 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	conn.SetReadDeadline(time.Now().Add(gSetting.TCP_CONN_TIMEOUT_SEC * time.Second))
 	readResultChan := make(chan packReadReadResult)
 
-	packReadChan := &gSetting.PackReadChan{
-		PackReadStopChan: make(chan struct{}, 1),
-		ChanCloseOnce:    sync.Once{},
+	packReadChan := &gSetting.LoopChan{
+		StopChan:      make(chan struct{}, 1),
+		ChanCloseOnce: sync.Once{},
 	}
 
 	// 封包接收
 	go func() {
 		for {
 			select {
-			case <-packReadChan.PackReadStopChan:
+			case <-packReadChan.StopChan:
 				log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
 				return // 終止goroutine
 			default:
@@ -140,68 +128,91 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 						},
 					})
 				}
-				var dbPlayer mongo.DBPlayer
-				getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, playerID, &dbPlayer)
-				if getPlayerDocErr != nil {
-					log.Errorf("%s DBPlayer資料錯誤: %v", logger.LOG_Main, getPlayerDocErr)
-					_ = packet.SendPack(encoder, &packet.Pack{
-						CMD:    packet.AUTH_TOCLIENT,
-						PackID: result.Pack.PackID,
-						ErrMsg: "DBPlayer資料錯誤",
-						Content: &packet.Auth_ToClient{
-							IsAuth: false,
-						},
-					})
-				}
-
 				isAuth = true
-				// 建立RedisDB Player
-				redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellCharges, dbPlayer.Drops)
-				if redisPlayerErr != nil {
-					log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
-					_ = packet.SendPack(encoder, &packet.Pack{
-						CMD:    packet.AUTH_TOCLIENT,
-						PackID: result.Pack.PackID,
-						ErrMsg: "建立RedisPlayer錯誤",
-						Content: &packet.Auth_ToClient{
-							IsAuth: false,
-						},
-					})
+				var player game.Player
+				// 斷線重連檢測
+				reConnection := false
+				for _, v := range game.MyRoom.Players {
+					if v == nil {
+						continue
+					}
+					if v.DBPlayer.ID == playerID {
+						log.Infof("玩家(%v)斷線重連", playerID)
+						reConnection = true
+						player = *v
+						break
+					}
 				}
-				redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
 
-				// 將該玩家monogoDB上的redisSync設為false
-				updatePlayerBson := bson.D{
-					{Key: "redisSync", Value: false},
-				}
-				_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, dbPlayer.ID, updatePlayerBson)
-				if updateErr != nil {
-					log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Main, dbPlayer.ID, updateErr)
-				}
 				// 建立udp socket連線Token
 				newConnToken := generateSecureToken(32)
 
-				// 將玩家加入遊戲房
-				player := game.Player{
-					DBPlayer:     &dbPlayer,
-					RedisPlayer:  redisPlayer,
-					LastUpdateAt: time.Now(),
-					PlayerBuffs:  []packet.PlayerBuff{},
-					ConnTCP: &gSetting.ConnectionTCP{
-						Conn:           conn,
-						MyPackReadChan: packReadChan,
-						Encoder:        encoder,
-						Decoder:        decoder,
-					},
-					ConnUDP: &gSetting.ConnectionUDP{
-						ConnToken: newConnToken,
-					},
-				}
-				joined := game.MyRoom.JoinPlayer(&player)
-				if !joined {
-					log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
-					packReadChan.ClosePackReadStopChan()
-					return
+				if !reConnection { // 不是斷線重連就建立玩家資料
+
+					var dbPlayer mongo.DBPlayer
+					getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, playerID, &dbPlayer)
+					if getPlayerDocErr != nil {
+						log.Errorf("%s DBPlayer資料錯誤: %v", logger.LOG_Main, getPlayerDocErr)
+						_ = packet.SendPack(encoder, &packet.Pack{
+							CMD:    packet.AUTH_TOCLIENT,
+							PackID: result.Pack.PackID,
+							ErrMsg: "DBPlayer資料錯誤",
+							Content: &packet.Auth_ToClient{
+								IsAuth: false,
+							},
+						})
+					}
+
+					// 建立RedisDB Player
+					redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellCharges, dbPlayer.Drops)
+					if redisPlayerErr != nil {
+						log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
+						_ = packet.SendPack(encoder, &packet.Pack{
+							CMD:    packet.AUTH_TOCLIENT,
+							PackID: result.Pack.PackID,
+							ErrMsg: "建立RedisPlayer錯誤",
+							Content: &packet.Auth_ToClient{
+								IsAuth: false,
+							},
+						})
+					}
+					redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
+
+					// 將該玩家monogoDB上的redisSync設為false
+					updatePlayerBson := bson.D{
+						{Key: "redisSync", Value: false},
+					}
+					_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, dbPlayer.ID, updatePlayerBson)
+					if updateErr != nil {
+						log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Main, dbPlayer.ID, updateErr)
+					}
+
+					// 將玩家加入遊戲房
+					player = game.Player{
+						DBPlayer:     &dbPlayer,
+						RedisPlayer:  redisPlayer,
+						LastUpdateAt: time.Now(),
+						PlayerBuffs:  []packet.PlayerBuff{},
+						ConnTCP: &gSetting.ConnectionTCP{
+							Conn:       conn,
+							MyLoopChan: packReadChan,
+							Encoder:    encoder,
+							Decoder:    decoder,
+						},
+						ConnUDP: &gSetting.ConnectionUDP{
+							ConnToken: newConnToken,
+						},
+					}
+					joined := game.MyRoom.JoinPlayer(&player)
+					if !joined {
+						log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
+						packReadChan.ClosePackReadStopChan()
+						return
+					}
+
+				} else { // 斷線重連時使用已存在的玩家資料, 不須重建資料
+					player.ConnTCP.Conn = conn
+					player.ConnUDP.ConnToken = newConnToken
 				}
 				// 回送client
 				err = packet.SendPack(encoder, &packet.Pack{
@@ -209,7 +220,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					PackID: result.Pack.PackID,
 					Content: &packet.Auth_ToClient{
 						IsAuth:    true,
-						ConnToken: newConnToken,
+						ConnToken: player.ConnUDP.ConnToken,
 						Index:     player.Index,
 					},
 				})

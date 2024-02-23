@@ -4,6 +4,7 @@ import (
 	// "herofishingGoModule/setting"
 	logger "matchgame/logger"
 	gSetting "matchgame/setting"
+	"sync"
 
 	"encoding/json"
 
@@ -53,7 +54,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 		player := game.MyRoom.GetPlayerByConnToken(pack.ConnToken)
 
 		if player == nil {
-			// log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
+			log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 			continue
 		}
 		if pack.CMD != packet.UPDATEGAME {
@@ -63,25 +64,23 @@ func openConnectUDP(stop chan struct{}, src string) {
 		// 執行命令
 		if pack.CMD == packet.UDPAUTH {
 			if player.ConnUDP.Conn != nil {
-				log.Errorf("%s (UDP)此玩家已執行過UDP Auth有正在進行的updateGameLoop", logger.LOG_Main)
-				continue
+				log.Errorf("%s (UDP)玩家(%s)斷線重連UDP", logger.LOG_Main, player.DBPlayer.ID)
+				if player.ConnUDP.Addr.String() != addr.String() { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
+					log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.DBPlayer.ID, player.ConnUDP.Addr.String(), addr.String())
+				}
+			} else {
+				go updateGameLoop(player, stop)
 			}
 			// 更新連線資料
 			player.ConnUDP.Conn = conn
 			player.ConnUDP.Addr = addr
-			go updateGameLoop(player, stop)
 		} else {
 			if player.ConnUDP.Conn == nil || player.ConnUDP.Addr == nil {
-				log.Errorf("%s (UDP)收到來自 %s(%s) 但尚未進行UDP Auth的命令: %s", logger.LOG_Main, player.DBPlayer.ID, addr, pack.CMD)
+				log.Warnf("%s (UDP)收到來自 %s(%s) 但尚未進行UDP Auth的命令: %s", logger.LOG_Main, player.DBPlayer.ID, addr, pack.CMD)
 			}
 			// 更新連線資料
 			player.ConnUDP.Conn = conn
-			if player.ConnUDP.Addr.String() != addr.String() { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
-				log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.DBPlayer.ID, player.ConnUDP.Addr.String(), addr.String())
-				// 更新address避免客戶端的網路位置有改變這樣對於Wifi變更的用戶體驗比較好
-				// 但是要注意若之後有使用udp送重要行為 為了避免connToken被封包攔截要讓玩家需要重新通過tcp auth取新的token才是安全的作法
-				player.ConnUDP.Addr = addr
-			}
+
 			switch pack.CMD {
 
 			// ==========更新遊戲狀態==========
@@ -104,11 +103,19 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 	defer playerUpdateTimer.Stop()
 	defer sceneUpdateTimer.Stop()
 
+	loopChan := &gSetting.LoopChan{
+		StopChan:      make(chan struct{}, 1),
+		ChanCloseOnce: sync.Once{},
+	}
+	player.ConnUDP.MyLoopChan = loopChan
+
 	for {
 		select {
 		case <-stop:
-			//被強制終止
-			log.Errorf("強制終止UDP")
+			log.Errorf("強制終止玩家updateGameLoop")
+			return
+		case <-loopChan.StopChan:
+			log.Errorf("終止玩家updateGameLoop")
 			return
 		// ==========更新遊戲狀態==========
 		case <-gameUpdateTimer.C:
