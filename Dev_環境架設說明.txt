@@ -47,7 +47,6 @@ gcloud projects get-iam-policy testgcpproject1-415003
 
 
 
-
 # =========建立cluster步驟=========
 # Dev版使用zone就可以, 區域可以參考: https://cloud.google.com/compute/docs/regions-zones/#available
 # Channel選擇官方推薦的regular

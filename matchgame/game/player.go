@@ -177,6 +177,9 @@ func (player *Player) GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bo
 // 取得此英雄所有尚未充滿能且已經學習過的技能
 func (player *Player) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData {
 	spells := make([]gameJson.HeroSpellJsonData, 0)
+	if player == nil {
+		return spells
+	}
 	for i, v := range player.DBPlayer.SpellCharges {
 		if player.MyHero.SpellLVs[i+1] <= 0 { // 尚未學習的技能就跳過
 			continue

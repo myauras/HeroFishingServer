@@ -112,10 +112,10 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 	for {
 		select {
 		case <-stop:
-			log.Errorf("強制終止玩家updateGameLoop")
+			log.Infof("強制終止玩家updateGameLoop")
 			return
 		case <-loopChan.StopChan:
-			log.Errorf("終止玩家updateGameLoop")
+			log.Infof("終止玩家updateGameLoop")
 			return
 		// ==========更新遊戲狀態==========
 		case <-gameUpdateTimer.C:
