@@ -447,11 +447,11 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
-	ownedDrop := player.IsOwnedDrop(int32(dropSpellID))
-	if !ownedDrop {
-		log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Action, player.DBPlayer.ID, dropSpellID)
-		return
-	}
+	// ownedDrop := player.IsOwnedDrop(int32(dropSpellID))
+	// if !ownedDrop {
+	// 	log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Action, player.DBPlayer.ID, dropSpellID)
+	// 	return
+	// }
 	switch dropSpellJson.EffectType {
 	case "Frozen": // 冰風暴
 		duration, err := strconv.ParseFloat(dropSpellJson.EffectValue1, 64)
