@@ -50,7 +50,6 @@ func openConnectUDP(stop chan struct{}, src string) {
 			log.Errorf("%s (UDP)解析封包錯誤: %s", logger.LOG_Main, unmarshalErr.Error())
 			continue
 		}
-		log.Errorf("收到UDP封包")
 		// 玩家驗證
 		player := game.MyRoom.GetPlayerByConnToken(pack.ConnToken)
 

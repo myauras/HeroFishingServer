@@ -116,7 +116,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				isAuth = true
 				var player game.Player
 				// 斷線重連檢測
-				log.Errorf("進行斷線重連檢測")
 				reConnection := false
 				for _, v := range game.MyRoom.Players {
 					if v == nil {
@@ -162,7 +161,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 							},
 						})
 					}
-					//redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
+					redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
 
 					// 將該玩家monogoDB上的redisSync設為false
 					updatePlayerBson := bson.D{

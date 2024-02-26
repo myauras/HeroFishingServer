@@ -32,8 +32,8 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS     float64 = 60    // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS  float64 = 3     // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	KICK_PLAYER_SECS     float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS  float64 = 3   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 	UPDATETIMER_MILISECS int     = 10000 // 計時器X毫秒跑一次
 )
 
@@ -136,7 +136,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
-	//go RoomLoop() // 開始房間循環
+	go RoomLoop() // 開始房間循環
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
@@ -576,7 +576,6 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 		if v == nil || v.ConnTCP.Conn == nil {
 			continue
 		}
-		log.Errorf("(TCP)BroadCastPacket Send")
 		err := packet.SendPack(v.ConnTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
@@ -590,7 +589,6 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 	if r.Players[pIndex] == nil || r.Players[pIndex].ConnTCP.Conn == nil {
 		return
 	}
-	log.Errorf("(TCP)Send")
 	err := packet.SendPack(r.Players[pIndex].ConnTCP.Encoder, pack)
 	if err != nil {
 		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
@@ -626,7 +624,6 @@ func (r *Room) SendPacketToPlayer_UDP(pIndex int, sendData []byte) {
 	}
 	player := r.Players[pIndex]
 	sendData = append(sendData, '\n')
-	log.Errorf("(UDP)Send")
 	_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
 	if sendErr != nil {
 		log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
@@ -647,7 +644,6 @@ func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
 			continue
 		}
 		sendData = append(sendData, '\n')
-		log.Errorf("(UDP)BroadCastPacket Send")
 		_, sendErr := v.ConnUDP.Conn.WriteTo(sendData, v.ConnUDP.Addr)
 		if sendErr != nil {
 			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())

@@ -253,10 +253,10 @@ func main() {
 	go openConnectTCP(stopChan, src)
 	go openConnectUDP(stopChan, src)
 
-	//go room.RoomTimer(stopChan) // 開始遊戲房計時器
+	go room.RoomTimer(stopChan) // 開始遊戲房計時器
 
 	// 開始生怪計時器
-	// go room.MSpawner.SpawnTimer()
+	go room.MSpawner.SpawnTimer()
 	room.MSpawner.SpawnSwitch(false)
 	if game.Mode != "non-agones" { // non-agones模式下不需與Matchmaker溝通
 		room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
