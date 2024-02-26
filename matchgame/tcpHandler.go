@@ -45,11 +45,6 @@ func openConnectTCP(stop chan struct{}, src string) {
 	}
 }
 
-type packReadReadResult struct {
-	Pack packet.Pack
-	Err  error
-}
-
 // 處理TCP連線封包
 func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	remoteAddr := conn.RemoteAddr().String()
@@ -66,26 +61,11 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 	encoder := json.NewEncoder(conn)
 	decoder := json.NewDecoder(conn)
 	conn.SetReadDeadline(time.Now().Add(gSetting.TCP_CONN_TIMEOUT_SEC * time.Second))
-	readResultChan := make(chan packReadReadResult)
 
 	packReadChan := &gSetting.LoopChan{
 		StopChan:      make(chan struct{}, 1),
 		ChanCloseOnce: sync.Once{},
 	}
-
-	// 封包接收
-	go func() {
-		for {
-			select {
-			case <-packReadChan.StopChan:
-				log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
-				return // 終止goroutine
-			default:
-				pack, err := packet.ReadPack(decoder)
-				readResultChan <- packReadReadResult{pack, err} // 讀取封包
-			}
-		}
-	}()
 
 	// 封包處理
 	for {
@@ -94,23 +74,28 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 			log.Errorf("%s (TCP)強制終止連線", logger.LOG_Main)
 			packReadChan.ClosePackReadStopChan()
 			return
-		case result := <-readResultChan:
-			if result.Err != nil {
-				log.Infof("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, result.Err)
+		case <-packReadChan.StopChan:
+			log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
+			return // 終止goroutine
+
+		default:
+			pack, err := packet.ReadPack(decoder)
+			if err != nil {
+				log.Infof("%s (TCP)packReadReadResult錯誤: %v.", logger.LOG_Main, err)
 				packReadChan.ClosePackReadStopChan()
 				return
 			}
-			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, result.Pack.CMD)
-			var err error
+			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
+
 			//未驗證前，除了Auth指令進來其他都擋掉
-			if !isAuth && result.Pack.CMD != packet.AUTH {
+			if !isAuth && pack.CMD != packet.AUTH {
 				log.Infof("%s 收到未驗證的封包", logger.LOG_Main)
 				packReadChan.ClosePackReadStopChan()
 				return
 			}
-			if result.Pack.CMD == packet.AUTH {
+			if pack.CMD == packet.AUTH {
 				authContent := packet.Auth{}
-				if ok := authContent.Parse(result.Pack.Content); !ok {
+				if ok := authContent.Parse(pack.Content); !ok {
 					log.Errorf("%s 反序列化AUTH封包失敗", logger.LOG_Main)
 					continue
 				}
@@ -121,7 +106,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					log.Errorf("%s 玩家驗證錯誤: %v", logger.LOG_Main, authErr)
 					_ = packet.SendPack(encoder, &packet.Pack{
 						CMD:    packet.AUTH_TOCLIENT,
-						PackID: result.Pack.PackID,
+						PackID: pack.PackID,
 						ErrMsg: "玩家驗證錯誤",
 						Content: &packet.Auth_ToClient{
 							IsAuth: false,
@@ -155,7 +140,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 						log.Errorf("%s DBPlayer資料錯誤: %v", logger.LOG_Main, getPlayerDocErr)
 						_ = packet.SendPack(encoder, &packet.Pack{
 							CMD:    packet.AUTH_TOCLIENT,
-							PackID: result.Pack.PackID,
+							PackID: pack.PackID,
 							ErrMsg: "DBPlayer資料錯誤",
 							Content: &packet.Auth_ToClient{
 								IsAuth: false,
@@ -169,7 +154,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 						log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 						_ = packet.SendPack(encoder, &packet.Pack{
 							CMD:    packet.AUTH_TOCLIENT,
-							PackID: result.Pack.PackID,
+							PackID: pack.PackID,
 							ErrMsg: "建立RedisPlayer錯誤",
 							Content: &packet.Auth_ToClient{
 								IsAuth: false,
@@ -217,7 +202,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				// 回送client
 				err = packet.SendPack(encoder, &packet.Pack{
 					CMD:    packet.AUTH_TOCLIENT,
-					PackID: result.Pack.PackID,
+					PackID: pack.PackID,
 					Content: &packet.Auth_ToClient{
 						IsAuth:    true,
 						ConnToken: player.ConnUDP.ConnToken,
@@ -229,7 +214,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				}
 
 			} else {
-				err = game.MyRoom.HandleTCPMsg(conn, result.Pack)
+				err = game.MyRoom.HandleTCPMsg(conn, pack)
 				if err != nil {
 					log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
 					game.MyRoom.KickPlayer(conn, "處理GameRoom封包錯誤")

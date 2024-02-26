@@ -36,6 +36,17 @@ func (dropSpell *DropSpell) Parse(common CMDContent) bool {
 		return false
 	}
 
+	if attackID, ok := m["AttackID"].(float64); ok {
+		log.Errorf("收到DropSpell的attackID是: %v ", attackID)
+		dropSpell.AttackID = int(attackID)
+	} else {
+		// 寫LOG
+		log.WithFields(log.Fields{
+			"log": "parse AttackID資料錯誤",
+		}).Errorf("%s Parse packet error: %s", logger.LOG_Pack, "AttackID")
+		return false
+	}
+
 	return true
 
 }

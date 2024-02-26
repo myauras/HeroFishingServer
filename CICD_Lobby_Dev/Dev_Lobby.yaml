@@ -34,8 +34,8 @@ spec:
         image: asia-east1-docker.pkg.dev/testgcpproject1-415003/herofishing/herofishing-lobby:0.1.42
         resources:
           requests:
-            memory: "1024Mi"
-            cpu: "100m"
+            memory: "512Mi"
+            cpu: "50m"
           limits:
             memory: "2048Mi"
             cpu: "200m"

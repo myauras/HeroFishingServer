@@ -53,7 +53,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	pointBuffer := player.DBPlayer.PointBuffer
-	log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
+	// log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
 		gainKP = float64(pointBuffer) / rewardPoint // 計算點數溢位獲得的擊殺率
@@ -76,7 +76,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 		pointBuffer = 0
 	}
 	ptBufferChanged := pointBuffer - player.DBPlayer.PointBuffer // PointBuffer改變值
-	log.Infof("PointBuffer修正後=======pointBufer: %v KP: %v pt改變值: %v", pointBuffer, kp, ptBufferChanged)
+	// log.Infof("PointBuffer修正後=======pointBufer: %v KP: %v pt改變值: %v", pointBuffer, kp, ptBufferChanged)
 
 	// ====================RTP校正(RTP Adjust)
 	adjustRTP := true
@@ -88,14 +88,14 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 		adjustRTP = false
 	}
 	if adjustRTP {
-		log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
+		// log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
 		playerRTP := float64(player.DBPlayer.TotalWin) / float64(player.DBPlayer.TotalExpenditure) // 計算玩家實際RTP
 		log.Infof("RTP差: %v", model.GameRTP-playerRTP)
 		if math.Abs(model.GameRTP-playerRTP) >= model.RtpAdjust_RTPThreshold { // RTP差>=RTP校正閥值才考慮RTP校正
 			expectedTotalWin := float64(player.DBPlayer.TotalExpenditure) * model.GameRTP
 			pointDiff := expectedTotalWin - float64(player.DBPlayer.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
 			pointDiffThreshold := rewardPoint * model.RtpAdjust_KillRateValue
-			log.Infof("分差: %v 分差校正閥值: %v 期望總贏: %v", pointDiff, pointDiffThreshold, expectedTotalWin)
+			// log.Infof("分差: %v 分差校正閥值: %v 期望總贏: %v", pointDiff, pointDiffThreshold, expectedTotalWin)
 			if math.Abs(pointDiff) >= pointDiffThreshold { // 分差 >= 分差校正閥值才進行RTP校正
 				// 進行RTP校正
 				if playerRTP < model.GameRTP {
@@ -105,9 +105,9 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 				}
 			}
 		}
-		log.Infof("RTP校正後=======KP: %v", kp)
+		// log.Infof("RTP校正後=======KP: %v", kp)
 	} else {
-		log.Infof("不校正RTP=======KP: %v", kp)
+		// log.Infof("不校正RTP=======KP: %v", kp)
 	}
 
 	return kp, ptBufferChanged
