@@ -87,9 +87,18 @@ func (spellJson *HeroSpellJsonData) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// 此HeroSpellJsonData是否為技能, 是技能回傳true, 是普攻回傳false
-func (heroSpellJsonData HeroSpellJsonData) IsSpell() bool {
-	return len(heroSpellJsonData.RTP) != 0
+// 此HeroSpellJsonData的技能類型, "Attack":普攻 "HeroSpell":英雄技能 "DropSpell":掉落技能
+func (heroSpellJsonData HeroSpellJsonData) GetSpellType() string {
+	if len(heroSpellJsonData.RTP) == 0 {
+		return "Attack"
+	}
+	lastChar := heroSpellJsonData.ID[len(heroSpellJsonData.ID)-1:]
+	_, err := strconv.Atoi(lastChar)
+	if err == nil {
+		return "HeroSpell"
+	}
+
+	return "DropSpell"
 }
 
 // 取得該技能等級對應的RTP, 等級傳入1就是等級1的技能, 如果該技能沒有該等級的RTP就會回傳0

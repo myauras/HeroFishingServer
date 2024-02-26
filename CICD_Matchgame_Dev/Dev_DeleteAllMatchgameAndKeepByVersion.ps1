@@ -1,5 +1,5 @@
 # 指定要刪除的pod類型與所在命名空間, 並指定要保留的版本(非指定版本都會刪除)
-$keepVersion = "0.2.257"  
+$keepVersion = "0.2.270"  
 $type = "herofishing-matchgame"
 $namespace = "herofishing-gameserver"
 

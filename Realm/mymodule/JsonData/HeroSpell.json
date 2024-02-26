@@ -15,5 +15,5 @@
 	{	"ID":"19_spell1",	"Ref":"19_spell1",	"RTP":"30",	"CD":"5",	"Cost":"15",	"SpellType":"SpreadLineShot",	"DestroyOnCollision":"True",	"SpellTypeValues":"5,0.4,15,10,5,2",	"Motions":"spell1",	"PrefabID":"190",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
 	{	"ID":"19_spell2",	"Ref":"19_spell2",	"RTP":"50",	"CD":"5",	"Cost":"25",	"SpellType":"LineShot",	"DestroyOnCollision":"False",	"SpellTypeValues":"5,0.4,15,2,0",	"Motions":"spell3",	"PrefabID":"192",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
 	{	"ID":"19_spell3",	"Ref":"19_spell3",	"RTP":"80",	"CD":"5",	"Cost":"40",	"SpellType":"LineShot",	"DestroyOnCollision":"True",	"SpellTypeValues":"5,0.4,15,2,0",	"Threshold":"5,10",	"Motions":"spell4",	"PrefabID":"190",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"},
-	{	"ID":"15_drop_spell",	"Ref":"15_drop_spell",	"RTP":"150",	"CD":"0.1",	"Waves":"1",	"MaxHits":"100",	"SpellType":"CircleArea",	"DestroyOnCollision":"False",	"SpellTypeValues":"2,1,1,0,0,1",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"}
+	{	"ID":"15_drop_spell",	"Ref":"15_drop_spell",	"RTP":"150",	"CD":"0.1",	"Waves":"1",	"MaxHits":"50",	"SpellType":"CircleArea",	"DestroyOnCollision":"False",	"SpellTypeValues":"2,1,1,0,0,1",	"HitMonsterShaderSetting":"191,35,12,255,6,1.2,1,-1.29,0"}
 ]}
