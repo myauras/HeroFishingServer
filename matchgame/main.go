@@ -20,7 +20,7 @@ import (
 	// "fmt"
 	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
-	// "herofishingGoModule/redis"
+	"herofishingGoModule/redis"
 	"matchgame/agones"
 	"matchgame/game"
 	"os"
@@ -245,7 +245,7 @@ func main() {
 	log.Info(room.DBMatchgame.DBMapID)
 	// ====================Room資料設定完成====================
 	log.Infof("%s ==============Room資料設定完成==============", logger.LOG_Main)
-	//redis.Init()              // 初始化redisDB
+	redis.Init() // 初始化redisDB
 	//room.WriteMatchgameToDB() // 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
 
 	// 開啟連線
@@ -253,15 +253,15 @@ func main() {
 	go openConnectTCP(stopChan, src)
 	go openConnectUDP(stopChan, src)
 
-	// go room.RoomTimer(stopChan) // 開始遊戲房計時器
+	go room.RoomTimer(stopChan) // 開始遊戲房計時器
 
 	// 開始生怪計時器
-	// go room.MSpawner.SpawnTimer()
-	// room.MSpawner.SpawnSwitch(false)
-	// if game.Mode != "non-agones" { // non-agones模式下不需與Matchmaker溝通
-	// 	room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
-	// 	go room.SubMatchmakerMsg()          // 訂閱MatchmakerMsg
-	// }
+	go room.MSpawner.SpawnTimer()
+	room.MSpawner.SpawnSwitch(false)
+	if game.Mode != "non-agones" { // non-agones模式下不需與Matchmaker溝通
+		room.PubGameCreatedMsg(int(packID)) // 送房間建立訊息給Matchmaker
+		go room.SubMatchmakerMsg()          // 訂閱MatchmakerMsg
+	}
 
 	select {
 	case <-stopChan:

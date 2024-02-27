@@ -12,7 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	mongo "herofishingGoModule/mongo"
-	// "herofishingGoModule/redis"
+	"herofishingGoModule/redis"
 	"matchgame/game"
 	"matchgame/packet"
 	"net"
@@ -149,19 +149,19 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 
 					// 建立RedisDB Player
-					// redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellCharges, dbPlayer.Drops)
-					// if redisPlayerErr != nil {
-					// 	log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
-					// 	_ = packet.SendPack(encoder, &packet.Pack{
-					// 		CMD:    packet.AUTH_TOCLIENT,
-					// 		PackID: pack.PackID,
-					// 		ErrMsg: "建立RedisPlayer錯誤",
-					// 		Content: &packet.Auth_ToClient{
-					// 			IsAuth: false,
-					// 		},
-					// 	})
-					// }
-					// redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
+					redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellCharges, dbPlayer.Drops)
+					if redisPlayerErr != nil {
+						log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
+						_ = packet.SendPack(encoder, &packet.Pack{
+							CMD:    packet.AUTH_TOCLIENT,
+							PackID: pack.PackID,
+							ErrMsg: "建立RedisPlayer錯誤",
+							Content: &packet.Auth_ToClient{
+								IsAuth: false,
+							},
+						})
+					}
+					redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
 
 					// 將該玩家monogoDB上的redisSync設為false
 					updatePlayerBson := bson.D{
@@ -175,7 +175,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					// 將玩家加入遊戲房
 					player = game.Player{
 						DBPlayer:     &dbPlayer,
-						RedisPlayer:  nil,
+						RedisPlayer:  redisPlayer,
 						LastUpdateAt: time.Now(),
 						PlayerBuffs:  []packet.PlayerBuff{},
 						ConnTCP: &gSetting.ConnectionTCP{

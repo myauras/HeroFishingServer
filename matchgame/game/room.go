@@ -135,7 +135,7 @@ func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomN
 	MyRoom.MSpawner = NewMonsterSpawner()
 	MyRoom.MSpawner.InitMonsterSpawner(dbMap.JsonMapID)
 	MyRoom.AttackEvents = make(map[string]*AttackEvent)
-	// go RoomLoop() // 開始房間循環
+	go RoomLoop() // 開始房間循環
 	// 這裡之後要加房間初始化Log到DB
 
 	log.Infof("%s InitGameRoom完成", logger.LOG_Room)
@@ -361,7 +361,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 		}
 		r.PubPlayerLeftMsg(player.DBPlayer.ID) // 送玩家離開訊息給Matchmaker
 	}
-	//player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
+	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
 	r.MutexLock.Lock()
 	r.Players[seatIndex] = nil
 	r.DBMatchgame.KickPlayer(player.DBPlayer.ID)
