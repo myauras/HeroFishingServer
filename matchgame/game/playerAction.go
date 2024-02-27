@@ -176,7 +176,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 取rtp
 	rtp := float64(0)
 	spellType := spellJson.GetSpellType()
-	log.Errorf("spellType:%s,  spellID: %v", spellType, spellJson.ID)
 	if spellType == "HeroSpell" {
 		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
 		if err != nil {

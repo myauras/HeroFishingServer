@@ -42,8 +42,8 @@ func (r *Room) RemoveExpiredSceneEffects() {
 
 // 賦予場景冰凍效果
 func (room *Room) AddFrozenEffect(effectType string, duration float64) {
-	// room.MutexLock.Lock()
-	// defer room.MutexLock.Unlock()
+	room.MutexLock.Lock()
+	defer room.MutexLock.Unlock()
 	room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
 		Name:     effectType,
 		AtTime:   room.GameTime,

@@ -13,22 +13,33 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var dbWriteMinMiliSecs = 5000
+var dbWriteMinMiliSecs = 1000
 
 var players map[string]*RedisPlayer
 
 type RedisPlayer struct {
-	id                     string   // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
-	pointBuffer            int64    // 暫存點數修改
-	ptBufferBuffer         int64    // 暫存點數溢位修改
-	totalWinBuffer         int64    // 暫存總贏點數修改
-	totalExpenditureBuffer int64    // 暫存總花費點數修改
-	heroExpBuffer          int32    // 暫存經驗修改
-	spellChargesBuffer     [3]int32 // 暫存技能充能
-	dropsBuffer            [3]int32 // 暫存掉落道具
-	updateOn               bool     // 資料定時更新上RedisDB程序開關
+	id                     string    // Redis的PlayerID是"player-"+mongodb player id, 例如player-6538c6f219a12eb9e4ded943
+	pointBuffer            int64     // 暫存點數修改
+	ptBufferBuffer         int64     // 暫存點數溢位修改
+	totalWinBuffer         int64     // 暫存總贏點數修改
+	totalExpenditureBuffer int64     // 暫存總花費點數修改
+	heroExpBuffer          int32     // 暫存經驗修改
+	spellChargesBuffer     [3]int32  // 暫存技能充能
+	dropsBuffer            [3]int32  // 暫存掉落道具
+	MyLoopChan             *LoopChan // 資料更新關閉通道
+	MutexLock              sync.Mutex
+}
 
-	MutexLock sync.Mutex
+// 關閉PackReadStopChan通道
+func (loopChan *LoopChan) closePackReadStopChan() {
+	loopChan.ChanCloseOnce.Do(func() {
+		close(loopChan.StopChan)
+	})
+}
+
+type LoopChan struct {
+	StopChan      chan struct{}
+	ChanCloseOnce sync.Once
 }
 
 // ※注意: 因為RedisDB都是存成字串, 所以有新增非字串的類型要定義DecodeHook
@@ -74,7 +85,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	if rPlayer.pointBuffer != 0 {
-		log.Errorf("Redis pointBuffer")
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "point", rPlayer.pointBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis point錯誤: %v", logger.LOG_Redis, err)
@@ -82,7 +92,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		rPlayer.pointBuffer = 0
 	}
 	if rPlayer.ptBufferBuffer != 0 {
-		log.Errorf("Redis ptBufferBuffer")
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "pointBuffer", rPlayer.ptBufferBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis pointBuffer錯誤: %v", logger.LOG_Redis, err)
@@ -90,7 +99,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		rPlayer.ptBufferBuffer = 0
 	}
 	if rPlayer.totalWinBuffer != 0 {
-		log.Errorf("Redis totalWinBuffer")
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalWinB", rPlayer.totalWinBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis totalWinB錯誤: %v", logger.LOG_Redis, err)
@@ -98,7 +106,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		rPlayer.totalWinBuffer = 0
 	}
 	if rPlayer.totalExpenditureBuffer != 0 {
-		log.Errorf("Redis totalExpenditureBuffer")
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "totalExpenditure", rPlayer.totalExpenditureBuffer).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis totalExpenditure錯誤: %v", logger.LOG_Redis, err)
@@ -106,7 +113,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		rPlayer.totalExpenditureBuffer = 0
 	}
 	if rPlayer.heroExpBuffer != 0 {
-		log.Errorf("Redis heroExpBuffer")
 		_, err := rdb.HIncrBy(ctx, rPlayer.id, "heroExp", int64(rPlayer.heroExpBuffer)).Result()
 		if err != nil {
 			log.Errorf("%s writePlayerUpdateToRedis heroExp錯誤: %v", logger.LOG_Redis, err)
@@ -115,7 +121,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	}
 	for i, charge := range rPlayer.spellChargesBuffer {
 		if charge != 0 {
-			log.Errorf("Redis charge")
 			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("spellCharge%d", (i+1)), charge).Result()
 			if err != nil {
 				log.Errorf("%s writePlayerUpdateToRedis spellCharge錯誤: %v", logger.LOG_Redis, err)
@@ -125,7 +130,6 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 	}
 	for i, drop := range rPlayer.dropsBuffer {
 		if drop != 0 {
-			log.Errorf("Redis drop")
 			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("drop%d", (i+1)), drop).Result()
 			if err != nil {
 				log.Errorf("%s writePlayerUpdateToRedis drop錯誤: %v", logger.LOG_Redis, err)
@@ -139,9 +143,9 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 // 關閉玩家
 func ClosePlayer(playerID string) {
 	if _, ok := players[playerID]; ok {
-		players[playerID].StopInGameUpdatePlayer()
+		players[playerID].MyLoopChan.closePackReadStopChan()
 		players[playerID].WritePlayerUpdateToRedis()
-		delete(players, playerID) // 從 map 中移除
+		delete(players, playerID)
 		log.Infof("%s 移除Redis Player(%s)", logger.LOG_Redis, playerID)
 	} else {
 		log.Warnf("%s ClosePlayer錯誤 玩家 %s 不存在map中", logger.LOG_Redis, playerID)
@@ -185,7 +189,9 @@ func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int
 		id:                 playerID,
 		spellChargesBuffer: [3]int32{0, 0, 0},
 		dropsBuffer:        [3]int32{0, 0, 0},
-		updateOn:           true,
+		MyLoopChan: &LoopChan{
+			StopChan: make(chan struct{}, 1),
+		},
 	}
 	go player.updatePlayer()
 
@@ -196,20 +202,6 @@ func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int
 	}
 	log.Infof("%s 建立Redis Player(%s)", logger.LOG_Redis, playerID)
 	return &player, nil
-}
-
-// 開始跑玩家資料定時更新上RedisDB程序
-func (rPlayer *RedisPlayer) StartInGameUpdatePlayer() {
-	rPlayer.MutexLock.Lock()
-	defer rPlayer.MutexLock.Unlock()
-	rPlayer.updateOn = true
-}
-
-// 停止跑玩家資料定時更新上RedisDB程序
-func (rPlayer *RedisPlayer) StopInGameUpdatePlayer() {
-	rPlayer.MutexLock.Lock()
-	defer rPlayer.MutexLock.Unlock()
-	rPlayer.updateOn = false
 }
 
 // 增加點數
@@ -270,10 +262,10 @@ func (player *RedisPlayer) updatePlayer() {
 	ticker := time.NewTicker(time.Duration(dbWriteMinMiliSecs) * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		if !player.updateOn {
-			continue
-		}
 		select {
+		case <-player.MyLoopChan.StopChan:
+			log.Infof("%s 關閉RedisPlayer更新", logger.LOG_Redis)
+			return
 		case <-ticker.C:
 			player.WritePlayerUpdateToRedis()
 		case <-ctx.Done():
