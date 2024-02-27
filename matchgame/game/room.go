@@ -51,7 +51,7 @@ type Room struct {
 	MSpawner     *MonsterSpawner                // 生怪器
 	AttackEvents map[string]*AttackEvent        // 攻擊事件
 	SceneEffects []packet.SceneEffect           // 場景效果
-	MutexLock    sync.Mutex
+	MutexLock    sync.RWMutex
 }
 
 // 攻擊事件(包含普攻, 英雄技能, 道具技能, 互動物件等任何攻擊)
@@ -175,22 +175,6 @@ func (r *Room) RemoveExpiredAttackEvents() {
 	if len(toRemoveKeys) > 0 {
 		utility.RemoveFromMapByKeys(r.AttackEvents, toRemoveKeys)
 		// log.Infof("%s 移除過期的攻擊事件: %v", logger.LOG_Room, toRemoveKeys)
-	}
-}
-
-// 移除過期的場景效果
-func (r *Room) RemoveExpiredSceneEffects() {
-	toRemoveIdxs := make([]int, 0)
-	for i, v := range r.SceneEffects {
-		if r.GameTime > (v.AtTime + v.Duration) {
-			toRemoveIdxs = append(toRemoveIdxs, i)
-		}
-	}
-	if len(toRemoveIdxs) > 0 {
-		// for _, v := range toRemoveIdxs {
-		// 	log.Infof("%s 移除過期的場景效果: %v", logger.LOG_Room, r.SceneEffects[v].Name)
-		// }
-		r.SceneEffects = utility.RemoveFromSliceBySlice(r.SceneEffects, toRemoveIdxs)
 	}
 }
 

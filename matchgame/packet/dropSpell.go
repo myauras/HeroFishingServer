@@ -37,7 +37,6 @@ func (dropSpell *DropSpell) Parse(common CMDContent) bool {
 	}
 
 	if attackID, ok := m["AttackID"].(float64); ok {
-		log.Errorf("收到DropSpell的attackID是: %v ", attackID)
 		dropSpell.AttackID = int(attackID)
 	} else {
 		// 寫LOG

@@ -458,12 +458,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
-		room.MSpawner.Frozen(duration) // 設定冰凍停止產怪
-		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
-			Name:     dropSpellJson.EffectType,
-			AtTime:   room.GameTime,
-			Duration: duration,
-		})
+		room.AddFrozenEffect(dropSpellJson.EffectType, duration)
 		room.BroadCastPacket(player.Index, &packet.Pack{
 			CMD:    packet.DROPSPELL_TOCLIENT,
 			PackID: -1,

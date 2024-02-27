@@ -36,13 +36,12 @@ func NewSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBoss bool) *
 }
 
 type MonsterSpawner struct {
-	BossExist        bool             // BOSS是否存在場上的標記
-	spawnTimerMap    map[int]int      // <MonsterSpawn表ID,出怪倒數秒數>
-	Monsters         map[int]*Monster // 目前場上存活的怪物列表
-	Spawns           []packet.Spawn   // 生怪清單(如果該生怪中的怪物都死光就會從此清單中移除), 玩家剛加入遊戲時 與 定時同步場景用
-	controlChan      chan bool        // 生怪開關Chan
-	frozenRemainSecs float64          // 冰凍時間(>0時不會產怪)
-	MutexLock        sync.Mutex
+	BossExist     bool             // BOSS是否存在場上的標記
+	spawnTimerMap map[int]int      // <MonsterSpawn表ID,出怪倒數秒數>
+	Monsters      map[int]*Monster // 目前場上存活的怪物列表
+	Spawns        []packet.Spawn   // 生怪清單(如果該生怪中的怪物都死光就會從此清單中移除), 玩家剛加入遊戲時 與 定時同步場景用
+	controlChan   chan bool        // 生怪開關Chan
+	MutexLock     sync.Mutex
 }
 
 func NewMonsterSpawner() *MonsterSpawner {
@@ -93,17 +92,6 @@ func (ms *MonsterSpawner) SpawnSwitch(setOn bool) {
 	}
 }
 
-// 設定冰凍
-func (ms *MonsterSpawner) Frozen(secs float64) {
-	ms.frozenRemainSecs += secs
-	// 所有存活的怪物冰凍, 所以增加移除時間
-	for _, monster := range ms.Monsters {
-		monster.LeaveTime += secs
-		log.Errorf("怪物冰凍 %v秒", secs)
-	}
-	log.Errorf("冰凍時間 %v秒", secs)
-}
-
 // 生怪計時器, 執行生怪倒數, Spawner倒數結束就生怪
 func (ms *MonsterSpawner) SpawnTimer() {
 
@@ -115,20 +103,15 @@ func (ms *MonsterSpawner) SpawnTimer() {
 			running = isOn
 		default:
 			time.Sleep(time.Second) // 每秒檢查一次
-
-			// 冰凍檢查, 如果還在冰凍就不產怪
-			if ms.frozenRemainSecs > 0 {
-				ms.frozenRemainSecs -= 1
-				if ms.frozenRemainSecs <= 0 {
-					ms.frozenRemainSecs = 0
-					log.Errorf("冰凍解除")
-				} else {
-					continue
-				}
-			}
+			// 怪物計時器是否正在執行(當房間中沒有玩家時running會是false)
 			if !running {
 				continue
 			}
+			// 冰凍檢查, 如果還在冰凍就不產怪
+			if MyRoom.OnEffect("Frozen") {
+				continue
+			}
+
 			// 怪物移除檢查
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
