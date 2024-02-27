@@ -161,7 +161,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 							},
 						})
 					}
-					redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
 
 					// 將該玩家monogoDB上的redisSync設為false
 					updatePlayerBson := bson.D{
