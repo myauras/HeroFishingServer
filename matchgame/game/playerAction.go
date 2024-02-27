@@ -102,15 +102,12 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 		// }
 		spendPoint = int64(room.DBmap.Bet)
 		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
-	} else if spellType == "DropSpell" {
-
 	}
 	// =============建立攻擊事件=============
 	var attackEvent *AttackEvent
-	log.Errorf("Attack spellType=%s attackID:%s", spellType, attackID)
+	// log.Errorf("Attack spellType=%s attackID:%s", spellType, attackID)
 	// 以attackID來建立攻擊事件, 如果攻擊事件已存在代表是同一個技能但不同波次的攻擊, 此時就追加擊中怪物清單在該攻擊事件
 	if _, ok := room.AttackEvents[attackID]; !ok {
-		log.Error("ccccc")
 		idxs := make([][]int, 0)
 		attackEvent = &AttackEvent{
 			AttackID:          attackID,
@@ -121,7 +118,6 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 		}
 		room.AttackEvents[attackID] = attackEvent // 將此攻擊事件加入清單
 	} else { // 有同樣的攻擊事件存在代表Hit比Attack先送到
-		log.Error("ddddd")
 		attackEvent = room.AttackEvents[attackID]
 		attackEvent.Paid = true // 設為已支付費用
 		// 有Hit先送到的封包要處理
@@ -293,7 +289,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			}
 
 			kill := utility.GetProbResult(attackKP) // 計算是否造成擊殺
-			log.Errorf("kill: %v", kill)
 			ptBuffer += tmpPTBufferAdd
 			// 如果有擊殺就加到清單中
 			if kill {
@@ -331,9 +326,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 設定AttackEvent
 	var attackEvent *AttackEvent
 	// 不存在此攻擊事件代表之前的Attack封包還沒送到
-	log.Errorf("Hit spellType=%s attackID:%s", spellType, attackID)
+	// log.Errorf("Hit spellType=%s attackID:%s", spellType, attackID)
 	if _, ok := room.AttackEvents[attackID]; !ok {
-		log.Error("aaaa")
 		idxs := make([][]int, 0)
 		attackEvent = &AttackEvent{
 			AttackID:          attackID,
@@ -345,7 +339,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		room.AttackEvents[attackID] = attackEvent // 將此攻擊事件加入清單
 
 	} else {
-		log.Error("bbbb")
 		attackEvent = room.AttackEvents[attackID]
 		if attackEvent == nil {
 			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時room.AttackEvents[attackID]為nil", pack))
@@ -465,6 +458,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
+		room.MSpawner.Frozen(duration) // 設定冰凍停止產怪
 		room.SceneEffects = append(room.SceneEffects, packet.SceneEffect{
 			Name:     dropSpellJson.EffectType,
 			AtTime:   room.GameTime,
