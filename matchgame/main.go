@@ -242,11 +242,11 @@ func main() {
 	}
 	room := <-roomChan
 	close(roomChan)
-
+	log.Info(room.DBMatchgame.DBMapID)
 	// ====================Room資料設定完成====================
 	log.Infof("%s ==============Room資料設定完成==============", logger.LOG_Main)
-	redis.Init()              // 初始化redisDB
-	room.WriteMatchgameToDB() // 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
+	redis.Init() // 初始化redisDB
+	//room.WriteMatchgameToDB() // 寫入DBMatchgame(加入已存在房間時, DBMatchgame的玩家加入是在Matchmaker寫入, 但開房是在DBMatchgame寫入)
 
 	// 開啟連線
 	src := ":" + *port

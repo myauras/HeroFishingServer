@@ -200,9 +200,9 @@ func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int
 
 // 開始跑玩家資料定時更新上RedisDB程序
 func (rPlayer *RedisPlayer) StartInGameUpdatePlayer() {
-	// rPlayer.MutexLock.Lock()
-	// defer rPlayer.MutexLock.Unlock()
-	// rPlayer.updateOn = true
+	rPlayer.MutexLock.Lock()
+	defer rPlayer.MutexLock.Unlock()
+	rPlayer.updateOn = true
 }
 
 // 停止跑玩家資料定時更新上RedisDB程序
