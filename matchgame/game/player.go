@@ -15,9 +15,20 @@ import (
 )
 
 type Gamer interface {
+	GetID() string
+	SetIdx(idx int)
+	GetDBPlayer() *mongo.DBPlayer
+	GetRedisPlayer() *redis.RedisPlayer
+	GetHero() *Hero
+	GetBuffers() []packet.PlayerBuff
+	SetBuffers(buffers []packet.PlayerBuff)
+	GetPoint() int64
 	AddPoint(value int64)
+	GetPTBuffer() int64
 	AddPTBuffer(value int64)
+	GetTotalWin() int64
 	AddTotalWin(value int64)
+	GetTotalExpenditure() int64
 	AddTotalExpenditure(value int64)
 	AddHeroExp(value int32)
 	AddSpellCharge(idx int32, value int32)
@@ -45,11 +56,55 @@ type Player struct {
 	ConnUDP        *gSetting.ConnectionUDP // UDP連線
 }
 
+// 取得ID
+func (player *Player) GetID() string {
+	return player.DBPlayer.ID
+}
+
+// 設定座位
+func (player *Player) SetIdx(idx int) {
+	player.Index = idx
+}
+
+// 取得DBPlayer
+func (player *Player) GetDBPlayer() *mongo.DBPlayer {
+	return player.DBPlayer
+}
+
+// 取得RedisPlayer
+func (player *Player) GetRedisPlayer() *redis.RedisPlayer {
+	return player.RedisPlayer
+}
+
+// 取得Hero
+func (player *Player) GetHero() *Hero {
+	return player.MyHero
+}
+
+// 取得玩家Buffers
+func (player *Player) GetBuffers() []packet.PlayerBuff {
+	return player.PlayerBuffs
+}
+
+// 設定玩家Buffers
+func (player *Player) SetBuffers(buffers []packet.PlayerBuff) {
+	player.PlayerBuffs = buffers
+}
+
+// 取得點數
+func (player *Player) GetPoint() int64 {
+	return player.DBPlayer.Point
+}
+
 // 玩家點數增減
 func (player *Player) AddPoint(value int64) {
 	player.RedisPlayer.AddPoint(value)
 	player.DBPlayer.Point += int64(value)
+}
 
+// 取得點數溢位
+func (player *Player) GetPTBuffer() int64 {
+	return player.DBPlayer.PointBuffer
 }
 
 // 玩家點數溢位增減
@@ -58,11 +113,21 @@ func (player *Player) AddPTBuffer(value int64) {
 	player.DBPlayer.PointBuffer += value
 }
 
+// 取得總贏點數
+func (player *Player) GetTotalWin() int64 {
+	return player.DBPlayer.TotalWin
+}
+
 // 玩家總贏點數增減
 func (player *Player) AddTotalWin(value int64) {
 	player.RedisPlayer.AddTotalWin(value)
 	player.DBPlayer.TotalWin += value
 	player.GainPoint += value
+}
+
+// 取得總花費
+func (player *Player) GetTotalExpenditure() int64 {
+	return player.DBPlayer.TotalExpenditure
 }
 
 // 玩家總花費點數增減

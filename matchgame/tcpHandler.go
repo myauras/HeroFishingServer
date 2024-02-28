@@ -117,7 +117,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				var player game.Player
 				// 斷線重連檢測
 				reConnection := false
-				for _, v := range game.MyRoom.Players {
+				for _, v := range game.MyRoom.Gamers {
 					if v == nil {
 						continue
 					}
