@@ -14,6 +14,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Gamer interface {
+	AddPoint(value int64)
+	AddPTBuffer(value int64)
+	AddTotalWin(value int64)
+	AddTotalExpenditure(value int64)
+	AddHeroExp(value int32)
+	AddSpellCharge(idx int32, value int32)
+	AddDrop(value int32)
+	RemoveDrop(value int32)
+	IsOwnedDrop(value int32)
+	GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bool)
+	GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData
+	CanSpell(idx int32) bool
+	GetAttackCDBuff() float64
+}
+
 // 玩家
 type Player struct {
 	DBPlayer       *mongo.DBPlayer         // 玩家DB資料
@@ -88,7 +104,7 @@ func (player *Player) AddDrop(value int32) {
 	}
 	dropIdx := -1
 	for i, v := range player.DBPlayer.Drops {
-		if v == 0 && v != value {
+		if v == 0 {
 			dropIdx = i
 			break
 		}
@@ -97,7 +113,7 @@ func (player *Player) AddDrop(value int32) {
 		log.Errorf("%s AddDrop時dropIdx為-1", logger.LOG_Player)
 		return
 	}
-	log.Infof("%s 玩家%s獲得Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
+	// log.Infof("%s 玩家%s獲得Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
 	player.RedisPlayer.SetDrop(dropIdx, value)
 	player.DBPlayer.Drops[dropIdx] = value
 }
@@ -124,7 +140,7 @@ func (player *Player) RemoveDrop(value int32) {
 		log.Errorf("%s RemoveDrop時dropIdx為-1", logger.LOG_Player)
 		return
 	}
-	log.Infof("%s 玩家%s移除Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
+	// log.Infof("%s 玩家%s移除Drop idx:%v  dropID:%v", logger.LOG_Player, player.DBPlayer.ID, dropIdx, player.DBPlayer.Drops[dropIdx])
 	player.RedisPlayer.SetDrop(dropIdx, 0)
 	player.DBPlayer.Drops[dropIdx] = 0
 }
