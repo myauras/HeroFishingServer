@@ -15,10 +15,9 @@ import (
 )
 
 type Gamer interface {
+	IsPlayer() bool
 	GetID() string
 	SetIdx(idx int)
-	GetDBPlayer() *mongo.DBPlayer
-	GetRedisPlayer() *redis.RedisPlayer
 	GetHero() *Hero
 	GetBuffers() []packet.PlayerBuff
 	SetBuffers(buffers []packet.PlayerBuff)
@@ -34,7 +33,7 @@ type Gamer interface {
 	AddSpellCharge(idx int32, value int32)
 	AddDrop(value int32)
 	RemoveDrop(value int32)
-	IsOwnedDrop(value int32)
+	IsOwnedDrop(value int32) bool
 	GetRandomChargeableSpell() (gameJson.HeroSpellJsonData, bool)
 	GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData
 	CanSpell(idx int32) bool
@@ -56,6 +55,11 @@ type Player struct {
 	ConnUDP        *gSetting.ConnectionUDP // UDP連線
 }
 
+// 是否為玩家
+func (player *Player) IsPlayer() bool {
+	return true
+}
+
 // 取得ID
 func (player *Player) GetID() string {
 	return player.DBPlayer.ID
@@ -64,16 +68,6 @@ func (player *Player) GetID() string {
 // 設定座位
 func (player *Player) SetIdx(idx int) {
 	player.Index = idx
-}
-
-// 取得DBPlayer
-func (player *Player) GetDBPlayer() *mongo.DBPlayer {
-	return player.DBPlayer
-}
-
-// 取得RedisPlayer
-func (player *Player) GetRedisPlayer() *redis.RedisPlayer {
-	return player.RedisPlayer
 }
 
 // 取得Hero
