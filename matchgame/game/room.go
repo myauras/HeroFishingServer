@@ -32,8 +32,9 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS    float64 = 60 // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS float64 = 3  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	TIMELOOP_MILISECS   int     = 100 // 遊戲每X毫秒循環
+	KICK_PLAYER_SECS    float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS float64 = 3   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 )
 
 type Room struct {
@@ -643,11 +644,11 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 			stop <- struct{}{}
 		}
 	}()
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Duration(TIMELOOP_MILISECS) * time.Millisecond)
 	for {
 		select {
 		case <-ticker.C:
-			r.GameTime += 1 // 更新遊戲時間
+			r.GameTime += float64(TIMELOOP_MILISECS) / float64(1000) // 更新遊戲時間
 			for _, player := range r.Players {
 				if player == nil {
 					continue

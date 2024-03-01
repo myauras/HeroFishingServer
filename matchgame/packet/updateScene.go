@@ -34,8 +34,9 @@ type MonsterEffect struct {
 	Duration float64 // 效果持續X秒
 }
 type SceneEffect struct {
-	Name     string  // 效果名稱
-	Value    float64 // 效果數值
-	AtTime   float64 // 在遊戲時間第X秒觸發
-	Duration float64 // 效果持續X秒
+	Name       string  // 效果名稱
+	Value      float64 // 效果數值
+	AtTime     float64 // 在遊戲時間第X秒觸發
+	Duration   float64 // 效果持續X秒
+	RemoveTime float64 // 抓觸發冰凍時, 最後一隻怪物離開地圖的時間
 }

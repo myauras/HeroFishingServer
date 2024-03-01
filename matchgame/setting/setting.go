@@ -11,7 +11,7 @@ const (
 	GAMEUPDATE_MS                  = 1000  // 每X毫秒送UPDATEGAME_TOCLIENT封包給client(遊戲狀態更新並心跳檢測)
 	PLAYERUPDATE_MS                = 1000  // 每X毫秒送UPDATEPLAYER_TOCLIENT封包給client(玩家狀態更新)
 	SCENEUPDATE_MS                 = 10000 // 每X毫秒送UPDATESCENE_TOCLIENT封包給client(場景狀態更新)
-	ROOMLOOP_MS                    = 1000  // 每X毫秒房間檢查一次
+	ROOMLOOP_MS                    = 100   // 每X毫秒房間檢查一次
 	AGONES_HEALTH_PIN_INTERVAL_SEC = 1     // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 	TCP_CONN_TIMEOUT_SEC           = 120   // TCP連線逾時時間X秒
 )
