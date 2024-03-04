@@ -34,7 +34,6 @@ func openConnectTCP(stop chan struct{}, src string) {
 	}
 	defer tcpListener.Close()
 	log.Infof("%s (TCP)開始偵聽 %s", logger.LOG_Main, src)
-
 	for {
 		conn, err := tcpListener.Accept()
 		if err != nil {
@@ -77,7 +76,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		case <-packReadChan.StopChan:
 			log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
 			return // 終止goroutine
-
 		default:
 			pack, err := packet.ReadPack(decoder)
 			if err != nil {
@@ -85,7 +83,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				packReadChan.ClosePackReadStopChan()
 				return
 			}
-			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
+			log.Infof("%s (TCP)收到來自%s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
 
 			//未驗證前，除了Auth指令進來其他都擋掉
 			if !isAuth && pack.CMD != packet.AUTH {

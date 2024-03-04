@@ -18,12 +18,6 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
-	if event, ok := room.AttackEvents[attackID]; ok {
-		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
-			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Action, attackID)
-			return
-		}
-	}
 	// 如果有鎖定目標怪物, 檢查目標怪是否存在, 不存在就返回
 	if content.MonsterIdx >= 0 {
 		if monster, ok := room.MSpawner.Monsters[content.MonsterIdx]; ok {
@@ -158,12 +152,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 攻擊ID格式為 [玩家index]_[攻擊流水號] (攻擊流水號(AttackID)是client端送來的施放攻擊的累加流水號
 	// EX. 2_3就代表房間座位2的玩家進行的第3次攻擊
 	attackID := strconv.Itoa(player.Index) + "_" + strconv.Itoa(content.AttackID)
-	if event, ok := room.AttackEvents[attackID]; ok {
-		if room.GameTime > event.ExpiredTime { // 此攻擊已經過期
-			log.Errorf("%s AttackID: %s 已過期", logger.LOG_Action, attackID)
-			return
-		}
-	}
 
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
@@ -352,7 +340,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		hitCount += len(innerSlice)
 	}
 	if hitCount >= int(spellMaxHits) {
-		log.Error(content.MonsterIdxs)
 		errLog := fmt.Sprintf("HandleHit時收到的擊中數量超過此技能最大可擊中數量, SpellID: %s curHit: %v MonsterIdxs: %v", spellJson.ID, hitCount, attackEvent.MonsterIdxs)
 		log.Error(errLog)
 		room.SendPacketToPlayer(player.Index, newHitErrorPack(errLog, pack))

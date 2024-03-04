@@ -90,7 +90,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	if adjustRTP {
 		// log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
 		playerRTP := float64(player.DBPlayer.TotalWin) / float64(player.DBPlayer.TotalExpenditure) // 計算玩家實際RTP
-		log.Infof("RTP差: %v", model.GameRTP-playerRTP)
+		// log.Infof("RTP差: %v", model.GameRTP-playerRTP)
 		if math.Abs(model.GameRTP-playerRTP) >= model.RtpAdjust_RTPThreshold { // RTP差>=RTP校正閥值才考慮RTP校正
 			expectedTotalWin := float64(player.DBPlayer.TotalExpenditure) * model.GameRTP
 			pointDiff := expectedTotalWin - float64(player.DBPlayer.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
