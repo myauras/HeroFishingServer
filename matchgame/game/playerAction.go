@@ -133,18 +133,21 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 	}
 
 	// 廣播給client
-	room.BroadCastPacket(player.Index, &packet.Pack{
-		CMD:    packet.ATTACK_TOCLIENT,
-		PackID: packID,
-		Content: &packet.Attack_ToClient{
-			PlayerIdx:   player.Index,
-			SpellJsonID: content.SpellJsonID,
-			MonsterIdx:  content.MonsterIdx,
-			AttackLock:  content.AttackLock,
-			AttackPos:   content.AttackPos,
-			AttackDir:   content.AttackDir,
-		}},
-	)
+	if spellType != "DropSpell" {
+		room.BroadCastPacket(player.Index, &packet.Pack{
+			CMD:    packet.ATTACK_TOCLIENT,
+			PackID: packID,
+			Content: &packet.Attack_ToClient{
+				PlayerIdx:   player.Index,
+				SpellJsonID: content.SpellJsonID,
+				MonsterIdx:  content.MonsterIdx,
+				AttackLock:  content.AttackLock,
+				AttackPos:   content.AttackPos,
+				AttackDir:   content.AttackDir,
+			}},
+		)
+	}
+
 }
 
 // 處理收到的擊中事件

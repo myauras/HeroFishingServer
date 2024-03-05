@@ -513,7 +513,7 @@ func (r *Room) GetPlayerIndexByConnToken(connToken string) int {
 
 // 透過TCPConn取得玩家
 func (r *Room) GetPlayerByTCPConn(conn net.Conn) *Player {
-	for i, v := range r.Players {
+	for _, v := range r.Players {
 		if v == nil || v.ConnTCP == nil {
 			continue
 		}

@@ -1,6 +1,6 @@
 {"Hero":[
-	{	"ID":"1",	"Ref":"MissFortune",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"2",	"Ref":"Ezreal",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"7",	"Ref":"Mirana",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"19",	"Ref":"Ashe",	"RoleCategory":"LOL",	"IdleMotions":"idle1"}
+	{	"ID":"1",	"RoleType":"Shooter",	"Ref":"MissFortune",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"2",	"RoleType":"Shooter",	"Ref":"Ezreal",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"7",	"RoleType":"AGI",	"Ref":"Mirana",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
+	{	"ID":"19",	"RoleType":"Shooter",	"Ref":"Ashe",	"RoleCategory":"LOL",	"IdleMotions":"idle1"}
 ]}
