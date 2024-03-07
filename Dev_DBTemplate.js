@@ -11,7 +11,7 @@ let playerDoc = db.template.insertMany([
     _id: "player",
     createdAt: nowDate,
     authType: "Guest",
-    point: 1,//NumberLong("1")
+    point: 1000000,//NumberLong("1")
     onlineState: "Offline",
     lastSigninAt_nowDate: null,
     lastSignoutAt_nowDate: null,

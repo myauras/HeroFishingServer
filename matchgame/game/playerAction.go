@@ -60,16 +60,16 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Action, spellIdx)
 			return
 		}
-		passSec := room.GameTime - player.LastSpellsTime[spellIdx-1] // 距離上次攻擊經過的秒數
-		if passSec < spellJson.CD {
-			log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能施放技能, passSec: %v cd: %v", logger.LOG_Action, player.DBPlayer.ID, passSec, spellJson.CD)
-			return
-		}
-		// 檢查是否可以施放該技能
-		if player.CanSpell(spellIdx) {
-			log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Action)
-			return
-		}
+		// passSec := room.GameTime - player.LastSpellsTime[spellIdx-1] // 距離上次攻擊經過的秒數
+		// if passSec < spellJson.CD {
+		// 	log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能施放技能, passSec: %v cd: %v", logger.LOG_Action, player.DBPlayer.ID, passSec, spellJson.CD)
+		// 	return
+		// }
+		// // 檢查是否可以施放該技能
+		// if player.CanSpell(spellIdx) {
+		// 	log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Action)
+		// 	return
+		// }
 		spell, getSpellErr := player.MyHero.GetSpell(spellIdx)
 		if getSpellErr != nil {
 			log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Action, getSpellErr)

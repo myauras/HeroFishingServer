@@ -399,7 +399,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
 		return fmt.Errorf("%s room.getPlayer為nil, 可能玩家已離開", logger.LOG_Room)
 	}
-	log.Errorf("//////////////////////////來自player%v(%s) 的 %v 封包", player.Index, player.DBPlayer.ID, pack.CMD)
+	// log.Errorf("//////////////////////////來自player%v(%s) 的 %v 封包", player.Index, player.DBPlayer.ID, pack.CMD)
 	// 處理各類型封包
 	switch pack.CMD {
 	// ==========更新場景(玩家剛進遊戲 或 斷線回連會主動跟Server要更新資料用)==========
