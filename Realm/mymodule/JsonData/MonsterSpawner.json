@@ -9,6 +9,9 @@
 	{	"ID":"26",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"26",	"Routes":"1,2,3,4,5,6,7,8"},
 	{	"ID":"27",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"27",	"Routes":"1,2,3,4,5,6,7,8"},
 	{	"ID":"28",	"SpawnType":"Minion",	"TypeValue":"1",	"MonsterIDs":"28",	"Routes":"1,2,3,4,5,6,7,8"},
-	{	"ID":"501",	"SpawnType":"RandomGroup",	"TypeValue":"1,2,3,22,23,24,25,26,27,28",	"MonsterSpawnIntervalSec":"5~10"},
+	{	"ID":"501",	"SpawnType":"RandomGroup",	"TypeValue":"1,2,3",	"MonsterSpawnIntervalSec":"1~2"},
+	{	"ID":"502",	"SpawnType":"RandomGroup",	"TypeValue":"22,23,24",	"MonsterSpawnIntervalSec":"3~6"},
+	{	"ID":"503",	"SpawnType":"RandomGroup",	"TypeValue":"25,26",	"MonsterSpawnIntervalSec":"5~10"},
+	{	"ID":"504",	"SpawnType":"RandomGroup",	"TypeValue":"27,28",	"MonsterSpawnIntervalSec":"10~20"},
 	{	"ID":"10001",	"SpawnType":"Boss",	"MonsterIDs":"1001",	"MonsterSpawnIntervalSec":"10~15",	"Routes":"1"}
 ]}

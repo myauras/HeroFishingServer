@@ -18,7 +18,6 @@ exports = async function InitPlayerData(data) {
   writePlayerDocData = {
     _id: context.user.id,
     authType: data.AuthType,
-    point: 100,
     onlineState: ah.GameSetting.OnlineState.Online,
   };
   // 寫入plyer資料
