@@ -157,7 +157,7 @@ func RoomLoop() {
 // 傳入玩家ID取得Player
 func (r *Room) GetPlayerByID(playerID string) Gamer {
 	for _, v := range r.Gamers {
-		if v.GetDBPlayer().ID == playerID {
+		if v.GetID() == playerID {
 			return v
 		}
 	}
@@ -314,8 +314,7 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 	gamer := r.Gamers[seatIndex]
 
 	// 更新玩家DB
-	if gamer.IsPlayer() {
-		player := gamer.(*Player)
+	if player, ok := gamer.(*Player); ok {
 
 		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, gamer.GetID())
 		// 取mongoDB player doc
@@ -353,10 +352,11 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 		player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
 
 	}
+
 	r.PubPlayerLeftMsg(gamer.GetID()) // 送玩家離開訊息給Matchmaker
 	r.MutexLock.Lock()
 	r.Gamers[seatIndex] = nil
-	r.DBMatchgame.KickPlayer(gamer.DBPlayer.ID)
+	r.DBMatchgame.KickPlayer(gamer.GetID())
 	r.UpdateMatchgameToDB() // 更新房間DB
 	r.MutexLock.Unlock()
 	gamer.CloseConnection() // 關閉連線
@@ -497,12 +497,13 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 // 透過TCPConn取得玩家座位索引
 func (r *Room) GetPlayerIndexByTCPConn(conn net.Conn) int {
 	for i, v := range r.Gamers {
-		if v == nil || v.ConnTCP == nil {
-			continue
-		}
-
-		if v.ConnTCP.Conn == conn {
-			return i
+		if player, ok := v.(*Player); ok {
+			if player.ConnTCP == nil {
+				continue
+			}
+			if player.ConnTCP.Conn == conn {
+				return i
+			}
 		}
 	}
 	return -1
@@ -511,12 +512,13 @@ func (r *Room) GetPlayerIndexByTCPConn(conn net.Conn) int {
 // 透過ConnToken取得玩家座位索引
 func (r *Room) GetPlayerIndexByConnToken(connToken string) int {
 	for i, v := range r.Gamers {
-		if v == nil || v.ConnUDP == nil {
-			continue
-		}
-
-		if v.ConnUDP.ConnToken == connToken {
-			return i
+		if player, ok := v.(*Player); ok {
+			if player.ConnUDP == nil {
+				continue
+			}
+			if player.ConnUDP.ConnToken == connToken {
+				return i
+			}
 		}
 	}
 	return -1
@@ -525,12 +527,14 @@ func (r *Room) GetPlayerIndexByConnToken(connToken string) int {
 // 透過TCPConn取得玩家
 func (r *Room) GetPlayerByTCPConn(conn net.Conn) *Player {
 	for _, v := range r.Gamers {
-		if v == nil || v.ConnTCP == nil {
-			continue
-		}
+		if player, ok := v.(*Player); ok {
+			if player.ConnTCP == nil {
+				continue
+			}
 
-		if v.ConnTCP.Conn == conn {
-			return v
+			if player.ConnTCP.Conn == conn {
+				return player
+			}
 		}
 	}
 	return nil
@@ -539,11 +543,13 @@ func (r *Room) GetPlayerByTCPConn(conn net.Conn) *Player {
 // 透過ConnToken取得玩家
 func (r *Room) GetPlayerByConnToken(connToken string) *Player {
 	for _, v := range r.Gamers {
-		if v == nil || v.ConnUDP == nil {
-			continue
-		}
-		if v.ConnUDP.ConnToken == connToken {
-			return v
+		if player, ok := v.(*Player); ok {
+			if player.ConnUDP == nil {
+				continue
+			}
+			if player.ConnUDP.ConnToken == connToken {
+				return player
+			}
 		}
 	}
 	return nil
@@ -564,61 +570,69 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 		if i == exceptPlayerIdx {
 			continue
 		}
-		if v == nil || v.ConnTCP.Conn == nil {
-			continue
-		}
-		err := packet.SendPack(v.ConnTCP.Encoder, pack)
-		if err != nil {
-			log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
-			r.KickPlayer(v.ConnTCP.Conn, "BroadCastPacket錯誤")
+		if player, ok := v.(*Player); ok {
+			if player.ConnTCP.Conn == nil {
+				continue
+			}
+			err := packet.SendPack(player.ConnTCP.Encoder, pack)
+			if err != nil {
+				log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
+				r.KickPlayer(player.ConnTCP.Conn, "BroadCastPacket錯誤")
+			}
 		}
 	}
 }
 
 // 送封包給玩家(TCP)
 func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
-	if r.Gamers[pIndex] == nil || r.Gamers[pIndex].ConnTCP.Conn == nil {
-		return
+	if player, ok := r.Gamers[pIndex].(*Player); ok {
+		if player.ConnTCP.Conn == nil {
+			return
+		}
+		err := packet.SendPack(player.ConnTCP.Encoder, pack)
+		if err != nil {
+			log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
+			r.KickPlayer(player.ConnTCP.Conn, "SendPacketToPlayer錯誤")
+		}
 	}
-	err := packet.SendPack(r.Gamers[pIndex].ConnTCP.Encoder, pack)
-	if err != nil {
-		log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-		r.KickPlayer(r.Gamers[pIndex].ConnTCP.Conn, "SendPacketToPlayer錯誤")
-	}
+
 }
 
 // 取得要送封包的玩家陣列
 func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 	var players [setting.PLAYER_NUMBER]*packet.Player
 	for i, v := range r.Gamers {
-		if v == nil {
+		if player, ok := v.(*Player); ok {
+			players[i] = &packet.Player{
+				ID:          player.GetID(),
+				Idx:         player.Index,
+				GainPoints:  player.GainPoint,
+				PlayerBuffs: player.PlayerBuffs,
+			}
+		} else {
 			players[i] = nil
 			continue
 		}
-		players[i] = &packet.Player{
-			ID:          v.DBPlayer.ID,
-			Idx:         v.Index,
-			GainPoints:  v.GainPoint,
-			PlayerBuffs: v.PlayerBuffs,
-		}
+
 	}
 	return players
 }
 
 // 送封包給玩家(UDP)
 func (r *Room) SendPacketToPlayer_UDP(pIndex int, sendData []byte) {
-	if r.Gamers[pIndex] == nil || r.Gamers[pIndex].ConnUDP.Conn == nil {
-		return
-	}
 	if sendData == nil {
 		return
 	}
-	player := r.Gamers[pIndex]
-	sendData = append(sendData, '\n')
-	_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
-	if sendErr != nil {
-		log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
-		return
+	if player, ok := r.Gamers[pIndex].(*Player); ok {
+		if player.ConnUDP.Conn == nil {
+			return
+		}
+		sendData = append(sendData, '\n')
+		_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
+		if sendErr != nil {
+			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
+			return
+		}
 	}
 }
 
@@ -631,14 +645,16 @@ func (r *Room) BroadCastPacket_UDP(exceptPlayerIdx int, sendData []byte) {
 		if exceptPlayerIdx == i {
 			continue
 		}
-		if v == nil || v.ConnUDP.Conn == nil {
-			continue
-		}
-		sendData = append(sendData, '\n')
-		_, sendErr := v.ConnUDP.Conn.WriteTo(sendData, v.ConnUDP.Addr)
-		if sendErr != nil {
-			log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
-			return
+		if player, ok := v.(*Player); ok {
+			if player.ConnUDP.Conn == nil {
+				continue
+			}
+			sendData = append(sendData, '\n')
+			_, sendErr := player.ConnUDP.Conn.WriteTo(sendData, player.ConnUDP.Addr)
+			if sendErr != nil {
+				log.Errorf("%s (UDP)送封包錯誤 %s", logger.LOG_Room, sendErr.Error())
+				return
+			}
 		}
 	}
 }
@@ -656,16 +672,18 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 		select {
 		case <-ticker.C:
 			r.GameTime += 1 // 更新遊戲時間
-			for _, player := range r.Gamers {
-				if player == nil {
-					continue
+			nowTime := time.Now()
+			for _, v := range r.Gamers {
+				if player, ok := v.(*Player); ok { // 是玩家檢查
+					// 玩家無心跳超過X秒就踢出遊戲房
+					// log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
+					if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
+						MyRoom.KickPlayer(player.ConnTCP.Conn, "玩家心跳逾時")
+					}
+				} else { // 不是玩家檢查
+
 				}
-				nowTime := time.Now()
-				// 玩家無心跳超過X秒就踢出遊戲房
-				// log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
-				if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
-					MyRoom.KickPlayer(player.ConnTCP.Conn, "玩家心跳逾時")
-				}
+
 			}
 		case <-stop:
 			return

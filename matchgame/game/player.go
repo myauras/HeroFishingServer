@@ -38,6 +38,7 @@ type Gamer interface {
 	GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData
 	CanSpell(idx int32) bool
 	GetAttackCDBuff() float64
+	CloseConnection()
 }
 
 // 玩家

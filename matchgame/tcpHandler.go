@@ -34,7 +34,6 @@ func openConnectTCP(stop chan struct{}, src string) {
 	}
 	defer tcpListener.Close()
 	log.Infof("%s (TCP)開始偵聽 %s", logger.LOG_Main, src)
-
 	for {
 		conn, err := tcpListener.Accept()
 		if err != nil {
@@ -77,7 +76,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 		case <-packReadChan.StopChan:
 			log.Infof("%s (TCP)關閉封包讀取", logger.LOG_Main)
 			return // 終止goroutine
-
 		default:
 			pack, err := packet.ReadPack(decoder)
 			if err != nil {
@@ -85,7 +83,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				packReadChan.ClosePackReadStopChan()
 				return
 			}
-			log.Infof("%s (TCP)收到來自 %s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
+			log.Infof("%s (TCP)收到來自%s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
 
 			//未驗證前，除了Auth指令進來其他都擋掉
 			if !isAuth && pack.CMD != packet.AUTH {
@@ -118,14 +116,13 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				// 斷線重連檢測
 				reConnection := false
 				for _, v := range game.MyRoom.Gamers {
-					if v == nil {
-						continue
-					}
-					if v.DBPlayer.ID == playerID {
-						log.Infof("玩家(%v)斷線重連", playerID)
-						reConnection = true
-						player = *v
-						break
+					if p, ok := v.(*game.Player); ok {
+						if p.GetID() == playerID {
+							log.Infof("玩家(%v)斷線重連", playerID)
+							reConnection = true
+							player = *p
+							break
+						}
 					}
 				}
 
@@ -161,7 +158,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 							},
 						})
 					}
-					redisPlayer.StartInGameUpdatePlayer() // 開始跑玩家資料定時更新上RedisDB程序
 
 					// 將該玩家monogoDB上的redisSync設為false
 					updatePlayerBson := bson.D{
@@ -171,7 +167,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					if updateErr != nil {
 						log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Main, dbPlayer.ID, updateErr)
 					}
-
+					log.Errorf("--------------->設定玩家Conn: %s", dbPlayer.ID)
 					// 將玩家加入遊戲房
 					player = game.Player{
 						DBPlayer:     &dbPlayer,
@@ -196,6 +192,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 
 				} else { // 斷線重連時使用已存在的玩家資料, 不須重建資料
+					log.Errorf("--------------->更新玩家Conn: %s", player.DBPlayer.ID)
 					player.ConnTCP.Conn = conn
 					player.ConnUDP.ConnToken = newConnToken
 				}
