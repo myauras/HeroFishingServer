@@ -32,8 +32,9 @@ const (
 )
 
 const (
-	KICK_PLAYER_SECS    float64 = 60 // 最長允許玩家無心跳X秒後踢出遊戲房
-	ATTACK_EXPIRED_SECS float64 = 3  // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
+	TIMELOOP_MILISECS   int     = 100 // 遊戲每X毫秒循環
+	KICK_PLAYER_SECS    float64 = 60  // 最長允許玩家無心跳X秒後踢出遊戲房
+	ATTACK_EXPIRED_SECS float64 = 5   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 )
 
 type Room struct {
@@ -212,14 +213,9 @@ func (r *Room) PlayerCount() int {
 }
 
 // 設定遊戲房內玩家使用英雄ID
-func (r *Room) SetHero(conn net.Conn, heroID int, heroSkinID string) {
+func (r *Room) SetHero(player *Player, heroID int, heroSkinID string) {
 	r.MutexLock.Lock()
 	defer r.MutexLock.Unlock()
-	player := r.GetPlayerByTCPConn(conn)
-	if player == nil {
-		log.Errorf("%s SetHero時player := r.getPlayer(conn)為nil", logger.LOG_Room)
-		return
-	}
 
 	heroJson, err := gameJson.GetHeroByID(strconv.Itoa(heroID))
 	if err != nil {
@@ -411,6 +407,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 		log.Errorf("%s room.getPlayer為nil", logger.LOG_Room)
 		return fmt.Errorf("%s room.getPlayer為nil, 可能玩家已離開", logger.LOG_Room)
 	}
+	// log.Errorf("//////////////////////////來自player%v(%s) 的 %v 封包", player.Index, player.DBPlayer.ID, pack.CMD)
 	// 處理各類型封包
 	switch pack.CMD {
 	// ==========更新場景(玩家剛進遊戲 或 斷線回連會主動跟Server要更新資料用)==========
@@ -430,7 +427,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		r.SetHero(conn, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
+		r.SetHero(player, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
 		r.BroadCastPacket(-1, &packet.Pack{ // 廣播封包
@@ -667,11 +664,11 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 			stop <- struct{}{}
 		}
 	}()
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Duration(TIMELOOP_MILISECS) * time.Millisecond)
 	for {
 		select {
 		case <-ticker.C:
-			r.GameTime += 1 // 更新遊戲時間
+			r.GameTime += float64(TIMELOOP_MILISECS) / float64(1000) // 更新遊戲時間
 			nowTime := time.Now()
 			for _, v := range r.Gamers {
 				if player, ok := v.(*Player); ok { // 是玩家檢查

@@ -39,6 +39,21 @@
                 "bsonType": "string"
             }
         },
+        "matchgame-testver-mapID": {
+            "bsonType": "string"
+        },
+        "matchgame-testver-port": {
+            "bsonType": "int"
+        },
+        "matchgame-testver-roomName": {
+            "bsonType": "string"
+        },
+        "matchgame-testver-tcp-ip": {
+            "bsonType": "string"
+        },
+        "matchgame-testver-udp-ip": {
+            "bsonType": "string"
+        },
         "matchmakerEnable": {
             "bsonType": "bool"
         },

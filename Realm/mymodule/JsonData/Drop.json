@@ -1,5 +1,5 @@
 {"Drop":[
-	{	"ID":"4",	"Ref":"drop4",	"RTP":"0",	"DropType":"Spell",	"DropValue":"4"},
-	{	"ID":"5",	"Ref":"drop5",	"RTP":"0",	"DropType":"Spell",	"DropValue":"5"},
-	{	"ID":"15",	"Ref":"drop15",	"RTP":"0",	"DropType":"Spell",	"DropValue":"15"}
+	{	"ID":"4",	"Ref":"BlueBuff",	"RTP":"0",	"DropType":"Spell",	"DropValue":"4"},
+	{	"ID":"5",	"Ref":"RedBuff",	"RTP":"0",	"DropType":"Spell",	"DropValue":"5"},
+	{	"ID":"15",	"Ref":"DarkBuff",	"RTP":"0",	"DropType":"Spell",	"DropValue":"15"}
 ]}

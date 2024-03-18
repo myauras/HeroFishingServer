@@ -1,14 +1,5 @@
 {"Hero":[
-	{	"ID":"1",	"Ref":"MissFortune",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"2",	"Ref":"Ezreal",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"4",	"Ref":"Lux",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"8",	"Ref":"DrawRanger",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"13",	"Ref":"Sniper",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"14",	"Ref":"Lion",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"15",	"Ref":"WitchDoctor",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"16",	"Ref":"ShadowFiend",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"17",	"Ref":"Silencer",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"},
-	{	"ID":"18",	"Ref":"KAISA",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"19",	"Ref":"Ashe",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
-	{	"ID":"20",	"Ref":"Jhin",	"RoleCategory":"LOL",	"IdleMotions":"idle1"}
+	{	"ID":"1",	"RoleType":"Shooter",	"Ref":"MissFortune",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"2",	"RoleType":"Shooter",	"Ref":"Ezreal",	"RoleCategory":"LOL",	"IdleMotions":"idle1"},
+	{	"ID":"7",	"RoleType":"AGI",	"Ref":"Mirana",	"RoleCategory":"DOTA2",	"IdleMotions":"idle1"}
 ]}

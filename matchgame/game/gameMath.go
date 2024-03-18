@@ -90,7 +90,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	if adjustRTP {
 		// log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
 		playerRTP := float64(player.DBPlayer.TotalWin) / float64(player.DBPlayer.TotalExpenditure) // 計算玩家實際RTP
-		log.Infof("RTP差: %v", model.GameRTP-playerRTP)
+		// log.Infof("RTP差: %v", model.GameRTP-playerRTP)
 		if math.Abs(model.GameRTP-playerRTP) >= model.RtpAdjust_RTPThreshold { // RTP差>=RTP校正閥值才考慮RTP校正
 			expectedTotalWin := float64(player.DBPlayer.TotalExpenditure) * model.GameRTP
 			pointDiff := expectedTotalWin - float64(player.DBPlayer.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
@@ -122,7 +122,7 @@ func (model *MathModel) GetHeroSpellDropP_AttackKilling(spellRTP float64, target
 	attackRTP := model.GameRTP - model.SpellSharedRTP
 
 	p := ((model.GameRTP - attackRTP) / (spellRTP - attackRTP)) / (model.GameRTP / targetOdds)
-	log.Errorf("DropP: %v  GameRTP: %v  attackRTP: %v  spellRTP: %v  targetOdds: %v", p, model.GameRTP, attackRTP, spellRTP, targetOdds)
+	// log.Errorf("DropP: %v  GameRTP: %v  attackRTP: %v  spellRTP: %v  targetOdds: %v", p, model.GameRTP, attackRTP, spellRTP, targetOdds)
 	// 掉落率大於1時處理
 	if p > 1 {
 		p = 1

@@ -46,17 +46,17 @@ spec:
       serviceAccountName: default # 指定使用default serviceAccount
       containers:
       - name: herofishing-matchgame-testver
-        image: asia-east1-docker.pkg.dev/testgcpproject1-415003/herofishing/herofishing-matchgame:0.2.298
+        image: asia-east1-docker.pkg.dev/testgcpproject1-415003/herofishing/herofishing-matchgame:0.2.342
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "60m"
+            memory: "32Mi"
+            cpu: "10m"
           limits:
-            memory: "128Mi"
-            cpu: "200m"
+            memory: "64Mi"
+            cpu: "20m"
         env:
         - name: "ImgVer"
-          value: "0.2.298"
+          value: "0.2.342"
         - name: NodeName
           valueFrom:
             fieldRef:

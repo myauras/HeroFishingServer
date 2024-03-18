@@ -1,5 +1,5 @@
 {"DropSpell":[
-	{	"ID":"4",	"RTP":"0",	"HasTimeline":"False",	"EffectType":"Frozen",	"EffectValue1":"10"},
-	{	"ID":"5",	"RTP":"0",	"HasTimeline":"False",	"EffectType":"Speedup",	"EffectValue1":"20",	"EffectValue2":"2"},
-	{	"ID":"15",	"RTP":"150",	"Motion":"attack1,attack2",	"HasTimeline":"True",	"EffectType":"HeroSpell",	"EffectValue1":"20"}
+	{	"ID":"4",	"RTP":"0",	"IsAttack":"False",	"HasTimeline":"False",	"EffectType":"Frozen",	"EffectValue1":"10"},
+	{	"ID":"5",	"RTP":"0",	"IsAttack":"False",	"HasTimeline":"False",	"EffectType":"Speedup",	"EffectValue1":"20",	"EffectValue2":"2"},
+	{	"ID":"15",	"RTP":"150",	"Motion":"attack1,attack2",	"IsAttack":"True",	"HasTimeline":"True",	"EffectType":"HeroSpell",	"EffectValue1":"20"}
 ]}

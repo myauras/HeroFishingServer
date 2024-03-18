@@ -6,6 +6,7 @@ import (
 	"herofishingGoModule/utility"
 	"strconv"
 	// "herofishingGoModule/logger"
+	log "github.com/sirupsen/logrus"
 )
 
 // HeroSpell JSON
@@ -105,7 +106,9 @@ func (heroSpellJsonData HeroSpellJsonData) GetSpellType() string {
 func (heroSpellJsonData HeroSpellJsonData) GetRTP(lv int) float64 {
 	lv -= 1
 	if lv < 0 || lv >= len(heroSpellJsonData.RTP) {
-		return 0
+		log.Error("玩家尚未學習技能卻施放該技能")
+		return heroSpellJsonData.RTP[0]
+		// return 0
 	}
 	return heroSpellJsonData.RTP[lv]
 }
