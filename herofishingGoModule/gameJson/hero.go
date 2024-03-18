@@ -3,6 +3,7 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	"herofishingGoModule/utility"
 	"strconv"
 	// "herofishingGoModule/logger"
 )
@@ -48,6 +49,22 @@ func GetHeros() ([]HeroJsonData, error) {
 		}
 	}
 	return heros, nil
+}
+
+// 取得隨機英雄
+func GetRndHero() (HeroJsonData, error) {
+	heros, err := GetHeros()
+	if err != nil {
+		return HeroJsonData{}, err
+	}
+	if len(heros) == 0 {
+		return HeroJsonData{}, fmt.Errorf("英雄資料為空")
+	}
+	hero, err := utility.GetRandomTFromSlice(heros)
+	if err != nil {
+		return HeroJsonData{}, err
+	}
+	return hero, nil
 }
 
 func GetHeroByID(id string) (HeroJsonData, error) {

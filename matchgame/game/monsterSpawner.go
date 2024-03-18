@@ -21,8 +21,6 @@ type Spawn struct {
 	IsBoss         bool  // 此生怪是否為BOSS生怪
 }
 
-var spawnAccumulator = utility.NewAccumulator() // 產生一個生怪累加器
-
 func NewSpawn(spawnID int, monsterJsonIDs []int, routeJsonID int, isBoss bool) *Spawn {
 	// log.Infof("%s 加入生怪駐列 怪物IDs: %v", logger.LOG_MonsterSpawner, monsterIDs)
 	monsterIdxs := make([]int, len(monsterJsonIDs))
@@ -221,7 +219,7 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		}
 
 		// 設定怪物唯一索引
-		monsterIdx := spawnAccumulator.GetNextIdx("monster")
+		monsterIdx := IDAccumulator.GetNextIdx("MonsterIdx")
 		// log.Warnf("生怪 MonsterIdx: %v", monsterIdx)
 		fromPos, err := utility.NewVector2XZ(routeJson.SpawnPos)
 		if err != nil {

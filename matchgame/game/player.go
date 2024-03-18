@@ -15,7 +15,6 @@ import (
 )
 
 type Gamer interface {
-	IsPlayer() bool
 	GetID() string
 	SetIdx(idx int)
 	GetHero() *Hero
@@ -23,12 +22,6 @@ type Gamer interface {
 	SetBuffers(buffers []packet.PlayerBuff)
 	GetPoint() int64
 	AddPoint(value int64)
-	GetPTBuffer() int64
-	AddPTBuffer(value int64)
-	GetTotalWin() int64
-	AddTotalWin(value int64)
-	GetTotalExpenditure() int64
-	AddTotalExpenditure(value int64)
 	AddHeroExp(value int32)
 	AddSpellCharge(idx int32, value int32)
 	AddDrop(value int32)
@@ -54,11 +47,6 @@ type Player struct {
 	LastSpellsTime [3]float64              // 上次施放英雄技能時間
 	ConnTCP        *gSetting.ConnectionTCP // TCP連線
 	ConnUDP        *gSetting.ConnectionUDP // UDP連線
-}
-
-// 是否為玩家
-func (player *Player) IsPlayer() bool {
-	return true
 }
 
 // 取得ID

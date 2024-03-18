@@ -12,4 +12,6 @@ const (
 	LOG_MonsterSpawner = "[MonsterSpawner]"
 	LOG_GameMath       = "[GameMath]"
 	LOG_gRPC           = "[gRPC]"
+	LOG_BotBehaviour   = "[BotBehaviour]"
+	LOG_Bot            = "[Bot]"
 )

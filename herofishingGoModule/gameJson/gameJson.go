@@ -82,6 +82,7 @@ type JsonNameStruct struct {
 	GameSetting    string
 	Hero           string
 	HeroEXP        string
+	HeroSkin       string
 	HeroSpell      string
 	Map            string
 	Monster        string
@@ -97,6 +98,7 @@ var JsonName = JsonNameStruct{
 	GameSetting:    "GameSetting",
 	Hero:           "Hero",
 	HeroEXP:        "HeroEXP",
+	HeroSkin:       "HeroSkin",
 	HeroSpell:      "HeroSpell",
 	Map:            "Map",
 	Monster:        "Monster",
@@ -131,6 +133,8 @@ func SetJsonDic(jsonName string, jsonData []byte) error {
 		unmarshaler = HeroJsonData{}
 	case JsonName.HeroSpell:
 		unmarshaler = HeroSpellJsonData{}
+	case JsonName.HeroSkin:
+		unmarshaler = HeroSkinJsonData{}
 	case JsonName.HeroEXP:
 		unmarshaler = HeroEXPJsonData{}
 	case JsonName.Map:

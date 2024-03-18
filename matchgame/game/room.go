@@ -37,6 +37,8 @@ const (
 	ATTACK_EXPIRED_SECS float64 = 5   // 攻擊事件實例被創建後X秒後過期(過期代表再次收到同樣的AttackID時Server不會處理)
 )
 
+var IDAccumulator = utility.NewAccumulator() // 產生一個ID累加器
+
 type Room struct {
 	// 玩家陣列(索引0~3 分別代表4個玩家)
 	// 1. 索引就是玩家的座位, 一進房間後就不會更動 所以HeroIDs[0]就是在座位0玩家的英雄ID
@@ -308,7 +310,6 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 
 	log.Infof("%s 執行KickPlayer 原因: %s", logger.LOG_Room, reason)
 	gamer := r.Gamers[seatIndex]
-
 	// 更新玩家DB
 	if player, ok := gamer.(*Player); ok {
 
@@ -324,16 +325,16 @@ func (r *Room) KickPlayer(conn net.Conn, reason string) {
 			mongoPlayerDoc.RedisSync = true // 將RedisSync為設為true
 			// 更新玩家DB資料
 			updatePlayerBson := bson.D{
-				{Key: "point", Value: player.GetPoint()},                      // 玩家點數
-				{Key: "pointBuffer", Value: gamer.GetPTBuffer()},              // 玩家點數溢位
-				{Key: "totalWin", Value: gamer.GetTotalWin()},                 // 玩家總贏點數
-				{Key: "totalExpenditure", Value: gamer.GetTotalExpenditure()}, // 玩家總花費點數
-				{Key: "leftGameAt", Value: time.Now()},                        // 離開遊戲時間
-				{Key: "inMatchgameID", Value: ""},                             // 玩家不在遊戲房內了
-				{Key: "heroExp", Value: player.DBPlayer.HeroExp},              // 英雄經驗
-				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},    // 技能充能
-				{Key: "drops", Value: player.DBPlayer.Drops},                  // 掉落道具
-				{Key: "redisSync", Value: player.DBPlayer.RedisSync},          // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+				{Key: "point", Value: player.GetPoint()},                       // 玩家點數
+				{Key: "pointBuffer", Value: player.GetPTBuffer()},              // 玩家點數溢位
+				{Key: "totalWin", Value: player.GetTotalWin()},                 // 玩家總贏點數
+				{Key: "totalExpenditure", Value: player.GetTotalExpenditure()}, // 玩家總花費點數
+				{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
+				{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
+				{Key: "heroExp", Value: player.DBPlayer.HeroExp},               // 英雄經驗
+				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},     // 技能充能
+				{Key: "drops", Value: player.DBPlayer.Drops},                   // 掉落道具
+				{Key: "redisSync", Value: player.DBPlayer.RedisSync},           // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 			}
 			_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
 			if updateErr != nil {

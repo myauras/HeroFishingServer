@@ -30,25 +30,35 @@ func (bot *Bot) GetID() string {
 	return fmt.Sprintf("Bot%v", bot.Index)
 }
 
+// 設定座位
+func (bot *Bot) SetIdx(idx int) {
+	bot.Index = idx
+}
+
+// 取得Hero
+func (bot *Bot) GetHero() *Hero {
+	return bot.MyHero
+}
+
+// 取得玩家Buffers
+func (bot *Bot) GetBuffers() []packet.PlayerBuff {
+	return bot.PlayerBuffs
+}
+
+// 設定玩家Buffers
+func (bot *Bot) SetBuffers(buffers []packet.PlayerBuff) {
+	bot.PlayerBuffs = buffers
+}
+
+// 取得點數
+func (bot *Bot) GetPoint() int64 {
+	return bot.Point
+}
+
 // 玩家點數增減
 func (Bot *Bot) AddPoint(value int64) {
 	Bot.Point += int64(value)
 
-}
-
-// 玩家點數溢位增減
-func (Bot *Bot) AddPTBuffer(value int64) {
-	Bot.PTBuffer += int64(value)
-}
-
-// 玩家總贏點數增減
-func (Bot *Bot) AddTotalWin(value int64) {
-	// Bot不需要實作
-}
-
-// 玩家總花費點數增減
-func (Bot *Bot) AddTotalExpenditure(value int64) {
-	Bot.TotalExpenditure += value
 }
 
 // 英雄經驗增減
@@ -184,4 +194,8 @@ func (Bot *Bot) CanSpell(idx int32) bool {
 // 取得普攻CD
 func (bot *Bot) GetAttackCDBuff() float64 {
 	return 0
+}
+
+func (bot *Bot) CloseConnection() {
+	// 不需處理
 }
