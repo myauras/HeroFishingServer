@@ -167,7 +167,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					if updateErr != nil {
 						log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Main, dbPlayer.ID, updateErr)
 					}
-					log.Errorf("--------------->設定玩家Conn: %s", dbPlayer.ID)
 					// 將玩家加入遊戲房
 					player = game.Player{
 						DBPlayer:     &dbPlayer,

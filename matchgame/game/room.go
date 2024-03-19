@@ -480,6 +480,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleAuto(player, pack, content)
+	// ==========設定技能升級==========
 	case packet.LVUPSPELL:
 		content := packet.LvUpSpell{}
 		if ok := content.Parse(pack.Content); !ok {
@@ -487,6 +488,27 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
 		MyRoom.HandleLvUpSpell(player, pack, content)
+	// ==========加入BOT==========
+	case packet.ADDBOT:
+		content := packet.AddBot{}
+		if ok := content.Parse(pack.Content); !ok {
+			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
+			return fmt.Errorf("parse %s failed", pack.CMD)
+		}
+		bot := AddBot()
+		addBotSuccess := bot != nil
+		seatIdx := -1
+		if bot != nil {
+			seatIdx = bot.Index
+		}
+		MyRoom.SendPacketToPlayer(player.Index, &packet.Pack{
+			CMD:    packet.ADDBOT_TOCLIENT,
+			PackID: -1,
+			Content: &packet.AddBot_ToClient{
+				Success: addBotSuccess,
+				Index:   seatIdx,
+			},
+		})
 	}
 
 	return nil
@@ -600,18 +622,17 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 func (r *Room) GetPacketPlayers() [setting.PLAYER_NUMBER]*packet.Player {
 	var players [setting.PLAYER_NUMBER]*packet.Player
 	for i, v := range r.Gamers {
-		if player, ok := v.(*Player); ok {
-			players[i] = &packet.Player{
-				ID:          player.GetID(),
-				Idx:         player.Index,
-				GainPoints:  player.GainPoint,
-				PlayerBuffs: player.PlayerBuffs,
-			}
-		} else {
+		if v == nil {
 			players[i] = nil
 			continue
 		}
-
+		players[i] = &packet.Player{
+			ID:          v.GetID(),
+			Idx:         v.GetIdx(),
+			GainPoints:  v.GetGainPoint(),
+			PlayerBuffs: v.GetBuffers(),
+		}
+		// if player, ok := v.(*Player); ok {
 	}
 	return players
 }

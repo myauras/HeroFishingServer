@@ -12,17 +12,17 @@ import (
 
 // 電腦玩家
 type Bot struct {
-	Index       int                 // 玩家在房間的索引(座位)
-	MyHero      *Hero               // 使用中的英雄
-	GainPoint   int64               // 此玩家在遊戲房總共贏得點數
-	PlayerBuffs []packet.PlayerBuff // 玩家Buffers
-
+	Index            int                 // 玩家在房間的索引(座位)
+	MyHero           *Hero               // 使用中的英雄
+	GainPoint        int64               // 此玩家在遊戲房總共贏得點數
+	PlayerBuffs      []packet.PlayerBuff // 玩家Buffers
 	Point            int64
 	PTBuffer         int64
 	TotalExpenditure int64
 	HeroExp          int32
 	SpellCharges     [3]int32
 	Drops            [3]int32
+	CurTarget        *Monster
 }
 
 // 取得ID
@@ -33,6 +33,11 @@ func (bot *Bot) GetID() string {
 // 設定座位
 func (bot *Bot) SetIdx(idx int) {
 	bot.Index = idx
+}
+
+// 取得座位
+func (bot *Bot) GetIdx() int {
+	return bot.Index
 }
 
 // 取得Hero
@@ -59,6 +64,15 @@ func (bot *Bot) GetPoint() int64 {
 func (Bot *Bot) AddPoint(value int64) {
 	Bot.Point += int64(value)
 
+	// 設定玩家本場贏得點數
+	if value > 0 {
+		Bot.GainPoint += value
+	}
+}
+
+// 取得本場遊戲獲得點數
+func (Bot *Bot) GetGainPoint() int64 {
+	return Bot.GainPoint
 }
 
 // 英雄經驗增減

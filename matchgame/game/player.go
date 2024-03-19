@@ -16,12 +16,14 @@ import (
 
 type Gamer interface {
 	GetID() string
+	GetIdx() int
 	SetIdx(idx int)
 	GetHero() *Hero
 	GetBuffers() []packet.PlayerBuff
 	SetBuffers(buffers []packet.PlayerBuff)
 	GetPoint() int64
 	AddPoint(value int64)
+	GetGainPoint() int64
 	AddHeroExp(value int32)
 	AddSpellCharge(idx int32, value int32)
 	AddDrop(value int32)
@@ -59,6 +61,11 @@ func (player *Player) SetIdx(idx int) {
 	player.Index = idx
 }
 
+// 取得座位
+func (player *Player) GetIdx() int {
+	return player.Index
+}
+
 // 取得Hero
 func (player *Player) GetHero() *Hero {
 	return player.MyHero
@@ -83,6 +90,16 @@ func (player *Player) GetPoint() int64 {
 func (player *Player) AddPoint(value int64) {
 	player.RedisPlayer.AddPoint(value)
 	player.DBPlayer.Point += int64(value)
+
+	// 設定玩家本場贏得點數
+	if value > 0 {
+		player.GainPoint += value
+	}
+}
+
+// 取得本場遊戲獲得點數
+func (player *Player) GetGainPoint() int64 {
+	return player.GainPoint
 }
 
 // 取得點數溢位
@@ -105,7 +122,6 @@ func (player *Player) GetTotalWin() int64 {
 func (player *Player) AddTotalWin(value int64) {
 	player.RedisPlayer.AddTotalWin(value)
 	player.DBPlayer.TotalWin += value
-	player.GainPoint += value
 }
 
 // 取得總花費
