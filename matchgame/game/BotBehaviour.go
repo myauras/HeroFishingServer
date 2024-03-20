@@ -3,10 +3,12 @@ package game
 import (
 	"fmt"
 	"herofishingGoModule/gameJson"
+	"herofishingGoModule/utility"
 	"matchgame/logger"
 	"matchgame/packet"
 	gSetting "matchgame/setting"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -39,6 +41,7 @@ func AddBot() *Bot {
 		SkinID: heroSkinID,
 		Spells: spellJsons,
 	}
+
 	bot := Bot{
 		Index:  newBotIdx,
 		MyHero: &hero,
@@ -50,7 +53,6 @@ func AddBot() *Bot {
 	}
 
 	// 廣播更新玩家
-	log.Errorf("%s  廣播更新玩家", logger.LOG_BotBehaviour)
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
@@ -67,22 +69,59 @@ func AddBot() *Bot {
 			HeroSkinIDs: heroSkinIDs,
 		},
 	})
+	bot.NewSelectTargetLoop()
 	return &bot
 }
 
+func (bot *Bot) NewSelectTargetLoop() {
+	if bot.SelectTargetLoopChan != nil {
+		bot.SelectTargetLoopChan.ClosePackReadStopChan() // 關閉原本得goroutine
+	}
+	if bot.AttackLoopChan != nil {
+		bot.AttackLoopChan.ClosePackReadStopChan() // 開始搜尋新目標就關閉攻擊goroutine
+	}
+	selectLoopChan := &gSetting.LoopChan{
+		StopChan:      make(chan struct{}, 1),
+		ChanCloseOnce: sync.Once{},
+	}
+	bot.SelectTargetLoopChan = selectLoopChan
+	go bot.SelectTargetLoop()
+}
+
 func (bot *Bot) SelectTargetLoop() {
+	log.Errorf("開始找目標Loop")
 	ticker := time.NewTicker(gSetting.BOT_TARGET_MS * time.Millisecond)
 	defer ticker.Stop()
 	for range ticker.C {
-		if bot.CurTarget != nil {
-			continue
+		select {
+		case <-bot.SelectTargetLoopChan.StopChan:
+			return // 終止goroutine
+		default:
+			log.Errorf("Bot找目標")
+			if bot.CurTarget != nil {
+				continue
+			}
+			targetMonster := bot.SelectRndMonsterAsTarget()
+			if targetMonster != nil {
+				log.Errorf("找到目標怪物 %v", targetMonster.MonsterIdx)
+				bot.NewAtkLoop()
+			}
 		}
-		bot.SelectMaxOddsMonsterAsTarget()
 	}
 }
 
+// 設定Bot的目標為隨機怪物
+func (bot *Bot) SelectRndMonsterAsTarget() *Monster {
+	var curMaxOddsMonster *Monster
+	rndMonster := utility.GetRndValueFromMap(MyRoom.MSpawner.Monsters)
+	if rndMonster != nil {
+		bot.CurTarget = rndMonster
+	}
+	return curMaxOddsMonster
+}
+
 // 設定Bot的目標為賠率最高的怪物
-func (bot *Bot) SelectMaxOddsMonsterAsTarget() {
+func (bot *Bot) SelectMaxOddsMonsterAsTarget() *Monster {
 	maxOdds := int64(0)
 	var curMaxOddsMonster *Monster
 	for _, m := range MyRoom.MSpawner.Monsters {
@@ -101,23 +140,48 @@ func (bot *Bot) SelectMaxOddsMonsterAsTarget() {
 	if curMaxOddsMonster != nil {
 		bot.CurTarget = curMaxOddsMonster
 	}
+	return curMaxOddsMonster
+}
+
+func (bot *Bot) NewAtkLoop() {
+	if bot.SelectTargetLoopChan != nil {
+		bot.SelectTargetLoopChan.ClosePackReadStopChan() // 開始攻擊goroutine就可以關閉選目標的goroutine
+	}
+	if bot.AttackLoopChan != nil {
+		bot.AttackLoopChan.ClosePackReadStopChan() // 關閉原本得goroutine
+	}
+	atkLoopChan := &gSetting.LoopChan{
+		StopChan:      make(chan struct{}, 1),
+		ChanCloseOnce: sync.Once{},
+	}
+	bot.AttackLoopChan = atkLoopChan
+	go bot.AttackTargetLoop()
 }
 
 func (bot *Bot) AttackTargetLoop() {
+	log.Errorf("開始攻擊Loop")
 	ticker := time.NewTicker(gSetting.BOT_ATTACK_MS * time.Millisecond)
 	defer ticker.Stop()
 	for range ticker.C {
-		if bot.CurTarget == nil {
-			continue
+		select {
+		case <-bot.AttackLoopChan.StopChan:
+			return // 終止goroutine
+		default:
+			bot.Attack()
 		}
-		bot.Attack()
 	}
 }
 
 func (bot *Bot) Attack() {
-	// 廣播給client
-	// 取技能表
-	spellJsonID := fmt.Sprintf("%s_attack", bot.MyHero.ID)
+	if monster := MyRoom.MSpawner.GetMonster(bot.CurTarget.MonsterIdx); monster == nil {
+		bot.CurTarget = nil // 移除目前鎖定的怪物
+		log.Errorf("目標怪物已死亡, 重新尋找目標")
+		bot.NewSelectTargetLoop() // 目標已死亡就重新跑選目標goroutine
+		return
+	}
+	log.Errorf("對怪物 %v 進行攻擊", bot.CurTarget.MonsterIdx)
+	spellJsonID := fmt.Sprintf("%v_attack", bot.MyHero.ID)
+	mIdx := bot.CurTarget.MonsterIdx
 	log.Errorf("spellJsonID: %s", spellJsonID)
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,
@@ -125,10 +189,25 @@ func (bot *Bot) Attack() {
 		Content: &packet.Attack_ToClient{
 			PlayerIdx:   bot.Index,
 			SpellJsonID: spellJsonID,
-			MonsterIdx:  bot.CurTarget.MonsterIdx,
+			MonsterIdx:  mIdx,
 			AttackLock:  true,
 			AttackPos:   []float64{},
 			AttackDir:   []float64{},
 		}},
 	)
+}
+
+func (bot *Bot) NewChangeTargetLoop() {
+	if bot.SelectTargetLoopChan != nil {
+		bot.SelectTargetLoopChan.ClosePackReadStopChan() // 開始攻擊goroutine就可以關閉選目標的goroutine
+	}
+	if bot.AttackLoopChan != nil {
+		bot.AttackLoopChan.ClosePackReadStopChan() // 關閉原本得goroutine
+	}
+	atkLoopChan := &gSetting.LoopChan{
+		StopChan:      make(chan struct{}, 1),
+		ChanCloseOnce: sync.Once{},
+	}
+	bot.AttackLoopChan = atkLoopChan
+	go bot.AttackTargetLoop()
 }

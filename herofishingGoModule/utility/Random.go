@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"strings"
+	"strconv"
 )
 
 // RandomFloatBetweenInts 從兩個整數之間生成一個隨機float64
@@ -38,10 +40,97 @@ func GetRandomTFromSlice[T any](slice []T) (T, error) {
 	return slice[randIndex], nil
 }
 
+// 從map中取隨機key值出來
+func GetRndKeyFromMap[K comparable, V any](m map[K]V) K {
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	if len(keys) == 0 {
+		var defaultK K
+		return defaultK // 如果map為空, 返回K類型的零值
+	}
+
+	return keys[r.Intn(len(keys))] // 隨機選擇一個鍵並返回
+}
+
+// 從map中取隨機value值出來
+func GetRndValueFromMap[K comparable, V any](m map[K]V) V {
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+	values := make([]V, 0, len(m))
+	for _, v := range m {
+		values = append(values, v)
+	}
+
+	if len(values) == 0 {
+		var defaultV V
+		return defaultV // 如果map為空, 返回V類型的零值
+	}
+	return values[r.Intn(len(values))] // 隨機選擇一個值並返回
+}
+
 // 傳入機率回傳結果 EX. 傳入0.3就是有30%機率返回true
 func GetProbResult(prob float64) bool {
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
 	randomFloat := r.Float64()
 	return randomFloat <= prob
+}
+
+// 範例: 傳入"100~200" 回傳100~200之間的int
+func GetRndIntFromRangeStr(input string, delimiter string) ([]int, error) {
+    parts := strings.Split(input, delimiter)
+    if len(parts) != 2 {
+        return nil, fmt.Errorf("傳入字串要剛好只有一個分隔符號")
+    }
+    start, errStart := strconv.Atoi(parts[0])
+    end, errEnd := strconv.Atoi(parts[1])
+    if errStart != nil || errEnd != nil {
+        return nil, fmt.Errorf("傳入字串的最小獲最大值無法轉為數字")
+    }
+    if start > end {
+        return nil, fmt.Errorf("傳入字串的最小不可大於最大值")
+    }
+
+    var result []int
+    for i := start; i <= end; i++ {
+        result = append(result, i)
+    }
+    return result, nil
+}
+
+// 範例: 傳入"100,200,300" 回傳隨機一個值, 例如200
+func GetRndIntFromString(input string, delimiter string) (int, error) {
+    parts := strings.Split(input, delimiter)
+    numbers := make([]int, len(parts))
+
+    for i, part := range parts {
+        number, err := strconv.Atoi(part)
+        if err != nil {
+            return 0, err
+        }
+        numbers[i] = number
+    }
+
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+    randomIndex := r.Intn(len(numbers))
+    return numbers[randomIndex], nil
+}
+
+// 範例: 傳入"100,200,300" 回傳隨機一個字串, 例如"200"
+func GetRndStrFromString(input string, delimiter string) (string, error) {
+    parts := strings.Split(input, delimiter)
+    if len(parts) == 0 {
+        return "", fmt.Errorf("input string is empty or incorrect format")
+    }
+
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+    randomIndex := r.Intn(len(parts))
+    return parts[randomIndex], nil
 }

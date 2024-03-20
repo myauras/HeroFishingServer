@@ -2,27 +2,30 @@ package game
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"herofishingGoModule/gameJson"
 	"herofishingGoModule/utility"
 	"matchgame/logger"
 	"matchgame/packet"
-
-	log "github.com/sirupsen/logrus"
+	gSetting "matchgame/setting"
 )
 
 // 電腦玩家
 type Bot struct {
-	Index            int                 // 玩家在房間的索引(座位)
-	MyHero           *Hero               // 使用中的英雄
-	GainPoint        int64               // 此玩家在遊戲房總共贏得點數
-	PlayerBuffs      []packet.PlayerBuff // 玩家Buffers
-	Point            int64
-	PTBuffer         int64
-	TotalExpenditure int64
-	HeroExp          int32
-	SpellCharges     [3]int32
-	Drops            [3]int32
-	CurTarget        *Monster
+	Index                int                 // 玩家在房間的索引(座位)
+	MyHero               *Hero               // 使用中的英雄
+	GainPoint            int64               // 此玩家在遊戲房總共贏得點數
+	PlayerBuffs          []packet.PlayerBuff // 玩家Buffers
+	Point                int64
+	PTBuffer             int64
+	TotalExpenditure     int64
+	HeroExp              int32
+	SpellCharges         [3]int32
+	Drops                [3]int32
+	CurTarget            *Monster
+	SelectTargetLoopChan *gSetting.LoopChan
+	ChangeTargetLoopChan *gSetting.LoopChan
+	AttackLoopChan       *gSetting.LoopChan
 }
 
 // 取得ID

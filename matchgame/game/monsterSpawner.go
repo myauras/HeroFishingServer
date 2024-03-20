@@ -42,6 +42,14 @@ type MonsterSpawner struct {
 	MutexLock     sync.Mutex
 }
 
+// 取得怪物
+func (ms *MonsterSpawner) GetMonster(monsterIdx int) *Monster {
+	if monster, ok := ms.Monsters[monsterIdx]; ok {
+		return monster
+	}
+	return nil
+}
+
 func NewMonsterSpawner() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
