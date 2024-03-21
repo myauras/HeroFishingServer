@@ -84,7 +84,7 @@ func (jsonData MonsterSpawnerJsonData) GetRandSpawnSec() (int, error) {
 	if len(ids) != 2 {
 		return 0, err
 	}
-	rand, err := utility.RandomIntBetweenInts(ids[0], ids[1])
+	rand, err := utility.GetRandomIntFromMinMax(ids[0], ids[1])
 	if err != nil {
 		log.Errorf("%s GetRandSpawnSec錯誤: %v", logger.LOG_GameJson)
 	}

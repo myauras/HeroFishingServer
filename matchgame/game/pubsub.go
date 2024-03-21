@@ -99,10 +99,11 @@ func (r *Room) SubMatchmakerMsg() {
 				log.Errorf("%s SubRoomMsg JSON 解析 Content(%s) 錯誤: %v", logger.LOG_Room, data.CMD, err)
 				continue
 			}
-			gamer := r.GetPlayerByID(kickDisconnectedPlayerData.PlayerID)
-			if gamer != nil {
-				r.KickGamer(gamer, "將殘留的已斷線玩家踢掉")
+			gamer := r.GetGamerByID(kickDisconnectedPlayerData.PlayerID)
+			if player, ok := gamer.(*Player); ok {
+				r.KickPlayer(player, "將殘留的已斷線玩家踢掉")
 			}
+
 			log.Infof("%s 收到Matchmaker將殘留的已斷線玩家踢掉: %s", logger.LOG_Room, kickDisconnectedPlayerData.PlayerID)
 		}
 	}

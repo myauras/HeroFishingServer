@@ -12,6 +12,7 @@ import (
 
 // 電腦玩家
 type Bot struct {
+	ID                   int                 // Bot編號 等同於Player的PlaeyrID
 	Index                int                 // 玩家在房間的索引(座位)
 	MyHero               *Hero               // 使用中的英雄
 	GainPoint            int64               // 此玩家在遊戲房總共贏得點數
@@ -24,13 +25,12 @@ type Bot struct {
 	Drops                [3]int32
 	CurTarget            *Monster
 	SelectTargetLoopChan *gSetting.LoopChan
-	ChangeTargetLoopChan *gSetting.LoopChan
 	AttackLoopChan       *gSetting.LoopChan
 }
 
 // 取得ID
 func (bot *Bot) GetID() string {
-	return fmt.Sprintf("Bot%v", bot.Index)
+	return fmt.Sprintf("Bot%v", bot.ID)
 }
 
 // 設定座位

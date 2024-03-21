@@ -251,11 +251,10 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 		// }
 		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetTime: %v leaveTime: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
 		ms.Monsters[monsterIdx] = &Monster{
-			MonsterJson: monsterJson,
-			MonsterIdx:  monsterIdx,
-			RouteJson:   routeJson,
-			SpawnTime:   MyRoom.GameTime,
-			LeaveTime:   leaveTime,
+			MonsterIdx: monsterIdx,
+			RouteJson:  routeJson,
+			SpawnTime:  MyRoom.GameTime,
+			LeaveTime:  leaveTime,
 		}
 
 		// 紀錄怪物清單
@@ -348,13 +347,8 @@ func (ms *MonsterSpawner) SendDieMonsters(killMonsterIdxs []int) {
 
 		for _, monster := range ms.Monsters {
 			if monster.MonsterIdx == idx {
-				jsonID, err := strconv.ParseInt(monster.MonsterJson.ID, 10, 64)
-				if err != nil {
-					log.Errorf("%s strconv.ParseInt(monster.MonsterJson.ID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
-					jsonID = -1
-				}
 				dieMonsters = append(dieMonsters, packet.DieMonster{
-					ID:  int(jsonID),
+					ID:  monster.ID,
 					Idx: idx,
 				})
 				break

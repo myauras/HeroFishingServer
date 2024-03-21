@@ -201,51 +201,18 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 
 		// hitMonsterIdxs = append(hitMonsterIdxs, monsterIdx) // 加入擊中怪物索引清單
 
-		// 取得怪物賠率
-		odds, err := strconv.ParseFloat(monster.MonsterJson.Odds, 64)
-		if err != nil {
-			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物賠率錯誤", pack))
-			log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.Odds, 64)錯誤: %v", logger.LOG_Action, err)
-			return
-		}
-		// 取得怪物經驗
-		monsterExp, err := strconv.ParseInt(monster.MonsterJson.EXP, 10, 32)
-		if err != nil {
-			room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取怪物經驗錯誤", pack))
-			log.Errorf("%s strconv.ParseFloat(monster.MonsterJson.EXP, 64)錯誤: %v", logger.LOG_Action, err)
-			return
-		}
-
 		// 取得怪物掉落道具
-		dropAddOdds := 0.0       // 掉落道具增加的總RTP
-		parsedDropID := int64(0) // 怪物掉落ID
+		dropAddOdds := 0.0 // 掉落道具增加的總RTP
 		// 怪物必須有掉落物才需要考慮怪物掉落
-		if monster.MonsterJson.DropID != "" {
-			dropJson, err := gameJson.GetDropByID(monster.MonsterJson.DropID)
-			if err != nil {
-				room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表錯誤", pack))
-				log.Errorf("%s HandleHit時gameJson.GetDropByID(monster.MonsterJson.DropID)錯誤: %v", logger.LOG_Action, err)
-				return
-			}
-			parsedDropID, err = strconv.ParseInt(monster.MonsterJson.DropID, 10, 32)
-			if err != nil {
-				log.Errorf("%s HandleHit時strconv.ParseInt(monster.MonsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_Action, err)
-				return
-			}
+		if monster.DropID != 0 {
 			// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
-			if !player.IsOwnedDrop(int32(parsedDropID)) {
-				addOdds, err := strconv.ParseFloat(dropJson.RTP, 64)
-				if err != nil {
-					room.SendPacketToPlayer(player.Index, newHitErrorPack("HandleHit時取掉落表的賠率錯誤", pack))
-					log.Errorf("%s HandleHit時strconv.ParseFloat(dropJson.GainRTP, 64)錯誤: %v", logger.LOG_Action, err)
-					return
-				}
-				dropAddOdds += addOdds
+			if !player.IsOwnedDrop(int32(monster.DropID)) {
+				dropAddOdds += float64(monster.DropRTP)
 			}
 		}
 
 		// 計算實際怪物死掉獲得點數
-		rewardPoint := int64((odds + dropAddOdds) * float64(room.DBmap.Bet))
+		rewardPoint := int64((float64(monster.Odds) + dropAddOdds) * float64(room.DBmap.Bet))
 
 		rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
 
@@ -255,7 +222,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			// 擊殺判定
 			hitData := HitData{
 				AttackRTP:  room.MathModel.GameRTP,
-				TargetOdds: odds,
+				TargetOdds: float64(monster.Odds),
 				MaxHit:     int(spellMaxHits),
 				ChargeDrop: gotUnchargedSpell,
 				MapBet:     room.DBmap.Bet,
@@ -265,13 +232,13 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		} else { // 技能攻擊
 			hitData := HitData{
 				AttackRTP:  rtp,
-				TargetOdds: odds,
+				TargetOdds: float64(monster.Odds),
 				MaxHit:     int(spellMaxHits),
 				ChargeDrop: false,
 				MapBet:     room.DBmap.Bet,
 			}
 			attackKP, tmpPTBufferAdd = room.MathModel.GetSpellKP(hitData, player)
-			log.Errorf("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v", spellMaxHits, rtp, odds, attackKP)
+			log.Errorf("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v", spellMaxHits, rtp, monster.Odds, attackKP)
 		}
 
 		kill := utility.GetProbResult(attackKP) // 計算是否造成擊殺
@@ -293,7 +260,7 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 					rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.SpellLVs[dropSpellIdx])
 				}
 				// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
-				dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, odds)
+				dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(monster.Odds))
 				if utility.GetProbResult(dropChargeP) {
 					gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
 				}
@@ -301,9 +268,9 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			// log.Errorf("擊殺怪物: %v", monsterIdx)
 			killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 			gainPoints = append(gainPoints, rewardPoint)
-			gainHeroExps = append(gainHeroExps, int32(monsterExp))
-			if parsedDropID != 0 {
-				gainDrops[len(gainDrops)-1] = int32(parsedDropID)
+			gainHeroExps = append(gainHeroExps, int32(monster.EXP))
+			if monster.DropID != 0 {
+				gainDrops[len(gainDrops)-1] = int32(monster.DropID)
 			}
 		}
 	}

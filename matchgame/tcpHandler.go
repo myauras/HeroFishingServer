@@ -213,7 +213,10 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				err = game.MyRoom.HandleTCPMsg(conn, pack)
 				if err != nil {
 					log.Errorf("%s (TCP)處理GameRoom封包錯誤: %v\n", logger.LOG_Main, err.Error())
-					game.MyRoom.KickPlayer(conn, "處理GameRoom封包錯誤")
+					player := game.MyRoom.GetPlayerByTCPConn(conn)
+					if player != nil {
+						game.MyRoom.KickPlayer(player, "處理GameRoom封包錯誤")
+					}
 					continue
 				}
 			}

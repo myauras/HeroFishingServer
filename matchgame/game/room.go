@@ -158,7 +158,7 @@ func RoomLoop() {
 }
 
 // 傳入玩家ID取得Player
-func (r *Room) GetPlayerByID(playerID string) Gamer {
+func (r *Room) GetGamerByID(playerID string) Gamer {
 	for _, v := range r.Gamers {
 		if v.GetID() == playerID {
 			return v
@@ -207,7 +207,7 @@ func (r *Room) WriteGameErrorLog(log string) {
 func (r *Room) PlayerCount() int {
 	count := 0
 	for _, v := range r.Gamers {
-		if v != nil {
+		if _, ok := v.(*Player); ok {
 			count++
 		}
 	}
@@ -292,81 +292,106 @@ func (r *Room) JoinPlayer(gamer Gamer) bool {
 	return true
 }
 
-// 將玩家踢出房間
-func (r *Room) KickGamer(gamer Gamer, reason string) {
-	if p, ok := gamer.(*Player); ok {
-		r.KickPlayer(p.ConnTCP.Conn, reason)
-	}
-}
+func (r *Room) KickBot(bot *Bot, reason string) {
+	log.Infof("%s 嘗試踢出Bot(%s) 原因: %s", logger.LOG_Room, bot.GetID(), reason)
 
-// 將玩家踢出房間
-func (r *Room) KickPlayer(conn net.Conn, reason string) {
-
-	seatIndex := r.GetPlayerIndexByTCPConn(conn) // 取得座位索引
-	if seatIndex < 0 || r.Gamers[seatIndex] == nil {
-		log.Infof("%s 執行KickPlayer 原因: %s , 玩家已經不在清單中直接返回", logger.LOG_Room, reason)
+	if r.Gamers[bot.Index] == nil {
+		log.Infof("%s 要踢掉的玩家已經不在座位上", logger.LOG_Room)
 		return
 	}
-
-	log.Infof("%s 執行KickPlayer 原因: %s", logger.LOG_Room, reason)
-	gamer := r.Gamers[seatIndex]
-	// 更新玩家DB
-	if player, ok := gamer.(*Player); ok {
-
-		log.Infof("%s 嘗試踢出玩家 %s", logger.LOG_Room, gamer.GetID())
-		// 取mongoDB player doc
-		var mongoPlayerDoc mongo.DBPlayer
-		getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, player.GetID(), &mongoPlayerDoc)
-		if getPlayerDocErr != nil {
-			log.Errorf("%s 取mongoDB player doc資料發生錯誤: %v", logger.LOG_Room, getPlayerDocErr)
-			return
-		}
-		if !mongoPlayerDoc.RedisSync && player.DBPlayer != nil { // RedisSync為false才需要進行資料同步 如果為true就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
-			mongoPlayerDoc.RedisSync = true // 將RedisSync為設為true
-			// 更新玩家DB資料
-			updatePlayerBson := bson.D{
-				{Key: "point", Value: player.GetPoint()},                       // 玩家點數
-				{Key: "pointBuffer", Value: player.GetPTBuffer()},              // 玩家點數溢位
-				{Key: "totalWin", Value: player.GetTotalWin()},                 // 玩家總贏點數
-				{Key: "totalExpenditure", Value: player.GetTotalExpenditure()}, // 玩家總花費點數
-				{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
-				{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
-				{Key: "heroExp", Value: player.DBPlayer.HeroExp},               // 英雄經驗
-				{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},     // 技能充能
-				{Key: "drops", Value: player.DBPlayer.Drops},                   // 掉落道具
-				{Key: "redisSync", Value: player.DBPlayer.RedisSync},           // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
-			}
-			_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
-			if updateErr != nil {
-				log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.DBPlayer.ID, updateErr)
-			} else {
-				log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
-			}
-		} else {
-			log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.DBPlayer.ID)
-		}
-
-		player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
-
+	if r.Gamers[bot.Index].GetID() != bot.GetID() {
+		log.Infof("%s 要踢掉的BotID!=座位上的Bot", logger.LOG_Room)
+		return
 	}
-
-	r.PubPlayerLeftMsg(gamer.GetID()) // 送玩家離開訊息給Matchmaker
+	bot.StopAllGoroutine()
+	bot.CloseConnection() // 關閉連線
 	r.MutexLock.Lock()
-	r.Gamers[seatIndex] = nil
-	r.DBMatchgame.KickPlayer(gamer.GetID())
-	r.UpdateMatchgameToDB() // 更新房間DB
+	r.Gamers[bot.Index] = nil
 	r.MutexLock.Unlock()
-	gamer.CloseConnection() // 關閉連線
 	r.OnRoomPlayerChange()
 	// 廣播玩家離開封包
-	r.BroadCastPacket(seatIndex, &packet.Pack{
+	r.BroadCastPacket(bot.Index, &packet.Pack{
 		CMD: packet.LEAVE_TOCLIENT,
 		Content: &packet.Leave_ToClient{
-			PlayerIdx: seatIndex,
+			PlayerIdx: bot.Index,
 		},
 	})
 	// 廣播玩家封包
-	r.BroadCastPacket(seatIndex, &packet.Pack{
+	r.BroadCastPacket(bot.Index, &packet.Pack{
+		CMD:    packet.UPDATEPLAYER_TOCLIENT,
+		PackID: -1,
+		Content: &packet.UpdatePlayer_ToClient{
+			Players: r.GetPacketPlayers(),
+		},
+	})
+
+}
+
+// 將玩家踢出房間
+func (r *Room) KickPlayer(player *Player, reason string) {
+
+	log.Infof("%s 嘗試踢出玩家(%s) 原因: %s", logger.LOG_Room, player.GetID(), reason)
+
+	if r.Gamers[player.Index] == nil {
+		log.Infof("%s 要踢掉的玩家已經不在座位上", logger.LOG_Room)
+		return
+	}
+	if r.Gamers[player.Index].GetID() != player.GetID() {
+		log.Infof("%s 要踢掉的玩家ID!=座位上的玩家", logger.LOG_Room)
+		return
+	}
+
+	// 取mongoDB player doc
+	var mongoPlayerDoc mongo.DBPlayer
+	getPlayerDocErr := mongo.GetDocByID(mongo.ColName.Player, player.GetID(), &mongoPlayerDoc)
+	if getPlayerDocErr != nil {
+		log.Errorf("%s 取mongoDB player doc資料發生錯誤: %v", logger.LOG_Room, getPlayerDocErr)
+		return
+	}
+	if !mongoPlayerDoc.RedisSync && player.DBPlayer != nil { // RedisSync為false才需要進行資料同步 如果為true就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
+		mongoPlayerDoc.RedisSync = true // 將RedisSync為設為true
+		// 更新玩家DB資料
+		updatePlayerBson := bson.D{
+			{Key: "point", Value: player.GetPoint()},                       // 玩家點數
+			{Key: "pointBuffer", Value: player.GetPTBuffer()},              // 玩家點數溢位
+			{Key: "totalWin", Value: player.GetTotalWin()},                 // 玩家總贏點數
+			{Key: "totalExpenditure", Value: player.GetTotalExpenditure()}, // 玩家總花費點數
+			{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
+			{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
+			{Key: "heroExp", Value: player.DBPlayer.HeroExp},               // 英雄經驗
+			{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},     // 技能充能
+			{Key: "drops", Value: player.DBPlayer.Drops},                   // 掉落道具
+			{Key: "redisSync", Value: player.DBPlayer.RedisSync},           // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+		}
+		_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
+		if updateErr != nil {
+			log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.DBPlayer.ID, updateErr)
+		} else {
+			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
+		}
+	} else {
+		log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.DBPlayer.ID)
+	}
+
+	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
+
+	r.PubPlayerLeftMsg(player.GetID()) // 送玩家離開訊息給Matchmaker
+	r.MutexLock.Lock()
+	r.Gamers[player.Index] = nil
+	r.DBMatchgame.KickPlayer(player.GetID())
+	r.UpdateMatchgameToDB() // 更新房間DB
+	r.MutexLock.Unlock()
+	player.CloseConnection() // 關閉連線
+	r.OnRoomPlayerChange()
+	// 廣播玩家離開封包
+	r.BroadCastPacket(player.Index, &packet.Pack{
+		CMD: packet.LEAVE_TOCLIENT,
+		Content: &packet.Leave_ToClient{
+			PlayerIdx: player.Index,
+		},
+	})
+	// 廣播玩家封包
+	r.BroadCastPacket(player.Index, &packet.Pack{
 		CMD:    packet.UPDATEPLAYER_TOCLIENT,
 		PackID: -1,
 		Content: &packet.UpdatePlayer_ToClient{
@@ -389,6 +414,7 @@ func (r *Room) OnRoomPlayerChange() {
 		r.MSpawner.SpawnSwitch(true) // 生怪
 	} else if playerCount == 0 { // 空房間處理
 		r.MSpawner.SpawnSwitch(false) // 停止生怪
+		RemoveAllBots("空房間移除所有Bot")
 	} else { // 有人但沒有滿房
 		r.MSpawner.SpawnSwitch(true) // 生怪
 	}
@@ -446,7 +472,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		r.KickPlayer(conn, "玩家主動離開") // 將玩家踢出房間
+		r.KickPlayer(player, "玩家主動離開") // 將玩家踢出房間
 
 	// ==========發動攻擊==========
 	case packet.ATTACK:
@@ -490,11 +516,6 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 		MyRoom.HandleLvUpSpell(player, pack, content)
 	// ==========加入BOT==========
 	case packet.ADDBOT:
-		content := packet.AddBot{}
-		if ok := content.Parse(pack.Content); !ok {
-			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
-			return fmt.Errorf("parse %s failed", pack.CMD)
-		}
 		bot := AddBot()
 		addBotSuccess := bot != nil
 		seatIdx := -1
@@ -597,7 +618,7 @@ func (r *Room) BroadCastPacket(exceptPlayerIdx int, pack *packet.Pack) {
 			err := packet.SendPack(player.ConnTCP.Encoder, pack)
 			if err != nil {
 				log.Errorf("%s 廣播封包(%s)錯誤: %v", logger.LOG_Room, pack.CMD, err)
-				r.KickPlayer(player.ConnTCP.Conn, "BroadCastPacket錯誤")
+				r.KickPlayer(player, "BroadCastPacket錯誤")
 			}
 		}
 	}
@@ -612,7 +633,7 @@ func (r *Room) SendPacketToPlayer(pIndex int, pack *packet.Pack) {
 		err := packet.SendPack(player.ConnTCP.Encoder, pack)
 		if err != nil {
 			log.Errorf("%s SendPacketToPlayer error: %v", logger.LOG_Room, err)
-			r.KickPlayer(player.ConnTCP.Conn, "SendPacketToPlayer錯誤")
+			r.KickPlayer(player, "SendPacketToPlayer錯誤")
 		}
 	}
 
@@ -697,7 +718,7 @@ func (r *Room) RoomTimer(stop chan struct{}) {
 					// 玩家無心跳超過X秒就踢出遊戲房
 					// log.Infof("%s 目前玩家 %s 已經無回應 %.0f 秒了", logger.LOG_Room, player.DBPlayer.ID, nowTime.Sub(player.LastUpdateAt).Seconds())
 					if nowTime.Sub(player.LastUpdateAt) > time.Duration(KICK_PLAYER_SECS)*time.Second {
-						MyRoom.KickPlayer(player.ConnTCP.Conn, "玩家心跳逾時")
+						MyRoom.KickPlayer(player, "玩家心跳逾時")
 					}
 				} else { // 不是玩家檢查
 

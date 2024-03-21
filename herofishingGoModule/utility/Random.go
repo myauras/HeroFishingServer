@@ -3,9 +3,9 @@ package utility
 import (
 	"fmt"
 	"math/rand"
-	"time"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // RandomFloatBetweenInts 從兩個整數之間生成一個隨機float64
@@ -18,8 +18,8 @@ func RandomFloatBetweenInts(min, max int) (float64, error) {
 	return float64(min) + r.Float64()*(float64(max)-float64(min)), nil
 }
 
-// RandomFloatBetweenInts 從兩個整數之間生成一個隨機int
-func RandomIntBetweenInts(min, max int) (int, error) {
+// 從兩個整數之間生成一個隨機int 傳入0,100會回傳0到100(包含0和100)的隨機整數
+func GetRandomIntFromMinMax(min, max int) (int, error) {
 	if min > max {
 		return 0, fmt.Errorf("RandomIntBetweenInts傳入值不符合規則 最小值<=最大值")
 	}
@@ -81,56 +81,55 @@ func GetProbResult(prob float64) bool {
 	return randomFloat <= prob
 }
 
-// 範例: 傳入"100~200" 回傳100~200之間的int
-func GetRndIntFromRangeStr(input string, delimiter string) ([]int, error) {
-    parts := strings.Split(input, delimiter)
-    if len(parts) != 2 {
-        return nil, fmt.Errorf("傳入字串要剛好只有一個分隔符號")
-    }
-    start, errStart := strconv.Atoi(parts[0])
-    end, errEnd := strconv.Atoi(parts[1])
-    if errStart != nil || errEnd != nil {
-        return nil, fmt.Errorf("傳入字串的最小獲最大值無法轉為數字")
-    }
-    if start > end {
-        return nil, fmt.Errorf("傳入字串的最小不可大於最大值")
-    }
-
-    var result []int
-    for i := start; i <= end; i++ {
-        result = append(result, i)
-    }
-    return result, nil
+// 範例: 傳入"100~200" 回傳100~199之間的int
+func GetRndIntFromRangeStr(input string, delimiter string) (int, error) {
+	parts := strings.Split(input, delimiter)
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("傳入字串要剛好只有一個分隔符號")
+	}
+	min, errMin := strconv.Atoi(parts[0])
+	max, errMax := strconv.Atoi(parts[1])
+	if errMin != nil || errMax != nil {
+		return 0, fmt.Errorf("傳入字串的最小獲最大值無法轉為數字")
+	}
+	if min > max {
+		return 0, fmt.Errorf("傳入字串的最小不可大於最大值")
+	}
+	rndInt, err := GetRandomIntFromMinMax(min, max)
+	if err != nil {
+		return 0, err
+	}
+	return rndInt, nil
 }
 
 // 範例: 傳入"100,200,300" 回傳隨機一個值, 例如200
 func GetRndIntFromString(input string, delimiter string) (int, error) {
-    parts := strings.Split(input, delimiter)
-    numbers := make([]int, len(parts))
+	parts := strings.Split(input, delimiter)
+	numbers := make([]int, len(parts))
 
-    for i, part := range parts {
-        number, err := strconv.Atoi(part)
-        if err != nil {
-            return 0, err
-        }
-        numbers[i] = number
-    }
+	for i, part := range parts {
+		number, err := strconv.Atoi(part)
+		if err != nil {
+			return 0, err
+		}
+		numbers[i] = number
+	}
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
-    randomIndex := r.Intn(len(numbers))
-    return numbers[randomIndex], nil
+	randomIndex := r.Intn(len(numbers))
+	return numbers[randomIndex], nil
 }
 
 // 範例: 傳入"100,200,300" 回傳隨機一個字串, 例如"200"
 func GetRndStrFromString(input string, delimiter string) (string, error) {
-    parts := strings.Split(input, delimiter)
-    if len(parts) == 0 {
-        return "", fmt.Errorf("input string is empty or incorrect format")
-    }
+	parts := strings.Split(input, delimiter)
+	if len(parts) == 0 {
+		return "", fmt.Errorf("input string is empty or incorrect format")
+	}
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
-    randomIndex := r.Intn(len(parts))
-    return parts[randomIndex], nil
+	randomIndex := r.Intn(len(parts))
+	return parts[randomIndex], nil
 }

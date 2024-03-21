@@ -13,11 +13,11 @@ spec:
       labels:
         app: herofishing-crontasker
         type: herofishing-crontasker  # 標示為herofishing-service, 方便之後對版本做刪除等管理
-        imgVersion: "0.1.16"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
+        imgVersion: "0.1.17"       # 加版本標籤, 未來方便針對某個版本進行移除也要連agones產生的gameserver一起移除, 版本必須要跟image版本一致
     spec:
       containers:
       - name: herofishing-crontasker
-        image: asia-east1-docker.pkg.dev/testgcpproject1-415003/herofishing/herofishing-crontasker:0.1.16
+        image: asia-east1-docker.pkg.dev/testgcpproject1-415003/herofishing/herofishing-crontasker:0.1.17
         resources:
           requests:
             memory: "1024Mi"
