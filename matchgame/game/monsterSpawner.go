@@ -121,7 +121,7 @@ func (ms *MonsterSpawner) SpawnTimer() {
 			// 怪物移除檢查
 			needRemoveMonsterIdxs := make([]int, 0)
 			for _, monster := range ms.Monsters {
-				if MyRoom.GameTime > monster.LeaveTime {
+				if monster.IsLeft() {
 					// log.Errorf("怪物離開: %v", monster.MonsterIdx)
 					needRemoveMonsterIdxs = append(needRemoveMonsterIdxs, monster.MonsterIdx)
 				}
@@ -220,46 +220,82 @@ func (ms *MonsterSpawner) Spawn(spawn *Spawn) {
 			log.Errorf("%s gameJson.GetMonsterByID: %v", logger.LOG_MonsterSpawner, monsterID)
 			continue
 		}
-		monsterJsonID, err := strconv.ParseInt(monsterJson.ID, 10, 64)
-		if err != nil {
-			log.Errorf("%s strconv.ParseInt(monsterJson.ID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, monsterID)
-			continue
-		}
 
 		// 設定怪物唯一索引
 		monsterIdx := IDAccumulator.GetNextIdx("MonsterIdx")
 		// log.Warnf("生怪 MonsterIdx: %v", monsterIdx)
-		fromPos, err := utility.NewVector2XZ(routeJson.SpawnPos)
-		if err != nil {
-			log.Errorf("%s utility.NewVector2XZ(routeJson.SpawnPos)錯誤: %v", logger.LOG_MonsterSpawner, err)
-		}
-		toPos, err := utility.NewVector2XZ(routeJson.TargetPos)
-		if err != nil {
-			log.Errorf("%s utility.NewVector2XZ(routeJson.TargetPos)錯誤: %v", logger.LOG_MonsterSpawner, err)
-		}
-		dist := utility.GetDistance(toPos, fromPos)
+
 		moveSpeed, err := strconv.ParseFloat(monsterJson.Speed, 64)
 		if err != nil {
 			log.Errorf("%s strconv.ParseFloat(monsterJson.Speed, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
 		}
+		spawnPos, targetPos := routeJson.GetSpawnPosAndEndPos()
+		dist := utility.GetDistance(targetPos, spawnPos)
 		toTargetTime := dist / moveSpeed
-		spawn.MonsterIdxs[i] = monsterIdx
-		// 加入怪物清單
 		leaveTime := MyRoom.GameTime + toTargetTime
-		// if spawn.IsBoss {
-		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetSec: %v leaveSec: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
-		// }
-		// log.Warnf("monsterIdx:%v GameTime: %v routeID: %s fromPos: %v toPos: %v dist: %v toTargetTime: %v leaveTime: %v", monsterIdx, MyRoom.GameTime, routeJson.ID, fromPos, toPos, dist, toTargetTime, leaveTime)
-		ms.Monsters[monsterIdx] = &Monster{
+		spawn.MonsterIdxs[i] = monsterIdx
+
+		exp, err := strconv.ParseInt(monsterJson.EXP, 10, 64)
+		if err != nil {
+			log.Errorf("%s strconv.ParseInt(monsterJson.EXP, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+			continue
+		}
+		odds, err := strconv.ParseInt(monsterJson.Odds, 10, 64)
+		if err != nil {
+			log.Errorf("%s strconv.ParseInt(monsterJson.Odds, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+			continue
+		}
+		speed, err := strconv.ParseFloat(monsterJson.Speed, 64)
+		if err != nil {
+			log.Errorf("%s strconv.ParseFloat(monsterJson.Speed, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+			continue
+		}
+		dropID := int64(0)
+		dropRTP := int64(0)
+		if monsterJson.DropID != "" {
+			dropID, err = strconv.ParseInt(monsterJson.DropID, 10, 64)
+			if err != nil {
+				log.Errorf("%s strconv.ParseInt(monsterJson.DropID, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+				continue
+			}
+			dropJson, err := gameJson.GetDropByID(monsterJson.DropID)
+			if err != nil {
+				log.Errorf("%s =gameJson.GetDropByID(monsterJson.DropID)錯誤: %v", logger.LOG_MonsterSpawner, err)
+				continue
+			}
+			dropRTP, err = strconv.ParseInt(dropJson.RTP, 10, 64)
+			if err != nil {
+				log.Errorf("%s strconv.ParseInt(dropJson.RTP, 10, 64)錯誤: %v", logger.LOG_MonsterSpawner, err)
+				continue
+			}
+		}
+
+		// 設定怪物資料
+		myMonster := &Monster{
 			MonsterIdx: monsterIdx,
-			RouteJson:  routeJson,
+			ID:         monsterID,
+			EXP:        int(exp),
+			Odds:       int(odds),
+			DropID:     int(dropID),
+			DropRTP:    int(dropRTP),
+			SpawnPos:   spawnPos,
+			TargetPos:  targetPos,
+			Speed:      speed,
 			SpawnTime:  MyRoom.GameTime,
 			LeaveTime:  leaveTime,
 		}
-
+		// 設定怪物出界時間
+		monsterOutOfBoundaryTime := myMonster.GetReachBorderTime(utility.Rect{Center: utility.Vector2{X: 0, Y: 0}, Width: 20, Height: 20}, -1)
+		if monsterOutOfBoundaryTime == -1 {
+			log.Errorf("%s monsterOutOfBoundaryTime為-1, 怪物路徑表可能錯誤了 routJsonID: %v", logger.LOG_MonsterSpawner, routeJsonID)
+			return
+		}
+		myMonster.OutOfBoundaryTime = monsterOutOfBoundaryTime
+		// 將怪物加入清單
+		ms.Monsters[monsterIdx] = myMonster
 		// 紀錄怪物清單
 		monsters = append(monsters, &packet.Monster{
-			ID:      int(monsterJsonID),
+			ID:      monsterID,
 			Idx:     monsterIdx,
 			Death:   false,
 			LTime:   math.Round(leaveTime),

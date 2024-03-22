@@ -228,13 +228,20 @@ func (bot *Bot) Attack() {
 	if bot == nil {
 		return
 	}
-	if bot.CurTarget == nil || MyRoom.MSpawner.GetMonster(bot.CurTarget.MonsterIdx) == nil {
-		log.Errorf("目標怪物已死亡, 重新尋找目標")
+	curMonster := MyRoom.MSpawner.GetMonster(bot.CurTarget.MonsterIdx)
+	if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
 		bot.NewSelectTargetLoop() // 目標已死亡就重新跑選目標goroutine
 		return
 	}
 	spellJsonID := fmt.Sprintf("%v_attack", bot.MyHero.ID)
+	spellJson, err := gameJson.GetHeroSpellByID(spellJsonID)
+	if err != nil {
+		log.Errorf("%s  gameJson.GetHeroSpellByID(spellJsonID)錯誤: %v", logger.LOG_BotBehaviour, err)
+		return
+	}
 	mIdx := bot.CurTarget.MonsterIdx
+
+	// 送攻擊封包
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,
 		PackID: -1,
@@ -245,6 +252,118 @@ func (bot *Bot) Attack() {
 			AttackLock:  true,
 			AttackPos:   []float64{},
 			AttackDir:   []float64{},
+		}},
+	)
+
+	// 計算擊殺
+	rtp := float64(0)
+	spellType := spellJson.GetSpellType()
+	if spellType == "HeroSpell" {
+		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+		if err != nil {
+			log.Errorf("%s HandleHit時utility.ExtractLastDigit(spellJson.ID錯誤: %v", logger.LOG_Action, err)
+		} else {
+			rtp = spellJson.GetRTP(bot.MyHero.SpellLVs[idx])
+		}
+	} else if spellType == "DropSpell" {
+		rtp = spellJson.GetRTP(1) // 掉落技能只有固定等級1
+	}
+	// 取波次命中數
+	spellMaxHits := spellJson.MaxHits
+
+	killMonsterIdxs := make([]int, 0)    // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
+	gainPoints := make([]int64, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
+	gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
+	gainDrops := make([]int32, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := int64(0)                 // 點數溢位
+
+	// 取得怪物掉落道具
+	dropAddOdds := 0.0 // 掉落道具增加的總RTP
+	// 怪物必須有掉落物才需要考慮怪物掉落
+	if curMonster.DropID != 0 {
+		// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
+		if !bot.IsOwnedDrop(int32(curMonster.DropID)) {
+			dropAddOdds += float64(curMonster.DropRTP)
+		}
+	}
+
+	// 計算實際怪物死掉獲得點數
+	rewardPoint := int64((float64(curMonster.Odds) + dropAddOdds) * float64(MyRoom.DBmap.Bet))
+
+	rndUnchargedSpell, gotUnchargedSpell := bot.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
+
+	attackKP := float64(0)
+	tmpPTBufferAdd := int64(0)
+
+	if spellType == "Attack" { // 普攻
+		// 擊殺判定
+		hitData := HitData{
+			AttackRTP:  MyRoom.MathModel.GameRTP,
+			TargetOdds: float64(curMonster.Odds),
+			MaxHit:     int(spellMaxHits),
+			ChargeDrop: gotUnchargedSpell,
+			MapBet:     MyRoom.DBmap.Bet,
+		}
+		attackKP, tmpPTBufferAdd = MyRoom.MathModel.GetAttackKP(hitData, bot)
+		// log.Infof("======spellMaxHits:%v odds:%v attackKP:%v kill:%v ", spellMaxHits, odds, attackKP, kill)
+	} else { // 技能攻擊
+		hitData := HitData{
+			AttackRTP:  rtp,
+			TargetOdds: float64(curMonster.Odds),
+			MaxHit:     int(spellMaxHits),
+			ChargeDrop: false,
+			MapBet:     MyRoom.DBmap.Bet,
+		}
+		attackKP, tmpPTBufferAdd = MyRoom.MathModel.GetSpellKP(hitData, player)
+		log.Errorf("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v", spellMaxHits, rtp, curMonster.Odds, attackKP)
+	}
+
+	kill := utility.GetProbResult(attackKP) // 計算是否造成擊殺
+	ptBuffer += tmpPTBufferAdd
+	// 如果有擊殺就加到清單中
+	if kill {
+		// 技能充能掉落
+		dropChargeP := 0.0
+		gainSpellCharges = append(gainSpellCharges, -1)
+		gainDrops = append(gainDrops, -1)
+		if gotUnchargedSpell {
+			rndUnchargedSpellRTP := float64(0)
+
+			dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+			if err != nil {
+				log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID錯誤: %v", logger.LOG_Action, err)
+			} else {
+				// log.Errorf("技能ID: %v 索引: %v 技能等級: %v", rndUnchargedSpell.ID, spellIdx, player.MyHero.SpellLVs[spellIdx])
+				rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.SpellLVs[dropSpellIdx])
+			}
+			// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
+			dropChargeP = MyRoom.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(curMonster.Odds))
+			if utility.GetProbResult(dropChargeP) {
+				gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
+			}
+		}
+		// log.Errorf("擊殺怪物: %v", monsterIdx)
+		killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
+		gainPoints = append(gainPoints, rewardPoint)
+		gainHeroExps = append(gainHeroExps, int32(curMonster.EXP))
+		if curMonster.DropID != 0 {
+			gainDrops[len(gainDrops)-1] = int32(curMonster.DropID)
+		}
+	}
+
+	// 送擊中封包
+	MyRoom.BroadCastPacket(-1, &packet.Pack{
+		CMD:    packet.HIT_TOCLIENT,
+		PackID: -1,
+		Content: &packet.Hit_ToClient{
+			PlayerIdx:        bot.Index,
+			KillMonsterIdxs:  killMonsterIdxs,
+			GainPoints:       gainPoints,
+			GainHeroExps:     []int32{},
+			GainSpellCharges: []int32{},
+			GainDrops:        gainDrops,
+			PTBuffer:         0,
 		}},
 	)
 }

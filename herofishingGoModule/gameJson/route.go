@@ -3,6 +3,9 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"herofishingGoModule/logger"
+	"herofishingGoModule/utility"
 )
 
 // Route JSON
@@ -60,4 +63,22 @@ func GetRouteByID(id string) (RouteJsonData, error) {
 	}
 
 	return RouteJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.Route)
+}
+
+func (json RouteJsonData) GetSpawnPosAndEndPos() (utility.Vector2, utility.Vector2) {
+	spawnPos, err := utility.Split_FLOAT(json.SpawnPos, ",")
+	if err != nil {
+		log.Errorf("%s utility.Split_FLOAT錯誤 JsonID為: %s", logger.LOG_GameJson, json.ID)
+		return utility.Vector2{}, utility.Vector2{}
+	}
+	targetPos, err := utility.Split_FLOAT(json.TargetPos, ",")
+	if err != nil {
+		log.Errorf("%s utility.Split_FLOAT錯誤 JsonID為: %s", logger.LOG_GameJson, json.ID)
+		return utility.Vector2{}, utility.Vector2{}
+	}
+	if len(spawnPos) != 3 || len(targetPos) != 3 {
+		log.Errorf("%s route表格出錯, spawnPos或targetPos長度不為3 JsonID為: %s", logger.LOG_GameJson, json.ID)
+		return utility.Vector2{}, utility.Vector2{}
+	}
+	return utility.Vector2{X: spawnPos[0], Y: spawnPos[2]}, utility.Vector2{X: targetPos[0], Y: targetPos[2]}
 }

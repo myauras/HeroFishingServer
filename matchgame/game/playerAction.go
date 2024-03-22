@@ -180,7 +180,6 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 
-	// hitMonsterIdxs := make([]int, 0)   // 擊中怪物索引清單
 	killMonsterIdxs := make([]int, 0)    // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
 	gainPoints := make([]int64, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
 	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能

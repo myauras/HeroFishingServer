@@ -27,7 +27,7 @@ func (modle *MathModel) GetPlayerCurRTP(player *Player) float64 {
 }
 
 // 取得普攻擊殺率
-func (model *MathModel) GetAttackKP(hitData HitData, player *Player) (float64, int64) {
+func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int64) {
 
 	attackRTP := hitData.AttackRTP
 	if hitData.ChargeDrop { // 需要把普通攻擊的部分RTP分給技能充能掉落時
@@ -38,21 +38,25 @@ func (model *MathModel) GetAttackKP(hitData HitData, player *Player) (float64, i
 		return 0, 0
 	}
 	hitData.AttackRTP = attackRTP
-	return model.getKPandAddPTBuffer(hitData, player)
+	return model.getKPandAddPTBuffer(hitData, gamer)
 }
 
 // 取得技能擊殺率
-func (model *MathModel) GetSpellKP(hitData HitData, player *Player) (float64, int64) {
-	return model.getKPandAddPTBuffer(hitData, player)
+func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64) {
+	return model.getKPandAddPTBuffer(hitData, gamer)
 }
 
-func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer(hitData HitData, gamer Gamer) (float64, int64) {
 
 	// ====================點數暫存(Point Buffer)
 
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
-	pointBuffer := player.DBPlayer.PointBuffer
+	pointBuffer := int64(0)
+	player := gamer.(*Player)
+	if player != nil {
+		pointBuffer = player.DBPlayer.PointBuffer
+	}
 	// log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
