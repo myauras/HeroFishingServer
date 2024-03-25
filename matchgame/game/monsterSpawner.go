@@ -50,6 +50,17 @@ func (ms *MonsterSpawner) GetMonster(monsterIdx int) *Monster {
 	return nil
 }
 
+// 取得存活且在邊界內的怪物
+func (ms *MonsterSpawner) GetAvailableMonsters() map[int]*Monster {
+	availableMonsters := make(map[int]*Monster)
+	for key, value := range MyRoom.MSpawner.Monsters {
+		if !value.IsLeft() && !value.IsOutOfBoundary() {
+			availableMonsters[key] = value
+		}
+	}
+	return availableMonsters
+}
+
 func NewMonsterSpawner() *MonsterSpawner {
 	return &MonsterSpawner{
 		spawnTimerMap: make(map[int]int),
@@ -367,11 +378,13 @@ func (ms *MonsterSpawner) RemoveMonsters(killMonsterIdxs []int) {
 
 	}
 	// log.Warnf("移除 MonsterIdx: %v", killMonsterIdxs)
+	ms.MutexLock.Lock()
 	utility.RemoveFromMapByKeys(ms.Monsters, killMonsterIdxs) // 從怪物清單中移除被擊殺的怪物
 	if len(needRemoveSpawnIdxs) > 0 {                         // 如果有Spawn的怪物都死亡就移除該Spawn
 		// log.Infof("%s spawn中沒有怪物存活, 移除該spawn", logger.LOG_MonsterSpawner)
 		ms.Spawns = utility.RemoveFromSliceBySlice(ms.Spawns, needRemoveSpawnIdxs)
 	}
+	ms.MutexLock.Unlock()
 
 }
 

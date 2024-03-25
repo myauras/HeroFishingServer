@@ -52,8 +52,9 @@ func AddBot() *Bot {
 	}
 
 	bot := Bot{
-		ID:     botID,
-		MyHero: &hero,
+		ID:           botID,
+		MyHero:       &hero,
+		curTargetIdx: -1, // 無攻擊目標時, curTargetIdx為-1
 	}
 	joined := MyRoom.JoinPlayer(&bot)
 	if !joined {
@@ -78,14 +79,13 @@ func AddBot() *Bot {
 			HeroSkinIDs: heroSkinIDs,
 		},
 	})
-	bot.NewSelectTargetLoop()
+	bot.newSelectTargetLoop()
 	return &bot
 }
-func (bot *Bot) StopAllGoroutine() {
+func (bot *Bot) stopAllGoroutine() {
 	if bot == nil {
 		return
 	}
-	log.Errorf("StopAllGoroutine")
 	if bot.SelectTargetLoopChan != nil {
 		bot.SelectTargetLoopChan.ClosePackReadStopChan()
 	}
@@ -94,112 +94,103 @@ func (bot *Bot) StopAllGoroutine() {
 	}
 }
 
-func (bot *Bot) NewSelectTargetLoop() {
+func (bot *Bot) newSelectTargetLoop() {
 	if bot == nil {
 		return
 	}
-	if bot.SelectTargetLoopChan != nil {
-		bot.SelectTargetLoopChan.ClosePackReadStopChan()
-	}
-	if bot.AttackLoopChan != nil {
-		bot.AttackLoopChan.ClosePackReadStopChan()
-	}
-	bot.CurTarget = nil // 移除目前鎖定的怪物
+	bot.stopAllGoroutine() // 關閉goroutine
+	bot.curTargetIdx = -1  // 移除目前鎖定的怪物
 	selectLoopChan := &gSetting.LoopChan{
 		StopChan:      make(chan struct{}, 1),
 		ChanCloseOnce: sync.Once{},
 	}
 	bot.SelectTargetLoopChan = selectLoopChan
-	go bot.SelectTargetLoop()
+	go bot.selectTargetLoop()
 }
 
-func (bot *Bot) SelectTargetLoop() {
+func (bot *Bot) selectTargetLoop() {
 	if bot == nil {
 		return
 	}
 	ticker := time.NewTicker(gSetting.BOT_TARGET_MS * time.Millisecond)
 	defer ticker.Stop()
 
-	targetMonster := bot.SelectRndMonsterAsTarget()
+	targetMonster := bot.selectRndMonsterAsTarget()
 	if targetMonster != nil {
-		bot.NewAtkLoop()
+		bot.newAtkLoop()
 	}
 
-	for range ticker.C {
+	for {
 		select {
-		case <-bot.SelectTargetLoopChan.StopChan:
-			return // 終止goroutine
-		default:
-			if bot.CurTarget != nil {
+		case <-ticker.C:
+			if bot.curTargetIdx != -1 {
 				continue
 			}
-			targetMonster := bot.SelectRndMonsterAsTarget()
+			targetMonster := bot.selectRndMonsterAsTarget()
 			if targetMonster != nil {
-				bot.NewAtkLoop()
+				bot.newAtkLoop()
 			}
+		case <-bot.SelectTargetLoopChan.StopChan:
+			return // 終止goroutine
 		}
 	}
+
 }
 
 // 設定Bot的目標為隨機怪物
-func (bot *Bot) SelectRndMonsterAsTarget() *Monster {
+func (bot *Bot) selectRndMonsterAsTarget() *Monster {
 	if bot == nil {
 		return nil
 	}
-	rndMonster := utility.GetRndValueFromMap(MyRoom.MSpawner.Monsters)
+
+	rndMonster := utility.GetRndValueFromMap(MyRoom.MSpawner.GetAvailableMonsters())
 	if rndMonster != nil {
-		bot.CurTarget = rndMonster
+		bot.curTargetIdx = rndMonster.MonsterIdx
 	}
 	return rndMonster
 }
 
 // 設定Bot的目標為賠率最高的怪物
-func (bot *Bot) SelectMaxOddsMonsterAsTarget() *Monster {
-	if bot == nil {
-		return nil
-	}
-	maxOdds := 0
-	var curMaxOddsMonster *Monster
-	for _, m := range MyRoom.MSpawner.Monsters {
-		if m == nil {
-			continue
-		}
-		if m.Odds > maxOdds {
-			maxOdds = m.Odds
-			curMaxOddsMonster = m
-		}
-	}
-	if curMaxOddsMonster != nil {
-		bot.CurTarget = curMaxOddsMonster
-	}
-	return curMaxOddsMonster
-}
+// func (bot *Bot) selectMaxOddsMonsterAsTarget() *Monster {
+// 	if bot == nil {
+// 		return nil
+// 	}
+// 	maxOdds := 0
+// 	var curMaxOddsMonster *Monster
+// 	availableMonsters := MyRoom.MSpawner.GetAvailableMonsters()
+// 	for _, m := range availableMonsters {
+// 		if m == nil {
+// 			continue
+// 		}
+// 		if m.Odds > maxOdds {
+// 			maxOdds = m.Odds
+// 			curMaxOddsMonster = m
+// 		}
+// 	}
+// 	if curMaxOddsMonster != nil {
+// 		bot.curTargetIdx = curMaxOddsMonster.MonsterIdx
+// 	}
+// 	return curMaxOddsMonster
+// }
 
-func (bot *Bot) NewAtkLoop() {
+func (bot *Bot) newAtkLoop() {
 	if bot == nil {
 		return
 	}
-	if bot.SelectTargetLoopChan != nil {
-		bot.SelectTargetLoopChan.ClosePackReadStopChan()
-	}
-	if bot.AttackLoopChan != nil {
-		bot.AttackLoopChan.ClosePackReadStopChan()
-	}
+	bot.stopAllGoroutine() // 關閉goroutine
 	atkLoopChan := &gSetting.LoopChan{
 		StopChan:      make(chan struct{}, 1),
 		ChanCloseOnce: sync.Once{},
 	}
 	bot.AttackLoopChan = atkLoopChan
-	go bot.AttackTargetLoop()
+	go bot.attackTargetLoop()
 }
 
-func (bot *Bot) AttackTargetLoop() {
-	log.Errorf("開始攻擊Loop")
+func (bot *Bot) attackTargetLoop() {
 	if bot == nil {
 		return
 	}
 	ticker := time.NewTicker(gSetting.BOT_ATTACK_MS * time.Millisecond)
-
 	changeTargetMiliSec, err := utility.GetRndIntFromRangeStr(gSetting.BOT_CHANGE_TARGET_MS, "~")
 	if err != nil {
 		log.Errorf("%s utility.GetRndIntFromRangeStr發生錯誤: %v", logger.LOG_BotBehaviour, err)
@@ -207,30 +198,34 @@ func (bot *Bot) AttackTargetLoop() {
 	}
 	attackPassTime := 0
 	defer ticker.Stop()
-	for range ticker.C {
+
+	for {
 		select {
-		case <-bot.AttackLoopChan.StopChan:
-			log.Errorf("終止AttackTargetLoop")
-			return // 終止goroutine
-		default:
-			attackPassTime += gSetting.BOT_ATTACK_MS
-			if attackPassTime >= changeTargetMiliSec {
-				bot.NewSelectTargetLoop()
-				return
+		case <-ticker.C:
+			if bot.curTargetIdx != -1 {
+				attackPassTime += gSetting.BOT_ATTACK_MS
+				if attackPassTime >= changeTargetMiliSec {
+					bot.newSelectTargetLoop()
+					return
+				} else {
+					bot.attack()
+				}
 			} else {
-				bot.Attack()
+				continue
 			}
+		case <-bot.AttackLoopChan.StopChan:
+			return
 		}
 	}
 }
 
-func (bot *Bot) Attack() {
+func (bot *Bot) attack() {
 	if bot == nil {
 		return
 	}
-	curMonster := MyRoom.MSpawner.GetMonster(bot.CurTarget.MonsterIdx)
+	curMonster := MyRoom.MSpawner.GetMonster(bot.curTargetIdx)
 	if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
-		bot.NewSelectTargetLoop() // 目標已死亡就重新跑選目標goroutine
+		bot.newSelectTargetLoop() // 目標已死亡就重新跑選目標goroutine
 		return
 	}
 	spellJsonID := fmt.Sprintf("%v_attack", bot.MyHero.ID)
@@ -239,7 +234,7 @@ func (bot *Bot) Attack() {
 		log.Errorf("%s  gameJson.GetHeroSpellByID(spellJsonID)錯誤: %v", logger.LOG_BotBehaviour, err)
 		return
 	}
-	mIdx := bot.CurTarget.MonsterIdx
+	mIdx := curMonster.MonsterIdx
 
 	// 送攻擊封包
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
@@ -254,6 +249,35 @@ func (bot *Bot) Attack() {
 			AttackDir:   []float64{},
 		}},
 	)
+
+	go bot.RunHit(spellJson)
+}
+
+func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
+	if bot == nil {
+		return
+	}
+	curMonster := MyRoom.MSpawner.GetMonster(bot.curTargetIdx)
+	if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
+		return
+	}
+	hitTime := float64(0)
+	spellSpd := spellJson.GetSpellSpeed()
+	if spellSpd != 0 {
+		dist := bot.calcDistanceFromTarget()
+		if dist < 0 {
+			return
+		}
+		hitTime = dist / spellSpd
+	}
+	if hitTime > 0 {
+		time.Sleep(time.Duration(hitTime * float64(time.Second)))
+		// 等待後要再確認目標還存在
+		curMonster = MyRoom.MSpawner.GetMonster(bot.curTargetIdx)
+		if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
+			return
+		}
+	}
 
 	// 計算擊殺
 	rtp := float64(0)
@@ -271,12 +295,15 @@ func (bot *Bot) Attack() {
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 
-	killMonsterIdxs := make([]int, 0)    // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
-	gainPoints := make([]int64, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	killMonsterIdxs := make([]int, 0) // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
+	gainPoints := make([]int64, 0)    // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+
 	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
-	gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
-	gainDrops := make([]int32, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-	ptBuffer := int64(0)                 // 點數溢位
+	// Bot不用獲得英雄經驗
+	// gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
+	rndUnchargedSpell, gotUnchargedSpell := bot.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
+	gainDrops := make([]int32, 0)                                          // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := int64(0)                                                   // 點數溢位
 
 	// 取得怪物掉落道具
 	dropAddOdds := 0.0 // 掉落道具增加的總RTP
@@ -291,8 +318,6 @@ func (bot *Bot) Attack() {
 	// 計算實際怪物死掉獲得點數
 	rewardPoint := int64((float64(curMonster.Odds) + dropAddOdds) * float64(MyRoom.DBmap.Bet))
 
-	rndUnchargedSpell, gotUnchargedSpell := bot.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
-
 	attackKP := float64(0)
 	tmpPTBufferAdd := int64(0)
 
@@ -302,8 +327,8 @@ func (bot *Bot) Attack() {
 			AttackRTP:  MyRoom.MathModel.GameRTP,
 			TargetOdds: float64(curMonster.Odds),
 			MaxHit:     int(spellMaxHits),
-			ChargeDrop: gotUnchargedSpell,
-			MapBet:     MyRoom.DBmap.Bet,
+			// ChargeDrop: gotUnchargedSpell,
+			MapBet: MyRoom.DBmap.Bet,
 		}
 		attackKP, tmpPTBufferAdd = MyRoom.MathModel.GetAttackKP(hitData, bot)
 		// log.Infof("======spellMaxHits:%v odds:%v attackKP:%v kill:%v ", spellMaxHits, odds, attackKP, kill)
@@ -315,7 +340,7 @@ func (bot *Bot) Attack() {
 			ChargeDrop: false,
 			MapBet:     MyRoom.DBmap.Bet,
 		}
-		attackKP, tmpPTBufferAdd = MyRoom.MathModel.GetSpellKP(hitData, player)
+		attackKP, tmpPTBufferAdd = MyRoom.MathModel.GetSpellKP(hitData, bot)
 		log.Errorf("======spellMaxHits:%v rtp: %v odds:%v attackKP:%v", spellMaxHits, rtp, curMonster.Odds, attackKP)
 	}
 
@@ -323,10 +348,12 @@ func (bot *Bot) Attack() {
 	ptBuffer += tmpPTBufferAdd
 	// 如果有擊殺就加到清單中
 	if kill {
+		gainDrops = append(gainDrops, -1)
+		// Bot不用獲得充能
 		// 技能充能掉落
 		dropChargeP := 0.0
 		gainSpellCharges = append(gainSpellCharges, -1)
-		gainDrops = append(gainDrops, -1)
+
 		if gotUnchargedSpell {
 			rndUnchargedSpellRTP := float64(0)
 
@@ -335,7 +362,7 @@ func (bot *Bot) Attack() {
 				log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID錯誤: %v", logger.LOG_Action, err)
 			} else {
 				// log.Errorf("技能ID: %v 索引: %v 技能等級: %v", rndUnchargedSpell.ID, spellIdx, player.MyHero.SpellLVs[spellIdx])
-				rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.SpellLVs[dropSpellIdx])
+				rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(bot.GetHero().SpellLVs[dropSpellIdx])
 			}
 			// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
 			dropChargeP = MyRoom.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(curMonster.Odds))
@@ -343,17 +370,17 @@ func (bot *Bot) Attack() {
 				gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
 			}
 		}
-		// log.Errorf("擊殺怪物: %v", monsterIdx)
-		killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
+		killMonsterIdxs = append(killMonsterIdxs, curMonster.MonsterIdx)
 		gainPoints = append(gainPoints, rewardPoint)
-		gainHeroExps = append(gainHeroExps, int32(curMonster.EXP))
+		// Bot不用獲得英雄經驗
+		// gainHeroExps = append(gainHeroExps, int32(curMonster.EXP))
 		if curMonster.DropID != 0 {
 			gainDrops[len(gainDrops)-1] = int32(curMonster.DropID)
 		}
 	}
 
 	// 送擊中封包
-	MyRoom.BroadCastPacket(-1, &packet.Pack{
+	hitPack := packet.Pack{
 		CMD:    packet.HIT_TOCLIENT,
 		PackID: -1,
 		Content: &packet.Hit_ToClient{
@@ -361,9 +388,23 @@ func (bot *Bot) Attack() {
 			KillMonsterIdxs:  killMonsterIdxs,
 			GainPoints:       gainPoints,
 			GainHeroExps:     []int32{},
-			GainSpellCharges: []int32{},
+			GainSpellCharges: gainSpellCharges,
 			GainDrops:        gainDrops,
 			PTBuffer:         0,
-		}},
-	)
+		}}
+	MyRoom.SettleHit(bot, hitPack)
+}
+
+func (bot *Bot) calcDistanceFromTarget() float64 {
+	if bot == nil {
+		return -1
+	}
+	if bot.curTargetIdx == -1 {
+		return -1
+	}
+	curMonster := MyRoom.MSpawner.GetMonster(bot.curTargetIdx)
+	if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
+		return -1
+	}
+	return utility.GetDistance(bot.GetPos(), curMonster.GetCurPos())
 }

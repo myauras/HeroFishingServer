@@ -38,25 +38,45 @@ func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int6
 		return 0, 0
 	}
 	hitData.AttackRTP = attackRTP
-	return model.getKPandAddPTBuffer(hitData, gamer)
+
+	player, isPlayer := gamer.(*Player)
+	if isPlayer {
+		return model.getKPandAddPTBuffer(hitData, player)
+	} else {
+		bot, isBot := gamer.(*Bot)
+		if isBot {
+			return model.getKPandAddPTBuffer_Bot(hitData, bot)
+		}
+	}
+
+	log.Errorf("%s GetAttackKP發生預期外錯誤", logger.LOG_GameMath)
+	return 0, 0
 }
 
 // 取得技能擊殺率
 func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64) {
-	return model.getKPandAddPTBuffer(hitData, gamer)
+	player, isPlayer := gamer.(*Player)
+	if isPlayer {
+		return model.getKPandAddPTBuffer(hitData, player)
+	} else {
+		bot, isBot := gamer.(*Bot)
+		if isBot {
+			return model.getKPandAddPTBuffer_Bot(hitData, bot)
+		}
+	}
+
+	log.Errorf("%s GetAttackKP發生預期外錯誤", logger.LOG_GameMath)
+	return 0, 0
 }
 
-func (model *MathModel) getKPandAddPTBuffer(hitData HitData, gamer Gamer) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int64) {
 
 	// ====================點數暫存(Point Buffer)
 
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	pointBuffer := int64(0)
-	player := gamer.(*Player)
-	if player != nil {
-		pointBuffer = player.DBPlayer.PointBuffer
-	}
+	pointBuffer = player.DBPlayer.PointBuffer
 	// log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
@@ -115,6 +135,10 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, gamer Gamer) (float
 	}
 
 	return kp, ptBufferChanged
+}
+func (model *MathModel) getKPandAddPTBuffer_Bot(hitData HitData, bot *Bot) (float64, int64) {
+	kp := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
+	return kp, 0
 }
 
 // 取得普攻擊殺掉落英雄技能機率

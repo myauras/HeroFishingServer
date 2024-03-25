@@ -3,19 +3,21 @@ package gameJson
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"herofishingGoModule/logger"
 	"herofishingGoModule/utility"
 	"strconv"
-	// "herofishingGoModule/logger"
-	log "github.com/sirupsen/logrus"
 )
 
 // HeroSpell JSON
 type HeroSpellJsonData struct {
-	ID      string    `json:"ID"`
-	RTP     []float64 `json:"RTP"`
-	CD      float64   `json:"CD"`
-	Cost    int32     `json:"Cost"`
-	MaxHits int32     `json:"MaxHits"`
+	ID              string    `json:"ID"`
+	RTP             []float64 `json:"RTP"`
+	CD              float64   `json:"CD"`
+	Cost            int32     `json:"Cost"`
+	MaxHits         int32     `json:"MaxHits"`
+	SpellType       string    `json:"SpellType"`
+	SpellTypeValues string    `json:"SpellTypeValues"`
 }
 
 func (jsonData HeroSpellJsonData) UnmarshalJSONData(jsonName string, jsonBytes []byte) (map[string]interface{}, error) {
@@ -141,4 +143,35 @@ func GetHeroSpellByID(id string) (HeroSpellJsonData, error) {
 		}
 	}
 	return HeroSpellJsonData{}, fmt.Errorf("未找到ID為 %s 的%s資料", id, JsonName.HeroSpell)
+}
+
+// 返回0代表立即
+func (heroSpellJsonData HeroSpellJsonData) GetSpellSpeed() float64 {
+	// heroSpellJsonData.SpellTypeValues第X個數值代表什麼意思可以參考HeroSpell表的註解
+	values, err := utility.Split_FLOAT(heroSpellJsonData.SpellTypeValues, ",")
+	if err != nil {
+		log.Errorf("%s GetSpellSpeed時,  utility.Split_FLOAT錯誤: %s", logger.LOG_GameJson, err)
+		return 0
+	}
+	switch heroSpellJsonData.SpellType {
+	case "LineShot":
+		if len(values) < 2 {
+			log.Errorf("%s GetSpellSpeed時,  SpellTypeValues錯誤 SpellType: %s", logger.LOG_GameJson, heroSpellJsonData.SpellType)
+			return 0
+		}
+		return values[2]
+	case "SpreadLineShot":
+		if len(values) < 2 {
+			log.Errorf("%s GetSpellSpeed時,  SpellTypeValues錯誤 SpellType: %s", logger.LOG_GameJson, heroSpellJsonData.SpellType)
+			return values[2]
+		}
+		return 0
+	case "CircleArea":
+		return 0
+	case "SectorArea":
+		return 0
+	default:
+		log.Errorf("%s GetSpellSpeed時, 尚未定義的heroSpellJsonData.SpellTyp: %s", logger.LOG_GameJson, heroSpellJsonData.SpellType)
+		return 0
+	}
 }

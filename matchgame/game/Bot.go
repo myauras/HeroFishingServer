@@ -18,12 +18,9 @@ type Bot struct {
 	GainPoint            int64               // 此玩家在遊戲房總共贏得點數
 	PlayerBuffs          []packet.PlayerBuff // 玩家Buffers
 	Point                int64
-	PTBuffer             int64
-	TotalExpenditure     int64
-	HeroExp              int32
 	SpellCharges         [3]int32
 	Drops                [3]int32
-	CurTarget            *Monster
+	curTargetIdx         int
 	SelectTargetLoopChan *gSetting.LoopChan
 	AttackLoopChan       *gSetting.LoopChan
 }
@@ -80,8 +77,7 @@ func (Bot *Bot) GetGainPoint() int64 {
 
 // 英雄經驗增減
 func (Bot *Bot) AddHeroExp(value int32) {
-	Bot.HeroExp += value
-
+	// 不需處理
 }
 
 // 技能充能增減, idx傳入1~3
@@ -215,4 +211,23 @@ func (bot *Bot) GetAttackCDBuff() float64 {
 
 func (bot *Bot) CloseConnection() {
 	// 不需處理
+}
+
+// 取得所在座標
+func (bot *Bot) GetPos() utility.Vector2 {
+	if bot == nil {
+		return utility.Vector2{}
+	}
+	switch bot.Index {
+	case 0:
+		return utility.Vector2{X: 0, Y: -10}
+	case 1:
+		return utility.Vector2{X: 10, Y: 0}
+	case 2:
+		return utility.Vector2{X: 0, Y: 10}
+	case 3:
+		return utility.Vector2{X: -10, Y: 0}
+	default:
+		return utility.Vector2{}
+	}
 }

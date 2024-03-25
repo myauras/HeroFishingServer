@@ -117,7 +117,7 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 		// 有Hit先送到的封包要處理
 		if len(attackEvent.Hit_ToClientPacks) > 0 {
 			for _, v := range attackEvent.Hit_ToClientPacks {
-				room.settleHit(player, v)
+				room.SettleHit(player, v)
 			}
 		}
 	}
@@ -328,14 +328,14 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// log.Errorf("attackEvent.Paid: %v   killMonsterIdxs: %v", attackEvent.Paid, killMonsterIdxs)
 	// =============已完成支付費用的命中就進行資源消耗與回送封包=============
 	if attackEvent.Paid {
-		room.settleHit(player, hitPack)
+		room.SettleHit(player, hitPack)
 	}
 
 }
 
 // 已付費的Attack事件才會結算命中
-func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
-
+func (room *Room) SettleHit(gamer Gamer, hitPack packet.Pack) {
+	player, _ := gamer.(*Player)
 	var content *packet.Hit_ToClient
 	if c, ok := hitPack.Content.(*packet.Hit_ToClient); !ok {
 		log.Errorf("%s hitPack.Content無法斷言為Hit_ToClient", logger.LOG_Action)
@@ -346,34 +346,38 @@ func (room *Room) settleHit(player *Player, hitPack packet.Pack) {
 	// 玩家點數變化
 	totalGainPoint := utility.SliceSum(content.GainPoints) // 把 每個擊殺獲得點數加總就是 總獲得點數
 	if totalGainPoint != 0 {
-		player.AddPoint(totalGainPoint)
-		player.AddTotalWin(totalGainPoint)
+		gamer.AddPoint(totalGainPoint)
+		if player != nil {
+			player.AddTotalWin(totalGainPoint)
+		}
 	}
 	// 玩家點數溢位
 	if content.PTBuffer != 0 {
-		player.AddPTBuffer(content.PTBuffer)
+		if player != nil {
+			player.AddPTBuffer(content.PTBuffer)
+		}
 	}
 
 	// 英雄增加經驗
 	totalGainHeroExps := utility.SliceSum(content.GainHeroExps) // 把 每個擊殺獲得英雄經驗加總就是 總獲得英雄經驗
-	player.AddHeroExp(int32(totalGainHeroExps))
+	gamer.AddHeroExp(int32(totalGainHeroExps))
 	// 擊殺怪物增加英雄技能充能
 	for _, v := range content.GainSpellCharges {
 		if v <= 0 { // 因為有擊殺但沒掉落充能時, gainSpellCharges仍會填入-1, 所以要加判斷
 			continue
 		}
-		player.AddSpellCharge(v, 1)
+		gamer.AddSpellCharge(v, 1)
 	}
 	// 擊殺怪物獲得掉落道具
 	for _, dropID := range content.GainDrops {
 		if dropID <= 0 { // 因為有擊殺但沒掉落時, gainDrops仍會填入-1, 所以要加判斷
 			continue
 		}
-		player.AddDrop(dropID)
+		gamer.AddDrop(dropID)
 	}
 	// 從怪物清單中移除被擊殺的怪物(付費後才算目標死亡, 沒收到付費的Attack封包之前都還是算怪物存活)
 	room.MSpawner.RemoveMonsters(content.KillMonsterIdxs)
-	log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
+	// log.Infof("killMonsterIdxs: %v gainPoints: %v gainHeroExps: %v gainSpellCharges: %v  , gainDrops: %v ", content.KillMonsterIdxs, content.GainPoints, content.GainHeroExps, content.GainSpellCharges, content.GainDrops)
 	// log.Infof("/////////////////////////////////")
 	// log.Infof("killMonsterIdxs: %v \n", killMonsterIdxs)
 	// log.Infof("gainPoints: %v \n", gainPoints)

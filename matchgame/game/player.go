@@ -34,6 +34,7 @@ type Gamer interface {
 	CanSpell(idx int32) bool
 	GetAttackCDBuff() float64
 	CloseConnection()
+	GetPos() utility.Vector2
 }
 
 // 玩家
@@ -299,4 +300,23 @@ func (player *Player) GetAttackCDBuff() float64 {
 		}
 	}
 	return cdBuff
+}
+
+// 取得所在座標
+func (player *Player) GetPos() utility.Vector2 {
+	if player == nil {
+		return utility.Vector2{}
+	}
+	switch player.Index {
+	case 0:
+		return utility.Vector2{X: 0, Y: -10}
+	case 1:
+		return utility.Vector2{X: 10, Y: 0}
+	case 2:
+		return utility.Vector2{X: 0, Y: 10}
+	case 3:
+		return utility.Vector2{X: -10, Y: 0}
+	default:
+		return utility.Vector2{}
+	}
 }

@@ -203,8 +203,8 @@ func (r *Room) WriteGameErrorLog(log string) {
 	r.ErrorLogs = append(r.ErrorLogs, log)
 }
 
-// 取得房間玩家數
-func (r *Room) PlayerCount() int {
+// 取得房間人數(包含BOT)
+func (r *Room) GamerCount() int {
 	count := 0
 	for _, v := range r.Gamers {
 		if _, ok := v.(*Player); ok {
@@ -288,7 +288,7 @@ func (r *Room) JoinPlayer(gamer Gamer) bool {
 	r.UpdateMatchgameToDB() // 更新DB
 	r.OnRoomPlayerChange()
 
-	log.Infof("%s 玩家(%s) 已加入房間(%v/%v) 房間資訊: %+v", logger.LOG_Room, gamer.GetID(), r.PlayerCount(), setting.PLAYER_NUMBER, r)
+	log.Infof("%s 玩家(%s) 已加入房間(%v/%v) 房間資訊: %+v", logger.LOG_Room, gamer.GetID(), r.GamerCount(), setting.PLAYER_NUMBER, r)
 	return true
 }
 
@@ -303,7 +303,7 @@ func (r *Room) KickBot(bot *Bot, reason string) {
 		log.Infof("%s 要踢掉的BotID!=座位上的Bot", logger.LOG_Room)
 		return
 	}
-	bot.StopAllGoroutine()
+	bot.stopAllGoroutine()
 	bot.CloseConnection() // 關閉連線
 	r.MutexLock.Lock()
 	r.Gamers[bot.Index] = nil
@@ -407,7 +407,7 @@ func (r *Room) OnRoomPlayerChange() {
 	if r == nil {
 		return
 	}
-	playerCount := r.PlayerCount()
+	playerCount := r.GamerCount()
 	// log.Infof("%s 根據玩家數量決定是否升怪 玩家數量: %v", logger.LOG_MonsterSpawner, playerCount)
 
 	if playerCount >= setting.PLAYER_NUMBER { // 滿房

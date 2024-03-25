@@ -15,7 +15,7 @@ const (
 	AGONES_HEALTH_PIN_INTERVAL_SEC = 1            // 每X秒檢查AgonesServer是否正常運作(官方文件範例是用2秒)
 	TCP_CONN_TIMEOUT_SEC           = 120          // TCP連線逾時時間X秒
 	BOT_TARGET_MS                  = 1000         // Bot沒目標時, 每X豪秒選一次目標
-	BOT_CHANGE_TARGET_MS           = "5000~5000" // Bot主動更換目標間隔X豪秒區間
+	BOT_CHANGE_TARGET_MS           = "3000~12000" // Bot主動更換目標間隔X豪秒區間
 	BOT_ATTACK_MS                  = 300          // Bot有目標時, 攻擊頻率為X豪秒
 )
 
