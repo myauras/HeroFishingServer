@@ -154,7 +154,7 @@ func updateGameLoop(player *game.Player, stop chan struct{}) {
 				CMD:    packet.UPDATESCENE_TOCLIENT,
 				PackID: -1,
 				Content: &packet.UpdateScene_ToClient{
-					Spawns:       game.MyRoom.MSpawner.Spawns,
+					Monsters:     game.MyRoom.MSpawner.GetPackMonsters(),
 					SceneEffects: game.MyRoom.SceneEffects,
 				},
 			})

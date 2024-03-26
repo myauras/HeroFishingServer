@@ -194,7 +194,7 @@ func (r *Room) RemoveExpiredPlayerBuffers() {
 			}
 		}
 		if len(toRemoveIdxs) > 0 {
-			gamer.SetBuffers(utility.RemoveFromSliceBySlice(gamer.GetBuffers(), toRemoveIdxs))
+			gamer.SetBuffers(utility.RemoveFromSliceByIdxs(gamer.GetBuffers(), toRemoveIdxs))
 		}
 	}
 }
@@ -443,7 +443,7 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			CMD:    packet.UPDATESCENE_TOCLIENT,
 			PackID: -1,
 			Content: &packet.UpdateScene_ToClient{
-				Spawns:       r.MSpawner.Spawns,
+				Monsters:     r.MSpawner.GetPackMonsters(),
 				SceneEffects: r.SceneEffects,
 			},
 		})

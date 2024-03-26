@@ -412,7 +412,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			log.Errorf("%s HandleDropSpell的EffectType為%s時 conv.ParseFloat(dropSpellJson.EffectValue1, 64)錯誤: %v", logger.LOG_Action, dropSpellJson.EffectType, err)
 			return
 		}
-		room.AddFrozenEffect(dropSpellJson.EffectType, duration)
+		room.AddSceneEffect(dropSpellJson.EffectType, duration)
 		room.BroadCastPacket(player.Index, &packet.Pack{
 			CMD:    packet.DROPSPELL_TOCLIENT,
 			PackID: -1,
@@ -426,7 +426,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 			CMD:    packet.UPDATESCENE_TOCLIENT,
 			PackID: -1,
 			Content: &packet.UpdateScene_ToClient{
-				Spawns:       room.MSpawner.Spawns,
+				Monsters:     room.MSpawner.GetPackMonsters(),
 				SceneEffects: room.SceneEffects,
 			},
 		})
