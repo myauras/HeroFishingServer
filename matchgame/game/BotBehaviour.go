@@ -21,6 +21,7 @@ func RemoveAllBots(reason string) {
 			MyRoom.KickBot(bot, reason)
 		}
 	}
+	MyRoom.UpdateMatchgameToDB() // 更新房間DB
 }
 
 // 加入Bot
@@ -235,7 +236,8 @@ func (bot *Bot) attack() {
 		return
 	}
 	mIdx := curMonster.MonsterIdx
-
+	dir := curMonster.GetCurVec3Pos().Sub(GetPlayerVec3Pos(bot.Index))
+	normalizedDir := dir.Normalize()
 	// 送攻擊封包
 	MyRoom.BroadCastPacket(-1, &packet.Pack{
 		CMD:    packet.ATTACK_TOCLIENT,
@@ -246,7 +248,7 @@ func (bot *Bot) attack() {
 			MonsterIdx:  mIdx,
 			AttackLock:  true,
 			AttackPos:   []float64{},
-			AttackDir:   []float64{},
+			AttackDir:   []float64{normalizedDir.X, normalizedDir.Y, normalizedDir.Z},
 		}},
 	)
 
@@ -406,5 +408,5 @@ func (bot *Bot) calcDistanceFromTarget() float64 {
 	if curMonster == nil || curMonster.IsOutOfBoundary() || curMonster.IsLeft() {
 		return -1
 	}
-	return utility.GetDistance(bot.GetPos(), curMonster.GetCurPos())
+	return utility.GetDistance(GetPlayerVec2Pos(bot.Index), curMonster.GetCurVec2Pos())
 }

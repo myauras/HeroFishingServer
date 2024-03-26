@@ -36,7 +36,7 @@ func (monster *Monster) IsOutOfBoundary() bool {
 }
 
 // 取得怪物目前位置
-func (monster *Monster) GetCurPos() utility.Vector2 {
+func (monster *Monster) GetCurVec2Pos() utility.Vector2 {
 	moveTime := MyRoom.GameTime - monster.SpawnTime                      // 移動時間
 	distance := utility.GetDistance(monster.TargetPos, monster.SpawnPos) // 總距離
 	moveDistance := moveTime * monster.Speed                             // 實際移動距離
@@ -46,12 +46,23 @@ func (monster *Monster) GetCurPos() utility.Vector2 {
 	return utility.Lerp(monster.SpawnPos, monster.TargetPos, progress)
 }
 
+// 取得怪物目前位置
+func (monster *Monster) GetCurVec3Pos() utility.Vector3 {
+	vec2 := monster.GetCurVec2Pos()
+	vec3 := utility.Vector3{
+		X: vec2.X,
+		Y: 0,
+		Z: vec2.Y,
+	}
+	return vec3
+}
+
 // 計算矩形座標內的怪物是否能在時間內移動出矩形邊界
 // 可以的話回傳遊戲時間第幾秒時移出邊界, 否則回傳-1代表怪物永遠不會超出邊界(速度為0 或 時間內無法達到)
 // limitTime傳入-1代表不限制時間
 func (monster *Monster) GetReachBorderTime(rect utility.Rect, limitTime float64) float64 {
 	dir := utility.Direction(monster.SpawnPos, monster.TargetPos)
-	normalizedDir := utility.Normalize(dir)
+	normalizedDir := dir.Normalize()
 	// 計算各軸時間單位位移量
 	speedX := normalizedDir.X * monster.Speed
 	speedY := normalizedDir.Y * monster.Speed

@@ -75,6 +75,38 @@ const CHAN_BUFFER = 4
 
 var MyRoom *Room // 房間
 
+// 取得玩家所在Vector2座標
+func GetPlayerVec2Pos(playerIdx int) utility.Vector2 {
+	switch playerIdx {
+	case 0:
+		return utility.Vector2{X: 0, Y: -10}
+	case 1:
+		return utility.Vector2{X: 10, Y: 0}
+	case 2:
+		return utility.Vector2{X: 0, Y: 10}
+	case 3:
+		return utility.Vector2{X: -10, Y: 0}
+	default:
+		return utility.Vector2{}
+	}
+}
+
+// 取得玩家所在Vector3座標
+func GetPlayerVec3Pos(playerIdx int) utility.Vector3 {
+	switch playerIdx {
+	case 0:
+		return utility.Vector3{X: 0, Y: 0, Z: -10}
+	case 1:
+		return utility.Vector3{X: 10, Y: 0, Z: 0}
+	case 2:
+		return utility.Vector3{X: 0, Y: 0, Z: 10}
+	case 3:
+		return utility.Vector3{X: -10, Y: 0, Z: 0}
+	default:
+		return utility.Vector3{}
+	}
+}
+
 // Mode模式分為以下:
 // standard:一般版本
 // non-agones: 個人測試模式(不使用Agones服務, non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
@@ -292,6 +324,7 @@ func (r *Room) JoinPlayer(gamer Gamer) bool {
 	return true
 }
 
+// 踢掉Bot, 注意: 不會自動執行UpdateMatchgameToDB, 所以呼叫KickBot後要自行呼叫UpdateMatchgameToDB
 func (r *Room) KickBot(bot *Bot, reason string) {
 	log.Infof("%s 嘗試踢出Bot(%s) 原因: %s", logger.LOG_Room, bot.GetID(), reason)
 
@@ -307,6 +340,7 @@ func (r *Room) KickBot(bot *Bot, reason string) {
 	bot.CloseConnection() // 關閉連線
 	r.MutexLock.Lock()
 	r.Gamers[bot.Index] = nil
+	r.DBMatchgame.KickPlayer(bot.GetID())
 	r.MutexLock.Unlock()
 	r.OnRoomPlayerChange()
 	// 廣播玩家離開封包
