@@ -163,7 +163,7 @@ func (monster *Monster) IsOutOfBoundary() bool {
 // 怪物不會超出邊界(速度為0, 或 方向錯誤)時設定回傳error
 func (monster *Monster) SetReachBorderTime(rect utility.Rect) error {
 	dir := utility.Direction(monster.SpawnPos, monster.TargetPos)
-	normalizedDir := utility.Normalize(dir)
+	normalizedDir := dir.Normalize()
 	// 計算各軸時間單位位移量
 	speedX := normalizedDir.X * monster.Speed
 	speedY := normalizedDir.Y * monster.Speed
@@ -217,7 +217,7 @@ func (monster *Monster) SetReachBorderTime(rect utility.Rect) error {
 }
 
 // 取得怪物目前位置
-func (monster *Monster) GetCurPos() utility.Vector2 {
+func (monster *Monster) GetVec2Pos() utility.Vector2 {
 	moveTime := MyRoom.GameTime - monster.SpawnTime                   // 移動時間
 	frozenTime := monster.calculateTotalEffectAvailableTime("Frozen") // 取得Frozen效果的有效影響時間
 	moveTime -= frozenTime                                            // 實際移動時間要扣掉被冰住的時間
@@ -228,6 +228,12 @@ func (monster *Monster) GetCurPos() utility.Vector2 {
 
 	// Lerp計算向量線性插植
 	return utility.Lerp(monster.SpawnPos, monster.TargetPos, progress)
+}
+
+// 取得怪物目前位置
+func (monster *Monster) GetVec3Pos() utility.Vector3 {
+	vec2Pos := monster.GetVec2Pos()
+	return utility.Vector3{X: vec2Pos.X, Y: 0, Z: vec2Pos.Y}
 }
 
 // 根據AtTime對MonsterEffect進行排序

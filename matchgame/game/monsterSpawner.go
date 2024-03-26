@@ -66,7 +66,7 @@ func (ms *MonsterSpawner) GetPackMonsters() []packet.PackMonster {
 		packMonsters = append(packMonsters, packet.PackMonster{
 			ID:   monster.ID,
 			Idx:  monster.MonsterIdx,
-			Pos:  monster.GetCurPos(),
+			Pos:  monster.GetVec2Pos(),
 			Type: monster.Type,
 		})
 	}

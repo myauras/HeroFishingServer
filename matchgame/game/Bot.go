@@ -213,21 +213,4 @@ func (bot *Bot) CloseConnection() {
 	// 不需處理
 }
 
-// 取得所在座標
-func (bot *Bot) GetPos() utility.Vector2 {
-	if bot == nil {
-		return utility.Vector2{}
-	}
-	switch bot.Index {
-	case 0:
-		return utility.Vector2{X: 0, Y: -10}
-	case 1:
-		return utility.Vector2{X: 10, Y: 0}
-	case 2:
-		return utility.Vector2{X: 0, Y: 10}
-	case 3:
-		return utility.Vector2{X: -10, Y: 0}
-	default:
-		return utility.Vector2{}
-	}
-}
+
