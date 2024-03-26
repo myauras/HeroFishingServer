@@ -64,9 +64,9 @@ func openConnectUDP(stop chan struct{}, src string) {
 		// 執行命令
 		if pack.CMD == packet.UDPAUTH {
 			if player.ConnUDP.Conn != nil {
-				log.Errorf("%s (UDP)玩家(%s)斷線重連UDP", logger.LOG_Main, player.DBPlayer.ID)
+				log.Errorf("%s (UDP)玩家(%s)斷線重連UDP", logger.LOG_Main, player.ID)
 				if player.ConnUDP.Addr.String() != addr.String() { // 玩家通過ConnToken驗證但Addr有變更可能是因為Wifi環境改變
-					log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.DBPlayer.ID, player.ConnUDP.Addr.String(), addr.String())
+					log.Infof("%s (UDP)玩家 %s 的位置從 %s 變更為 %s \n", logger.LOG_Main, player.ID, player.ConnUDP.Addr.String(), addr.String())
 				}
 			} else {
 				go updateGameLoop(player, stop)
@@ -76,7 +76,7 @@ func openConnectUDP(stop chan struct{}, src string) {
 			player.ConnUDP.Addr = addr
 		} else {
 			if player.ConnUDP.Conn == nil || player.ConnUDP.Addr == nil {
-				log.Warnf("%s (UDP)收到來自 %s(%s) 但尚未進行UDP Auth的命令: %s", logger.LOG_Main, player.DBPlayer.ID, addr, pack.CMD)
+				log.Warnf("%s (UDP)收到來自 %s(%s) 但尚未進行UDP Auth的命令: %s", logger.LOG_Main, player.ID, addr, pack.CMD)
 			}
 			// 更新連線資料
 			player.ConnUDP.Conn = conn

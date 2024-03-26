@@ -24,6 +24,7 @@ type RedisPlayer struct {
 	totalWinBuffer         int64     // 暫存總贏點數修改
 	totalExpenditureBuffer int64     // 暫存總花費點數修改
 	heroExpBuffer          int32     // 暫存經驗修改
+	spellLVBuffer          [3]int32  // 暫存技能等級
 	spellChargesBuffer     [3]int32  // 暫存技能充能
 	dropsBuffer            [3]int32  // 暫存掉落道具
 	MyLoopChan             *LoopChan // 資料更新關閉通道
@@ -50,6 +51,9 @@ type RedisDBPlayer struct {
 	TotalWin         int64  `redis:"totalWin"`          // 總贏點數
 	TotalExpenditure int64  `redis:"totalExpenditure "` // 總花費點數
 	HeroExp          int32  `redis:"heroExp"`           // 英雄經驗
+	SpellLV1         int32  `redis:"spellLV1"`          // 技能充能1
+	SpellLV2         int32  `redis:"spellLV1"`          // 技能充能2
+	SpellLV3         int32  `redis:"spellLV1"`          // 技能充能3
 	SpellCharge1     int32  `redis:"spellCharge1"`      // 技能充能1
 	SpellCharge2     int32  `redis:"spellCharge2"`      // 技能充能2
 	SpellCharge3     int32  `redis:"spellCharge3"`      // 技能充能3
@@ -119,6 +123,15 @@ func (rPlayer *RedisPlayer) WritePlayerUpdateToRedis() {
 		}
 		rPlayer.heroExpBuffer = 0
 	}
+	for i, spellLV := range rPlayer.spellLVBuffer {
+		if spellLV != 0 {
+			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("spellLV%d", (i+1)), spellLV).Result()
+			if err != nil {
+				log.Errorf("%s writePlayerUpdateToRedis spellLV錯誤: %v", logger.LOG_Redis, err)
+			}
+			rPlayer.spellLVBuffer[i] = 0
+		}
+	}
 	for i, charge := range rPlayer.spellChargesBuffer {
 		if charge != 0 {
 			_, err := rdb.HSet(ctx, rPlayer.id, fmt.Sprintf("spellCharge%d", (i+1)), charge).Result()
@@ -159,7 +172,7 @@ func (player *RedisPlayer) ClosePlayer() {
 }
 
 // 建立玩家資料
-func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int64, totalExpenditure int64, heroExp int32, spellCharges [3]int32, drops [3]int32) (*RedisPlayer, error) {
+func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int64, totalExpenditure int64, heroExp int32, spellLV [3]int32, spellCharges [3]int32, drops [3]int32) (*RedisPlayer, error) {
 	playerID = "player-" + playerID
 
 	dbPlayer, err := GetPlayerDBData(playerID)
@@ -172,6 +185,9 @@ func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int
 			"totalWin":         totalWin,
 			"totalExpenditure": totalExpenditure,
 			"heroExp":          heroExp,
+			"spellLV1":         spellLV[0],
+			"spellLV2":         spellLV[1],
+			"spellLV3":         spellLV[2],
 			"spellCharge1":     spellCharges[0],
 			"spellCharge2":     spellCharges[1],
 			"spellCharge3":     spellCharges[2],
@@ -187,6 +203,7 @@ func CreatePlayerData(playerID string, point int64, ptBuffer int64, totalWin int
 
 	player := RedisPlayer{
 		id:                 playerID,
+		spellLVBuffer:      [3]int32{0, 0, 0},
 		spellChargesBuffer: [3]int32{0, 0, 0},
 		dropsBuffer:        [3]int32{0, 0, 0},
 		MyLoopChan: &LoopChan{
@@ -237,6 +254,17 @@ func (rPlayer *RedisPlayer) AddHeroExp(value int32) {
 	rPlayer.MutexLock.Lock()
 	defer rPlayer.MutexLock.Unlock()
 	rPlayer.heroExpBuffer += value
+}
+
+// 設定英雄技能等級, idx傳入1~3
+func (rPlayer *RedisPlayer) SetSpellLV(idx int, value int32) {
+	if idx < 1 || idx > 3 {
+		log.Errorf("%s SetSpellLV傳入錯誤索引: %v", logger.LOG_Redis, idx)
+		return
+	}
+	rPlayer.MutexLock.Lock()
+	defer rPlayer.MutexLock.Unlock()
+	rPlayer.spellLVBuffer[(idx - 1)] = value
 }
 
 // 設定技能充能, idx傳入1~3

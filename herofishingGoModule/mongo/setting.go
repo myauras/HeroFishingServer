@@ -119,6 +119,7 @@ type DBPlayer struct {
 	LeftGameAt       time.Time `bson:"leftGameAt"`
 	RedisSync        bool      `bson:"redisSync"`
 	HeroExp          int32     `bson:"heroExp"`
+	SpellLVs         [3]int32  `bson:"spellLVs"`
 	SpellCharges     [3]int32  `bson:"spellCharges"`
 	Drops            [3]int32  `bson:"drops"`
 	PointBuffer      int64     `bson:"pointBuffer"`

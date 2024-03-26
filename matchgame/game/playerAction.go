@@ -260,6 +260,8 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 				}
 				// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
 				dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(monster.Odds))
+
+				log.Errorf("rndUnchargedSpellRTP: %v monster.Odds:%v  dropChargeP: %v", rndUnchargedSpellRTP, monster.Odds, dropChargeP)
 				if utility.GetProbResult(dropChargeP) {
 					gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
 				}
@@ -517,37 +519,11 @@ func (room *Room) HandleLvUpSpell(player *Player, pack packet.Pack, content pack
 		})
 	}
 
-	heroLV, err := gameJson.GetHeroLVByEXP(player.DBPlayer.HeroExp)
-	log.Errorf("heroExp: %v , heroLV: %v usedSpellPoint: %v", player.DBPlayer.HeroExp, heroLV, player.MyHero.UsedSpellPoint)
-
+	err := player.LvUpSpell(content.SpellIdx)
 	if err != nil {
-		errStr := fmt.Sprintf("%s gameJson.GetHeroLVByEXP錯誤: %v", logger.LOG_Action, err)
-		log.Errorf(errStr)
-		errSend(errStr)
+		errSend(err.Error())
 		return
 	}
-	remainSpellPoint := heroLV - player.MyHero.UsedSpellPoint
-	if remainSpellPoint <= 0 {
-		errStr := fmt.Sprintf("%s 技能點數不足 remainSpellPoint: %v", logger.LOG_Action, remainSpellPoint)
-		log.Errorf(errStr)
-		errSend(errStr)
-		return
-	}
-	if content.SpellIdx < 1 && content.SpellIdx > 3 { // 英雄技能索引只會是1~3
-		errStr := fmt.Sprintf("%s 英雄技能索引只會是1~3 content.SpellIdx: %v", logger.LOG_Action, content.SpellIdx)
-		log.Errorf(errStr)
-		errSend(errStr)
-		return
-	}
-	if player.MyHero.SpellLVs[content.SpellIdx] > 2 { // SpellLV是0~3, 0是尚未學習,s 3是等級3
-		errStr := fmt.Sprintf("%s 該技能索引%v 等級為%v 無法再升級了", logger.LOG_Action, content.SpellIdx, player.MyHero.SpellLVs[content.SpellIdx])
-		log.Errorf(errStr)
-		errSend(errStr)
-		return
-	}
-
-	player.MyHero.UsedSpellPoint++             // 已使用的點數++
-	player.MyHero.SpellLVs[content.SpellIdx]++ // 英雄技能等級++
 
 	room.SendPacketToPlayer(player.Index, &packet.Pack{
 		CMD:    packet.LVUPSPELL_TOCLIENT,

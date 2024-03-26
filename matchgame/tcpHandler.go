@@ -146,7 +146,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 
 					// 建立RedisDB Player
-					redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellCharges, dbPlayer.Drops)
+					redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellLVs, dbPlayer.SpellCharges, dbPlayer.Drops)
 					if redisPlayerErr != nil {
 						log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 						_ = packet.SendPack(encoder, &packet.Pack{
@@ -169,7 +169,6 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 					// 將玩家加入遊戲房
 					player = game.Player{
-						DBPlayer:     &dbPlayer,
 						RedisPlayer:  redisPlayer,
 						LastUpdateAt: time.Now(),
 						PlayerBuffs:  []packet.PlayerBuff{},
@@ -191,7 +190,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 
 				} else { // 斷線重連時使用已存在的玩家資料, 不須重建資料
-					log.Errorf("--------------->更新玩家Conn: %s", player.DBPlayer.ID)
+					log.Errorf("--------------->更新玩家Conn: %s", player.ID)
 					player.ConnTCP.Conn = conn
 					player.ConnUDP.ConnToken = newConnToken
 				}

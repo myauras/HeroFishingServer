@@ -382,7 +382,7 @@ func (r *Room) KickPlayer(player *Player, reason string) {
 		log.Errorf("%s 取mongoDB player doc資料發生錯誤: %v", logger.LOG_Room, getPlayerDocErr)
 		return
 	}
-	if !mongoPlayerDoc.RedisSync && player.DBPlayer != nil { // RedisSync為false才需要進行資料同步 如果為true就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
+	if !mongoPlayerDoc.RedisSync { // RedisSync為false才需要進行資料同步 如果為true就不用(代表玩家在其他地方已經呼叫了Lobby Server的syncredischeck)
 		mongoPlayerDoc.RedisSync = true // 將RedisSync為設為true
 		// 更新玩家DB資料
 		updatePlayerBson := bson.D{
@@ -392,19 +392,20 @@ func (r *Room) KickPlayer(player *Player, reason string) {
 			{Key: "totalExpenditure", Value: player.GetTotalExpenditure()}, // 玩家總花費點數
 			{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
 			{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
-			{Key: "heroExp", Value: player.DBPlayer.HeroExp},               // 英雄經驗
-			{Key: "spellCharges", Value: player.DBPlayer.SpellCharges},     // 技能充能
-			{Key: "drops", Value: player.DBPlayer.Drops},                   // 掉落道具
-			{Key: "redisSync", Value: player.DBPlayer.RedisSync},           // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
+			{Key: "heroExp", Value: player.MyHero.HeroExp},                 // 英雄經驗
+			{Key: "spellLVs", Value: player.MyHero.SpellLVs},               // 技能等級
+			{Key: "spellCharges", Value: player.MyHero.SpellCharges},       // 技能充能
+			{Key: "drops", Value: player.Drops},                            // 掉落道具
+			{Key: "redisSync", Value: true},                                // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		}
-		_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.DBPlayer.ID, updatePlayerBson) // 更新DB DBPlayer
+		_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.ID, updatePlayerBson) // 更新DB DBPlayer
 		if updateErr != nil {
-			log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.DBPlayer.ID, updateErr)
+			log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.ID, updateErr)
 		} else {
-			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.DBPlayer.ID)
+			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.ID)
 		}
 	} else {
-		log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.DBPlayer.ID)
+		log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.ID)
 	}
 
 	player.RedisPlayer.ClosePlayer() // 關閉該玩家的RedisDB
