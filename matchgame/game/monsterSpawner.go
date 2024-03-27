@@ -71,7 +71,7 @@ func NewMonsterSpawner() *MonsterSpawner {
 }
 
 // 初始化生怪器
-func (ms *MonsterSpawner) InitMonsterSpawner(mapJsonID int32) {
+func (ms *MonsterSpawner) InitMonsterSpawner(mapJsonID int) {
 	log.Infof("%s 初始化生怪器", logger.LOG_MonsterSpawner)
 	mapData, err := gameJson.GetMapByID(strconv.Itoa(int(mapJsonID)))
 	if err != nil {

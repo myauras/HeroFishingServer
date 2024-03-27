@@ -46,7 +46,7 @@ func openConnectTCP(stop chan struct{}, src string) {
 
 // 處理TCP連線封包
 func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
-	remoteAddr := conn.RemoteAddr().String()
+	// remoteAddr := conn.RemoteAddr().String()
 
 	// log.Infof("%s Client %s connected", logger.LOG_Main, conn.RemoteAddr().String())
 	defer conn.Close()
@@ -83,7 +83,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 				packReadChan.ClosePackReadStopChan()
 				return
 			}
-			log.Infof("%s (TCP)收到來自%s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
+			// log.Infof("%s (TCP)收到來自%s 的命令: %s \n", logger.LOG_Main, remoteAddr, pack.CMD)
 
 			//未驗證前，除了Auth指令進來其他都擋掉
 			if !isAuth && pack.CMD != packet.AUTH {
@@ -146,7 +146,8 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 
 					// 建立RedisDB Player
-					redisPlayer, redisPlayerErr := redis.CreatePlayerData(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellLVs, dbPlayer.SpellCharges, dbPlayer.Drops)
+					redisPlayer := redis.CreateRedisPlayer(dbPlayer.ID)
+					redisPlayerErr := redis.UpdateOrCreateRedisDB(dbPlayer.ID, dbPlayer.Point, dbPlayer.PointBuffer, dbPlayer.TotalWin, dbPlayer.TotalExpenditure, dbPlayer.HeroExp, dbPlayer.SpellLVs, dbPlayer.SpellCharges, dbPlayer.Drops)
 					if redisPlayerErr != nil {
 						log.Errorf("%s 建立RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 						_ = packet.SendPack(encoder, &packet.Pack{
@@ -169,9 +170,14 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 					}
 					// 將玩家加入遊戲房
 					player = game.Player{
-						RedisPlayer:  redisPlayer,
-						LastUpdateAt: time.Now(),
-						PlayerBuffs:  []packet.PlayerBuff{},
+						ID:               dbPlayer.ID,
+						Drops:            dbPlayer.Drops,
+						PointBuffer:      dbPlayer.PointBuffer,
+						TotalWin:         dbPlayer.TotalWin,
+						TotalExpenditure: dbPlayer.TotalExpenditure,
+						RedisPlayer:      redisPlayer,
+						LastUpdateAt:     time.Now(),
+						PlayerBuffs:      []packet.PlayerBuff{},
 						ConnTCP: &gSetting.ConnectionTCP{
 							Conn:       conn,
 							MyLoopChan: packReadChan,
@@ -182,6 +188,7 @@ func handleConnectionTCP(conn net.Conn, stop chan struct{}) {
 							ConnToken: newConnToken,
 						},
 					}
+					player.InitHero(dbPlayer.SpellLVs, dbPlayer.SpellCharges)
 					joined := game.MyRoom.JoinPlayer(&player)
 					if !joined {
 						log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)

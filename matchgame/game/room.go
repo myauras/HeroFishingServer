@@ -3,18 +3,17 @@ package game
 import (
 	"errors"
 	"fmt"
-	"herofishingGoModule/gameJson"
 	mongo "herofishingGoModule/mongo"
 	"herofishingGoModule/setting"
 	"herofishingGoModule/utility"
 
 	// "matchgame/agones"
+	"herofishingGoModule/redis"
 	logger "matchgame/logger"
 	"matchgame/packet"
 	gSetting "matchgame/setting"
 	"net"
 	"runtime/debug"
-	"strconv"
 	"sync"
 	"time"
 
@@ -112,7 +111,7 @@ func GetPlayerVec3Pos(playerIdx int) utility.Vector3 {
 // non-agones: 個人測試模式(不使用Agones服務, non-agones的連線方式不會透過Matchmaker分配房間再把ip回傳給client, 而是直接讓client去連資料庫matchgame的ip)
 var Mode string
 
-func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int32, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
+func InitGameRoom(dbMapID string, playerIDs [setting.PLAYER_NUMBER]string, roomName string, ip string, port int, podName string, nodeName string, matchmakerPodName string, roomChan chan *Room) {
 	log.Infof("%s InitGameRoom開始", logger.LOG_Room)
 	if MyRoom != nil {
 		log.Errorf("%s MyRoom已經被初始化過", logger.LOG_Room)
@@ -246,25 +245,6 @@ func (r *Room) GamerCount() int {
 	return count
 }
 
-// 設定遊戲房內玩家使用英雄ID
-func (r *Room) SetHero(player *Player, heroID int, heroSkinID string) {
-	r.MutexLock.Lock()
-	defer r.MutexLock.Unlock()
-
-	heroJson, err := gameJson.GetHeroByID(strconv.Itoa(heroID))
-	if err != nil {
-		log.Errorf("%s gameJson.GetHeroByID(strconv.Itoa(heroID))", logger.LOG_Room)
-		return
-	}
-	spellJsons := heroJson.GetSpellJsons()
-
-	player.MyHero = &Hero{
-		ID:     heroID,
-		SkinID: heroSkinID,
-		Spells: spellJsons,
-	}
-}
-
 // 取得房間內所有玩家使用英雄與Skin資料
 func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBER]string) {
 	r.MutexLock.Lock()
@@ -278,7 +258,7 @@ func (r *Room) GetHeroInfos() ([setting.PLAYER_NUMBER]int, [setting.PLAYER_NUMBE
 			continue
 		}
 		heroIDs[i] = gamer.GetHero().ID
-		heroSkinIDs[i] = gamer.GetHero().SkinID
+		heroSkinIDs[i] = gamer.GetHero().skinID
 	}
 	return heroIDs, heroSkinIDs
 }
@@ -392,17 +372,22 @@ func (r *Room) KickPlayer(player *Player, reason string) {
 			{Key: "totalExpenditure", Value: player.GetTotalExpenditure()}, // 玩家總花費點數
 			{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
 			{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
-			{Key: "heroExp", Value: player.MyHero.HeroExp},                 // 英雄經驗
-			{Key: "spellLVs", Value: player.MyHero.SpellLVs},               // 技能等級
-			{Key: "spellCharges", Value: player.MyHero.SpellCharges},       // 技能充能
+			{Key: "heroExp", Value: player.MyHero.heroExp},                 // 英雄經驗
+			{Key: "spellLVs", Value: player.MyHero.spellLVs},               // 技能等級
+			{Key: "spellCharges", Value: player.MyHero.spellCharges},       // 技能充能
 			{Key: "drops", Value: player.Drops},                            // 掉落道具
 			{Key: "redisSync", Value: true},                                // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了
 		}
 		_, updateErr := mongo.UpdateDocByBsonD(mongo.ColName.Player, player.ID, updatePlayerBson) // 更新DB DBPlayer
 		if updateErr != nil {
-			log.Errorf("%s 更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.ID, updateErr)
+			log.Errorf("%s 玩家離開更新玩家 %s DB資料錯誤: %v", logger.LOG_Room, player.ID, updateErr)
 		} else {
-			log.Infof("%s 更新玩家 %s DB資料", logger.LOG_Room, player.ID)
+			log.Infof("%s 玩家離開更新玩家 %s DB資料", logger.LOG_Room, player.ID)
+		}
+		// 更新玩家RedisDB
+		redisPlayerErr := redis.UpdateOrCreateRedisDB(player.GetID(), player.GetPoint(), player.GetPTBuffer(), player.GetTotalWin(), player.GetTotalExpenditure(), player.MyHero.heroExp, player.MyHero.spellLVs, player.MyHero.spellCharges, player.Drops)
+		if redisPlayerErr != nil {
+			log.Errorf("%s 更新RedisPlayer錯誤: %v", logger.LOG_Main, redisPlayerErr)
 		}
 	} else {
 		log.Infof("%s 玩家 %s RedisSync為true不需要更新PlayerDoc", logger.LOG_Room, player.ID)
@@ -489,7 +474,8 @@ func (r *Room) HandleTCPMsg(conn net.Conn, pack packet.Pack) error {
 			log.Errorf("%s parse %s failed", logger.LOG_Room, pack.CMD)
 			return fmt.Errorf("parse %s failed", pack.CMD)
 		}
-		r.SetHero(player, content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
+
+		player.MyHero.SetHero(content.HeroID, content.HeroSkinID) // 設定使用的英雄ID
 		heroIDs, heroSkinIDs := r.GetHeroInfos()
 		// 廣播給所有玩家
 		r.BroadCastPacket(-1, &packet.Pack{ // 廣播封包

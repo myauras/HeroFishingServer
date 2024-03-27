@@ -57,9 +57,9 @@ func openConnectUDP(stop chan struct{}, src string) {
 			log.Errorf("%s (UDP)Token驗證失敗 來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
 			continue
 		}
-		if pack.CMD != packet.UPDATEGAME {
-			log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
-		}
+		// if pack.CMD != packet.UPDATEGAME {
+		// 	log.Infof("%s (UDP)收到來自 %s 的命令: %s \n", logger.LOG_Main, addr.String(), pack.CMD)
+		// }
 
 		// 執行命令
 		if pack.CMD == packet.UDPAUTH {

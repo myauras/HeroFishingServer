@@ -113,18 +113,18 @@ const (
 type DBPlayer struct {
 	ID               string    `bson:"_id"`
 	CreatedAt        time.Time `bson:"createdAt"`
-	Point            int64     `bson:"point"`
+	Point            int       `bson:"point"`
 	Ban              bool      `bson:"ban"`
 	InMatchgameID    string    `bson:"inMatchgameID"`
 	LeftGameAt       time.Time `bson:"leftGameAt"`
 	RedisSync        bool      `bson:"redisSync"`
-	HeroExp          int32     `bson:"heroExp"`
-	SpellLVs         [3]int32  `bson:"spellLVs"`
-	SpellCharges     [3]int32  `bson:"spellCharges"`
-	Drops            [3]int32  `bson:"drops"`
-	PointBuffer      int64     `bson:"pointBuffer"`
-	TotalWin         int64     `bson:"totalWin"`
-	TotalExpenditure int64     `bson:"totalExpenditure"`
+	HeroExp          int       `bson:"heroExp"`
+	SpellLVs         [3]int    `bson:"spellLVs"`
+	SpellCharges     [3]int    `bson:"spellCharges"`
+	Drops            [3]int    `bson:"drops"`
+	PointBuffer      int       `bson:"pointBuffer"`
+	TotalWin         int       `bson:"totalWin"`
+	TotalExpenditure int       `bson:"totalExpenditure"`
 
 	// DB用不到的資料放這
 	// AuthType      string    `bson:"authType"`
@@ -146,7 +146,7 @@ type DBGameState struct {
 	MatchgameTestverRoomName string    `bson:"matchgame-testver-roomName"`
 	MatchgameTestverMapID    string    `bson:"matchgame-testver-mapID"`
 	MatchgameTestverIP       string    `bson:"matchgame-testver-ip"`
-	MatchgameTestverPort     int32     `bson:"matchgame-testver-port"`
+	MatchgameTestverPort     int       `bson:"matchgame-testver-port"`
 }
 
 // gameSetting的Timer文件
@@ -176,9 +176,9 @@ type DBPlayerState struct {
 type DBMap struct {
 	ID             string  `bson:"_id"`
 	MatchType      string  `bson:"matchType"`
-	JsonMapID      int32   `bson:"jsonMapID"`
-	Bet            int32   `bson:"bet"`
-	BetThreshold   int64   `bson:"betThreshold"`
+	JsonMapID      int     `bson:"jsonMapID"`
+	Bet            int     `bson:"bet"`
+	BetThreshold   int     `bson:"betThreshold"`
 	Enable         bool    `bson:"enable"`
 	RTP            float64 `bson:"rtp"`
 	SpellSharedRTP float64 `bson:"spellSharedRTP"`
@@ -194,7 +194,7 @@ type DBMatchgame struct {
 	// 2. 座位無關玩家進來順序 有人離開就會空著 例如 索引2的玩家離開 players[2]就會是nil 直到有新玩家加入
 	PlayerIDs         [setting.PLAYER_NUMBER]string `bson:"playerIDs"`
 	IP                string                        `bson:"ip"`
-	Port              int32                         `bson:"port"`
+	Port              int                           `bson:"port"`
 	NodeName          string                        `bson:"nodeName"`
 	PodName           string                        `bson:"podName"`
 	MatchmakerPodName string                        `bson:"matchmakerPodName"`

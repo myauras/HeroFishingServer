@@ -120,9 +120,9 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s 玩家 %s 須同步redisDB資料", logger.LOG_Main, mongoPlayerDoc.ID)
 
 	// 更新玩家mongoDB資料
-	spellLVs := []int32{redisPlayer.SpellLV1, redisPlayer.SpellLV2, redisPlayer.SpellLV3}
-	spellCharges := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
-	drops := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	spellLVs := []int{redisPlayer.SpellLV1, redisPlayer.SpellLV2, redisPlayer.SpellLV3}
+	spellCharges := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	drops := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	updatePlayerBson := bson.D{
 		{Key: "point", Value: redisPlayer.Point},                       // 玩家點數
 		{Key: "pointBuffer", Value: redisPlayer.PointBuffer},           // 玩家點數溢位

@@ -2,12 +2,13 @@ package game
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"herofishingGoModule/gameJson"
 	"herofishingGoModule/utility"
 	"matchgame/logger"
 	"matchgame/packet"
 	gSetting "matchgame/setting"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // 電腦玩家
@@ -15,14 +16,26 @@ type Bot struct {
 	ID                   int                 // Bot編號 等同於Player的PlaeyrID
 	Index                int                 // 玩家在房間的索引(座位)
 	MyHero               *Hero               // 使用中的英雄
-	GainPoint            int64               // 此玩家在遊戲房總共贏得點數
+	GainPoint            int                 // 此玩家在遊戲房總共贏得點數
 	PlayerBuffs          []packet.PlayerBuff // 玩家Buffers
-	Point                int64
-	SpellCharges         [3]int32
-	Drops                [3]int32
+	Point                int
+	SpellCharges         [3]int
+	Drops                [3]int
 	curTargetIdx         int
 	SelectTargetLoopChan *gSetting.LoopChan
 	AttackLoopChan       *gSetting.LoopChan
+}
+
+// 初始化玩家英雄
+func (bot *Bot) InitHero(spellLVs [3]int, spellCharges [3]int) {
+	if bot == nil {
+		return
+	}
+
+	bot.MyHero = &Hero{
+		spellLVs:     spellLVs,
+		spellCharges: spellCharges,
+	}
 }
 
 // 取得ID
@@ -56,13 +69,13 @@ func (bot *Bot) SetBuffers(buffers []packet.PlayerBuff) {
 }
 
 // 取得點數
-func (bot *Bot) GetPoint() int64 {
+func (bot *Bot) GetPoint() int {
 	return bot.Point
 }
 
 // 玩家點數增減
-func (Bot *Bot) AddPoint(value int64) {
-	Bot.Point += int64(value)
+func (Bot *Bot) AddPoint(value int) {
+	Bot.Point += int(value)
 
 	// 設定玩家本場贏得點數
 	if value > 0 {
@@ -71,17 +84,17 @@ func (Bot *Bot) AddPoint(value int64) {
 }
 
 // 取得本場遊戲獲得點數
-func (Bot *Bot) GetGainPoint() int64 {
+func (Bot *Bot) GetGainPoint() int {
 	return Bot.GainPoint
 }
 
 // 英雄經驗增減
-func (Bot *Bot) AddHeroExp(value int32) {
+func (Bot *Bot) AddHeroExp(value int) {
 	// 不需處理
 }
 
 // 技能充能增減, idx傳入1~3
-func (Bot *Bot) AddSpellCharge(idx int32, value int32) {
+func (Bot *Bot) AddSpellCharge(idx int, value int) {
 	if idx < 1 || idx > 3 {
 		log.Errorf("%s AddSpellCharge傳入錯誤索引: %v", logger.LOG_Player, idx)
 		return
@@ -94,7 +107,7 @@ func (Bot *Bot) AddSpellCharge(idx int32, value int32) {
 }
 
 // 新增掉落
-func (Bot *Bot) AddDrop(value int32) {
+func (Bot *Bot) AddDrop(value int) {
 	if value == 0 {
 		log.Errorf("%s AddDrop傳入值為0", logger.LOG_Player)
 		return
@@ -119,7 +132,7 @@ func (Bot *Bot) AddDrop(value int32) {
 }
 
 // 移除掉落
-func (Bot *Bot) RemoveDrop(value int32) {
+func (Bot *Bot) RemoveDrop(value int) {
 	if value == 0 {
 		log.Errorf("%s RemoveDrop傳入值為0", logger.LOG_Player)
 		return
@@ -145,7 +158,7 @@ func (Bot *Bot) RemoveDrop(value int32) {
 }
 
 // 是否已經擁有此道具
-func (Bot *Bot) IsOwnedDrop(value int32) bool {
+func (Bot *Bot) IsOwnedDrop(value int) bool {
 	for _, v := range Bot.Drops {
 		if v == value {
 			return true
@@ -176,16 +189,15 @@ func (Bot *Bot) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData {
 		return spells
 	}
 	for i, v := range Bot.SpellCharges {
-		if Bot.MyHero.SpellLVs[i+1] <= 0 { // 尚未學習的技能就跳過
+		if Bot.MyHero.GetSpellLV(i) <= 0 { // 尚未學習的技能就跳過
 			continue
 		}
-		spell, err := Bot.MyHero.GetSpell(int32(i + 1))
+		spell, err := Bot.MyHero.GetSpellJson(i)
 		if err != nil {
 			log.Errorf("%s GetUnchargedSpells時GetUnchargedSpells錯誤: %v", logger.LOG_Player, err)
 			continue
 		}
 		if v < spell.Cost {
-			// log.Errorf("已學習且尚未充滿能的技能: %v", spell.ID)
 			spells = append(spells, spell)
 		}
 	}
@@ -193,9 +205,9 @@ func (Bot *Bot) GetLearnedAndChargeableSpells() []gameJson.HeroSpellJsonData {
 }
 
 // 檢查是否可以施法
-func (Bot *Bot) CanSpell(idx int32) bool {
+func (Bot *Bot) CanSpell(idx int) bool {
 
-	spell, err := Bot.MyHero.GetSpell(idx)
+	spell, err := Bot.MyHero.GetSpellJson(idx)
 	if err != nil {
 		return false
 	}
@@ -212,5 +224,3 @@ func (bot *Bot) GetAttackCDBuff() float64 {
 func (bot *Bot) CloseConnection() {
 	// 不需處理
 }
-
-

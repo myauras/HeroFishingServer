@@ -28,7 +28,7 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 			return
 		}
 	}
-	// needPoint := int64(room.DBmap.Bet)
+	// needPoint := int(room.DBmap.Bet)
 	// 取技能表
 	spellJson, err := gameJson.GetHeroSpellByID(content.SpellJsonID)
 	if err != nil {
@@ -37,14 +37,13 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 	}
 
 	spellType := spellJson.GetSpellType()
-	spellIdx := int32(0)         // 釋放第幾個技能, 0就代表是普攻
-	spendSpellCharge := int32(0) // 花費技能充能
-	spendPoint := int64(0)       // 花費點數
+	spellIdx := 0         // 釋放第幾個技能, 0就代表是普攻
+	spendSpellCharge := 0 // 花費技能充能
+	spendPoint := 0       // 花費點數
 
 	// 如果是技能攻擊, 設定spellIdx(第幾招技能), 並檢查充能是否足夠
 	if spellType == "HeroSpell" {
-		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
-		spellIdx = int32(idx)
+		spellIdx, err := utility.ExtractLastDigit(spellJson.ID)
 		if err != nil {
 			room.SendPacketToPlayer(player.Index, &packet.Pack{
 				CMD:     packet.HIT_TOCLIENT,
@@ -55,12 +54,13 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 			log.Errorf("%s 取施法技能索引錯誤: %v", logger.LOG_Action, err)
 			return
 		}
+		spellIdx -= 1 // 表格取出來的spellIdx會是1~3, 所以要-1
 		// 檢查CD
-		if spellIdx < 1 || spellIdx > 3 {
-			log.Errorf("%s 技能索引不為1~3: %v", logger.LOG_Action, spellIdx)
+		if spellIdx < 0 || spellIdx > 2 {
+			log.Errorf("%s 技能索引不為0~2: %v", logger.LOG_Action, spellIdx)
 			return
 		}
-		// passSec := room.GameTime - player.LastSpellsTime[spellIdx-1] // 距離上次攻擊經過的秒數
+		// passSec := room.GameTime - player.LastSpellsTime[spellIdx] // 距離上次攻擊經過的秒數
 		// if passSec < spellJson.CD {
 		// 	log.Errorf("%s 玩家%s的技能仍在CD中, 不應該能施放技能, passSec: %v cd: %v", logger.LOG_Action, player.DBPlayer.ID, passSec, spellJson.CD)
 		// 	return
@@ -70,14 +70,14 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 		// 	log.Errorf("%s 該玩家充能不足, 無法使用技能才對", logger.LOG_Action)
 		// 	return
 		// }
-		spell, getSpellErr := player.MyHero.GetSpell(spellIdx)
+		spell, getSpellErr := player.MyHero.GetSpellJson(spellIdx)
 		if getSpellErr != nil {
 			log.Errorf("%s player.MyHero.GetSpell(spellIdx)錯誤: %v", logger.LOG_Action, getSpellErr)
 			return
 		}
 
 		spendSpellCharge = spell.Cost
-		player.LastSpellsTime[spellIdx-1] = room.GameTime
+		player.LastSpellsTime[spellIdx] = room.GameTime
 
 	} else if spellType == "Attack" { // 如果是普攻, 檢查是否有足夠點數
 		// 檢查CD, 普攻的CD要考慮Buff
@@ -94,7 +94,7 @@ func (room *Room) HandleAttack(player *Player, packID int, content packet.Attack
 		// 	log.Errorf("%s 該玩家點數不足, 無法普攻才對", logger.LOG_Action)
 		// 	return
 		// }
-		spendPoint = int64(room.DBmap.Bet)
+		spendPoint = int(room.DBmap.Bet)
 		player.LastAttackTime = room.GameTime // 設定上一次攻擊時間
 	}
 	// =============建立攻擊事件=============
@@ -168,11 +168,12 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	rtp := float64(0)
 	spellType := spellJson.GetSpellType()
 	if spellType == "HeroSpell" {
-		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+		idx, err := utility.ExtractLastDigit(spellJson.ID)
+		idx -= 1 // 表格的技能是1~3所以要-1
 		if err != nil {
 			log.Errorf("%s HandleHit時utility.ExtractLastDigit(spellJson.ID錯誤: %v", logger.LOG_Action, err)
 		} else {
-			rtp = spellJson.GetRTP(player.MyHero.SpellLVs[idx])
+			rtp = spellJson.GetRTP(player.MyHero.GetSpellLV(idx))
 		}
 	} else if spellType == "DropSpell" {
 		rtp = spellJson.GetRTP(1) // 掉落技能只有固定等級1
@@ -180,12 +181,12 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 	// 取波次命中數
 	spellMaxHits := spellJson.MaxHits
 
-	killMonsterIdxs := make([]int, 0)    // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
-	gainPoints := make([]int64, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
-	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
-	gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
-	gainDrops := make([]int32, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-	ptBuffer := int64(0)                 // 點數溢位
+	killMonsterIdxs := make([]int, 0)  // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
+	gainPoints := make([]int, 0)       // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
+	gainHeroExps := make([]int, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
+	gainDrops := make([]int, 0)        // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := 0                      // 點數溢位
 	// 遍歷擊中的怪物並計算擊殺與獎勵
 	content.MonsterIdxs = utility.RemoveDuplicatesFromSlice(content.MonsterIdxs) // 移除重複的命中索引
 	for _, monsterIdx := range content.MonsterIdxs {
@@ -205,18 +206,18 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 		// 怪物必須有掉落物才需要考慮怪物掉落
 		if monster.DropID != 0 {
 			// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
-			if !player.IsOwnedDrop(int32(monster.DropID)) {
+			if !player.IsOwnedDrop(monster.DropID) {
 				dropAddOdds += float64(monster.DropRTP)
 			}
 		}
 
 		// 計算實際怪物死掉獲得點數
-		rewardPoint := int64((float64(monster.Odds) + dropAddOdds) * float64(room.DBmap.Bet))
+		rewardPoint := int((float64(monster.Odds) + dropAddOdds) * float64(room.DBmap.Bet))
 
 		rndUnchargedSpell, gotUnchargedSpell := player.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
 
 		attackKP := float64(0)
-		tmpPTBufferAdd := int64(0)
+		tmpPTBufferAdd := 0
 		if spellType == "Attack" { // 普攻
 			// 擊殺判定
 			hitData := HitData{
@@ -251,27 +252,28 @@ func (room *Room) HandleHit(player *Player, pack packet.Pack, content packet.Hit
 			if gotUnchargedSpell {
 				rndUnchargedSpellRTP := float64(0)
 
-				dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+				dropSpellIdx, err := utility.ExtractLastDigit(rndUnchargedSpell.ID)
+				dropSpellIdx -= 1 // 表格技能是1~3所以要-1
 				if err != nil {
 					log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID錯誤: %v", logger.LOG_Action, err)
 				} else {
 					// log.Errorf("技能ID: %v 索引: %v 技能等級: %v", rndUnchargedSpell.ID, spellIdx, player.MyHero.SpellLVs[spellIdx])
-					rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.SpellLVs[dropSpellIdx])
+					rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(player.MyHero.GetSpellLV(dropSpellIdx))
 				}
 				// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
 				dropChargeP = room.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(monster.Odds))
 
-				log.Errorf("rndUnchargedSpellRTP: %v monster.Odds:%v  dropChargeP: %v", rndUnchargedSpellRTP, monster.Odds, dropChargeP)
+				// log.Errorf("rndUnchargedSpellRTP: %v monster.Odds:%v  dropChargeP: %v", rndUnchargedSpellRTP, monster.Odds, dropChargeP)
 				if utility.GetProbResult(dropChargeP) {
-					gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
+					gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
 				}
 			}
 			// log.Errorf("擊殺怪物: %v", monsterIdx)
 			killMonsterIdxs = append(killMonsterIdxs, monsterIdx)
 			gainPoints = append(gainPoints, rewardPoint)
-			gainHeroExps = append(gainHeroExps, int32(monster.EXP))
+			gainHeroExps = append(gainHeroExps, int(monster.EXP))
 			if monster.DropID != 0 {
-				gainDrops[len(gainDrops)-1] = int32(monster.DropID)
+				gainDrops[len(gainDrops)-1] = int(monster.DropID)
 			}
 		}
 	}
@@ -362,10 +364,10 @@ func (room *Room) SettleHit(gamer Gamer, hitPack packet.Pack) {
 
 	// 英雄增加經驗
 	totalGainHeroExps := utility.SliceSum(content.GainHeroExps) // 把 每個擊殺獲得英雄經驗加總就是 總獲得英雄經驗
-	gamer.AddHeroExp(int32(totalGainHeroExps))
+	gamer.AddHeroExp(int(totalGainHeroExps))
 	// 擊殺怪物增加英雄技能充能
 	for _, v := range content.GainSpellCharges {
-		if v <= 0 { // 因為有擊殺但沒掉落充能時, gainSpellCharges仍會填入-1, 所以要加判斷
+		if v < 0 { // 因為有擊殺但沒掉落充能時, gainSpellCharges仍會填入-1, 所以要加判斷
 			continue
 		}
 		gamer.AddSpellCharge(v, 1)
@@ -402,7 +404,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		log.Errorf("%s HandleDropSpell時strconv.ParseInt(dropSpellJson.ID, 10, 64)錯誤: %v", logger.LOG_Action, err)
 		return
 	}
-	// ownedDrop := player.IsOwnedDrop(int32(dropSpellID))
+	// ownedDrop := player.IsOwnedDrop(int(dropSpellID))
 	// if !ownedDrop {
 	// 	log.Errorf("%s 玩家%s 無此DropID, 不應該能使用DropSpell: %v", logger.LOG_Action, player.DBPlayer.ID, dropSpellID)
 	// 	return
@@ -488,7 +490,7 @@ func (room *Room) HandleDropSpell(player *Player, pack packet.Pack, content pack
 		return
 	}
 	// 施法後要移除該掉落
-	player.RemoveDrop(int32(dropSpellID))
+	player.RemoveDrop(int(dropSpellID))
 }
 
 // 處理收到的自動攻擊封包(TCP)

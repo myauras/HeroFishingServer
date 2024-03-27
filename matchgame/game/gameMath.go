@@ -19,7 +19,7 @@ type HitData struct {
 	TargetOdds float64
 	MaxHit     int
 	ChargeDrop bool
-	MapBet     int32
+	MapBet     int
 }
 
 func (modle *MathModel) GetPlayerCurRTP(player *Player) float64 {
@@ -27,7 +27,7 @@ func (modle *MathModel) GetPlayerCurRTP(player *Player) float64 {
 }
 
 // 取得普攻擊殺率
-func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int64) {
+func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int) {
 
 	attackRTP := hitData.AttackRTP
 	if hitData.ChargeDrop { // 需要把普通攻擊的部分RTP分給技能充能掉落時
@@ -54,7 +54,7 @@ func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int6
 }
 
 // 取得技能擊殺率
-func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64) {
+func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int) {
 	player, isPlayer := gamer.(*Player)
 	if isPlayer {
 		return model.getKPandAddPTBuffer(hitData, player)
@@ -69,14 +69,13 @@ func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64
 	return 0, 0
 }
 
-func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int) {
 
 	// ====================點數暫存(Point Buffer)
 
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
-	pointBuffer := int64(0)
-	pointBuffer = player.PointBuffer
+	pointBuffer := player.PointBuffer
 	// log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
@@ -90,11 +89,11 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 
 	if kp > 1 { // 擊殺率大於1時處理
 		overflowKP := kp - 1
-		pointBuffer = int64(overflowKP * rewardPoint)
+		pointBuffer = int(overflowKP * rewardPoint)
 		kp = 1
 	} else if kp < 0 { // 擊殺率小於0時處理
 		overflowKP := -kp
-		pointBuffer = int64(overflowKP * rewardPoint)
+		pointBuffer = int(overflowKP * rewardPoint)
 		kp = 0
 	} else { // 擊殺率在0~1之間處理
 		pointBuffer = 0
@@ -136,7 +135,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 
 	return kp, ptBufferChanged
 }
-func (model *MathModel) getKPandAddPTBuffer_Bot(hitData HitData, bot *Bot) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer_Bot(hitData HitData, bot *Bot) (float64, int) {
 	kp := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	return kp, 0
 }
