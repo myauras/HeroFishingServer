@@ -120,8 +120,9 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s 玩家 %s 須同步redisDB資料", logger.LOG_Main, mongoPlayerDoc.ID)
 
 	// 更新玩家mongoDB資料
-	spellCharges := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
-	drops := []int32{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	spellLVs := []int{redisPlayer.SpellLV1, redisPlayer.SpellLV2, redisPlayer.SpellLV3}
+	spellCharges := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
+	drops := []int{redisPlayer.SpellCharge1, redisPlayer.SpellCharge2, redisPlayer.SpellCharge3}
 	updatePlayerBson := bson.D{
 		{Key: "point", Value: redisPlayer.Point},                       // 玩家點數
 		{Key: "pointBuffer", Value: redisPlayer.PointBuffer},           // 玩家點數溢位
@@ -130,6 +131,7 @@ func handleSyncRedisCheck(w http.ResponseWriter, r *http.Request) {
 		{Key: "leftGameAt", Value: time.Now()},                         // 離開遊戲時間
 		{Key: "inMatchgameID", Value: ""},                              // 玩家不在遊戲房內了
 		{Key: "heroExp", Value: redisPlayer.HeroExp},                   // 英雄經驗
+		{Key: "spellLVs", Value: spellLVs},                             // 技能等級
 		{Key: "spellCharges", Value: spellCharges},                     // 技能充能
 		{Key: "drops", Value: drops},                                   // 掉落道具
 		{Key: "redisSync", Value: true},                                // 設定redisSync為true, 代表已經把這次遊玩結果更新上monogoDB了

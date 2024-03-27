@@ -19,15 +19,15 @@ type HitData struct {
 	TargetOdds float64
 	MaxHit     int
 	ChargeDrop bool
-	MapBet     int32
+	MapBet     int
 }
 
 func (modle *MathModel) GetPlayerCurRTP(player *Player) float64 {
-	return float64(player.DBPlayer.TotalWin / player.DBPlayer.TotalExpenditure)
+	return float64(player.TotalWin / player.TotalExpenditure)
 }
 
 // 取得普攻擊殺率
-func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int64) {
+func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int) {
 
 	attackRTP := hitData.AttackRTP
 	if hitData.ChargeDrop { // 需要把普通攻擊的部分RTP分給技能充能掉落時
@@ -54,7 +54,7 @@ func (model *MathModel) GetAttackKP(hitData HitData, gamer Gamer) (float64, int6
 }
 
 // 取得技能擊殺率
-func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64) {
+func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int) {
 	player, isPlayer := gamer.(*Player)
 	if isPlayer {
 		return model.getKPandAddPTBuffer(hitData, player)
@@ -69,14 +69,13 @@ func (model *MathModel) GetSpellKP(hitData HitData, gamer Gamer) (float64, int64
 	return 0, 0
 }
 
-func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (float64, int) {
 
 	// ====================點數暫存(Point Buffer)
 
 	rewardPoint := hitData.TargetOdds * float64(hitData.MapBet)                    // 計算擊殺此怪會獲得的點數
 	originalKP := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
-	pointBuffer := int64(0)
-	pointBuffer = player.DBPlayer.PointBuffer
+	pointBuffer := player.PointBuffer
 	// log.Infof("PointBuffer修正前=======pointBufer: %v KP: %v ", pointBuffer, originalKP)
 	gainKP := float64(0) // 計算點數溢位獲得的擊殺率
 	if rewardPoint != 0 {
@@ -90,16 +89,16 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 
 	if kp > 1 { // 擊殺率大於1時處理
 		overflowKP := kp - 1
-		pointBuffer = int64(overflowKP * rewardPoint)
+		pointBuffer = int(overflowKP * rewardPoint)
 		kp = 1
 	} else if kp < 0 { // 擊殺率小於0時處理
 		overflowKP := -kp
-		pointBuffer = int64(overflowKP * rewardPoint)
+		pointBuffer = int(overflowKP * rewardPoint)
 		kp = 0
 	} else { // 擊殺率在0~1之間處理
 		pointBuffer = 0
 	}
-	ptBufferChanged := pointBuffer - player.DBPlayer.PointBuffer // PointBuffer改變值
+	ptBufferChanged := pointBuffer - player.PointBuffer // PointBuffer改變值
 	// log.Infof("PointBuffer修正後=======pointBufer: %v KP: %v pt改變值: %v", pointBuffer, kp, ptBufferChanged)
 
 	// ====================RTP校正(RTP Adjust)
@@ -113,11 +112,11 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 	}
 	if adjustRTP {
 		// log.Infof("RTP校正前=======KP: %v 總贏: %v 總花費: %v", kp, player.DBPlayer.TotalWin, player.DBPlayer.TotalExpenditure)
-		playerRTP := float64(player.DBPlayer.TotalWin) / float64(player.DBPlayer.TotalExpenditure) // 計算玩家實際RTP
+		playerRTP := float64(player.TotalWin) / float64(player.TotalExpenditure) // 計算玩家實際RTP
 		// log.Infof("RTP差: %v", model.GameRTP-playerRTP)
 		if math.Abs(model.GameRTP-playerRTP) >= model.RtpAdjust_RTPThreshold { // RTP差>=RTP校正閥值才考慮RTP校正
-			expectedTotalWin := float64(player.DBPlayer.TotalExpenditure) * model.GameRTP
-			pointDiff := expectedTotalWin - float64(player.DBPlayer.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
+			expectedTotalWin := float64(player.TotalExpenditure) * model.GameRTP
+			pointDiff := expectedTotalWin - float64(player.TotalWin) // 計算玩家分差(玩家總贏與期望總贏差)
 			pointDiffThreshold := rewardPoint * model.RtpAdjust_KillRateValue
 			// log.Infof("分差: %v 分差校正閥值: %v 期望總贏: %v", pointDiff, pointDiffThreshold, expectedTotalWin)
 			if math.Abs(pointDiff) >= pointDiffThreshold { // 分差 >= 分差校正閥值才進行RTP校正
@@ -136,7 +135,7 @@ func (model *MathModel) getKPandAddPTBuffer(hitData HitData, player *Player) (fl
 
 	return kp, ptBufferChanged
 }
-func (model *MathModel) getKPandAddPTBuffer_Bot(hitData HitData, bot *Bot) (float64, int64) {
+func (model *MathModel) getKPandAddPTBuffer_Bot(hitData HitData, bot *Bot) (float64, int) {
 	kp := hitData.AttackRTP / hitData.TargetOdds / float64(hitData.MaxHit) // 計算原始擊殺率
 	return kp, 0
 }

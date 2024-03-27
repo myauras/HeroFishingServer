@@ -14,8 +14,8 @@ type HeroSpellJsonData struct {
 	ID              string    `json:"ID"`
 	RTP             []float64 `json:"RTP"`
 	CD              float64   `json:"CD"`
-	Cost            int32     `json:"Cost"`
-	MaxHits         int32     `json:"MaxHits"`
+	Cost            int       `json:"Cost"`
+	MaxHits         int       `json:"MaxHits"`
 	SpellType       string    `json:"SpellType"`
 	SpellTypeValues string    `json:"SpellTypeValues"`
 }
@@ -77,14 +77,14 @@ func (spellJson *HeroSpellJsonData) UnmarshalJSON(data []byte) error {
 		if intVal, err = strconv.ParseInt(aux.Cost, 10, 32); err != nil {
 			return err
 		}
-		spellJson.Cost = int32(intVal)
+		spellJson.Cost = int(intVal)
 	}
 	if aux.MaxHits != "" {
 		var intVal int64
 		if intVal, err = strconv.ParseInt(aux.MaxHits, 10, 32); err != nil {
 			return err
 		}
-		spellJson.MaxHits = int32(intVal)
+		spellJson.MaxHits = int(intVal)
 	}
 
 	return nil

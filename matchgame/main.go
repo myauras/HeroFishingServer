@@ -138,7 +138,7 @@ func main() {
 				log.Infof("%s Port: %v", logger.LOG_Main, gs.Status.Ports[0].Port)
 				log.Infof("%s Get Info Finished", logger.LOG_Main)
 
-				game.InitGameRoom(dbMapID, playerIDs, roomName, gs.Status.Address, gs.Status.Ports[0].Port, podName, nodeName, matchmakerPodName, roomChan)
+				game.InitGameRoom(dbMapID, playerIDs, roomName, gs.Status.Address, int(gs.Status.Ports[0].Port), podName, nodeName, matchmakerPodName, roomChan)
 				agones.SetServerState(agonesv1.GameServerStateAllocated) // 設定房間為Allocated(agones應該會在WatchGameServer後自動設定為Allocated但這邊還是主動設定)
 				log.Infof("%s GameServer狀態為: %s", logger.LOG_Main, gs.Status.State)
 				log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
@@ -226,7 +226,7 @@ func main() {
 			log.Infof("%s Port: %v", logger.LOG_Main, port)
 			log.Infof("%s Get Info Finished", logger.LOG_Main)
 
-			game.InitGameRoom(dbMapID, playerIDs, roomName, "", int32(myPort), PodName, nodeName, matchmakerPodName, roomChan)
+			game.InitGameRoom(dbMapID, playerIDs, roomName, "", int(myPort), PodName, nodeName, matchmakerPodName, roomChan)
 
 			log.Infof("%s ==============初始化房間完成==============", logger.LOG_Main)
 		}()

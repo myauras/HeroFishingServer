@@ -48,8 +48,8 @@ func AddBot() *Bot {
 	spellJsons := rndHeroJson.GetSpellJsons() // 取得英雄技能
 	hero := Hero{
 		ID:     int(heroID),
-		SkinID: heroSkinID,
-		Spells: spellJsons,
+		skinID: heroSkinID,
+		spells: spellJsons,
 	}
 
 	bot := Bot{
@@ -57,6 +57,7 @@ func AddBot() *Bot {
 		MyHero:       &hero,
 		curTargetIdx: -1, // 無攻擊目標時, curTargetIdx為-1
 	}
+	bot.InitHero([3]int{}, [3]int{})
 	joined := MyRoom.JoinPlayer(&bot)
 	if !joined {
 		log.Errorf("%s 玩家加入房間失敗", logger.LOG_Main)
@@ -286,10 +287,11 @@ func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
 	spellType := spellJson.GetSpellType()
 	if spellType == "HeroSpell" {
 		idx, err := utility.ExtractLastDigit(spellJson.ID) // 掉落充能的技能索引(1~3) Ex.1就是第1個技能
+		idx -= 1                                           // 表格取出來的技能索引要-1
 		if err != nil {
 			log.Errorf("%s HandleHit時utility.ExtractLastDigit(spellJson.ID錯誤: %v", logger.LOG_Action, err)
 		} else {
-			rtp = spellJson.GetRTP(bot.MyHero.SpellLVs[idx])
+			rtp = spellJson.GetRTP(bot.MyHero.GetSpellLV(idx))
 		}
 	} else if spellType == "DropSpell" {
 		rtp = spellJson.GetRTP(1) // 掉落技能只有固定等級1
@@ -298,30 +300,30 @@ func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
 	spellMaxHits := spellJson.MaxHits
 
 	killMonsterIdxs := make([]int, 0) // 擊殺怪物索引清單, [1,1,3]就是依次擊殺索引為1,1與3的怪物
-	gainPoints := make([]int64, 0)    // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
+	gainPoints := make([]int, 0)      // 獲得點數清單, [1,1,3]就是依次獲得點數1,1與3
 
-	gainSpellCharges := make([]int32, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
+	gainSpellCharges := make([]int, 0) // 獲得技能充能清單, [1,1,3]就是依次獲得技能1,技能1,技能3的充能
 	// Bot不用獲得英雄經驗
 	// gainHeroExps := make([]int32, 0)     // 獲得英雄經驗清單, [1,1,3]就是依次獲得英雄經驗1,1與3
 	rndUnchargedSpell, gotUnchargedSpell := bot.GetRandomChargeableSpell() // 計算是否有尚未充滿能的技能, 有的話隨機取一個未充滿能的技能
-	gainDrops := make([]int32, 0)                                          // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
-	ptBuffer := int64(0)                                                   // 點數溢位
+	gainDrops := make([]int, 0)                                            // 獲得掉落清單, [1,1,3]就是依次獲得DropJson中ID為1,1與3的掉落
+	ptBuffer := 0                                                          // 點數溢位
 
 	// 取得怪物掉落道具
 	dropAddOdds := 0.0 // 掉落道具增加的總RTP
 	// 怪物必須有掉落物才需要考慮怪物掉落
 	if curMonster.DropID != 0 {
 		// 玩家目前還沒擁有該掉落ID 才需要考慮怪物掉落
-		if !bot.IsOwnedDrop(int32(curMonster.DropID)) {
+		if !bot.IsOwnedDrop(curMonster.DropID) {
 			dropAddOdds += float64(curMonster.DropRTP)
 		}
 	}
 
 	// 計算實際怪物死掉獲得點數
-	rewardPoint := int64((float64(curMonster.Odds) + dropAddOdds) * float64(MyRoom.DBmap.Bet))
+	rewardPoint := int((float64(curMonster.Odds) + dropAddOdds) * float64(MyRoom.DBmap.Bet))
 
 	attackKP := float64(0)
-	tmpPTBufferAdd := int64(0)
+	tmpPTBufferAdd := 0
 
 	if spellType == "Attack" { // 普攻
 		// 擊殺判定
@@ -364,12 +366,12 @@ func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
 				log.Errorf("%s HandleHit時utility.ExtractLastDigit(rndUnchargedSpell.ID錯誤: %v", logger.LOG_Action, err)
 			} else {
 				// log.Errorf("技能ID: %v 索引: %v 技能等級: %v", rndUnchargedSpell.ID, spellIdx, player.MyHero.SpellLVs[spellIdx])
-				rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(bot.GetHero().SpellLVs[dropSpellIdx])
+				rndUnchargedSpellRTP = rndUnchargedSpell.GetRTP(bot.GetHero().GetSpellLV(dropSpellIdx - 1))
 			}
 			// log.Errorf("rndUnchargedSpellRTP: %v", rndUnchargedSpellRTP)
 			dropChargeP = MyRoom.MathModel.GetHeroSpellDropP_AttackKilling(rndUnchargedSpellRTP, float64(curMonster.Odds))
 			if utility.GetProbResult(dropChargeP) {
-				gainSpellCharges[len(gainSpellCharges)-1] = int32(dropSpellIdx)
+				gainSpellCharges[len(gainSpellCharges)-1] = dropSpellIdx
 			}
 		}
 		killMonsterIdxs = append(killMonsterIdxs, curMonster.MonsterIdx)
@@ -377,7 +379,7 @@ func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
 		// Bot不用獲得英雄經驗
 		// gainHeroExps = append(gainHeroExps, int32(curMonster.EXP))
 		if curMonster.DropID != 0 {
-			gainDrops[len(gainDrops)-1] = int32(curMonster.DropID)
+			gainDrops[len(gainDrops)-1] = curMonster.DropID
 		}
 	}
 
@@ -389,7 +391,7 @@ func (bot *Bot) RunHit(spellJson gameJson.HeroSpellJsonData) {
 			PlayerIdx:        bot.Index,
 			KillMonsterIdxs:  killMonsterIdxs,
 			GainPoints:       gainPoints,
-			GainHeroExps:     []int32{},
+			GainHeroExps:     []int{},
 			GainSpellCharges: gainSpellCharges,
 			GainDrops:        gainDrops,
 			PTBuffer:         0,

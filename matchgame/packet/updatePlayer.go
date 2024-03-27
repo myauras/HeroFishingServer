@@ -8,7 +8,7 @@ type UpdatePlayer_ToClient struct {
 type Player struct {
 	ID          string
 	Idx         int          // 玩家索引(座位)
-	GainPoints  int64        // 玩家總獲得點數
+	GainPoints  int          // 玩家總獲得點數
 	PlayerBuffs []PlayerBuff // 玩家Buffer
 }
 type PlayerBuff struct {
